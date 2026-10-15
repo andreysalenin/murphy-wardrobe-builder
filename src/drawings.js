@@ -675,10 +675,10 @@ function pageHardware(doc, M, S, info) {
     const w = G.doorW / sd, h = (z1 - z0) / sd, inner = P.doorHinge === 'inner';
     s.rect(x0, dy, w, h, { fill: FILL.front, lw: LW_VIS });
     const ex = inner ? x0 + w : x0; // seen from inside, the hinge edge flips
-    const cx = inner ? ex - 22.5 / sd : ex + 22.5 / sd;
+    const cx = inner ? ex - G.hingeDoor.cup / sd : ex + G.hingeDoor.cup / sd;
     for (const z of C.hingeZs([z0, z1])) { const cy = dy + (z - z0) / sd; s.circle(cx, cy, 17.5 / sd, { lw: 0.25, fill: WHITE }); s.line([cx - 2.6, cx + 2.6], [cy, cy], { lw: 0.08 }); }
     const hz = C.hingeZs([z0, z1]);
-    s.dim([ex, dy + (hz[0] - z0) / sd], [cx, dy + (hz[0] - z0) / sd], dy - 4, 'h', '22.5', { size: 5 });
+    s.dim([ex, dy + (hz[0] - z0) / sd], [cx, dy + (hz[0] - z0) / sd], dy - 4, 'h', fh(G.hingeDoor.cup), { size: 5 });
     let prev = z0;
     hz.concat([z1]).forEach((z, k) => { s.dim([x0 + w, dy + (prev - z0) / sd], [x0 + w, dy + (z - z0) / sd], inner ? x0 - 4 : x0 + w + 4, 'v', fh(z - prev), { size: 5 }); prev = z; });
     s.text(x0 + w / 2, dy + h + 3, label, { size: 6, ha: 'center', weight: 'bold' });
@@ -686,7 +686,31 @@ function pageHardware(doc, M, S, info) {
   door(G.midDoor[0], G.midDoor[1], dx, `D2  ${fh(G.doorW)} x ${fh(G.midDoor[1] - G.midDoor[0])}`);
   door(G.topDoor[0], G.topDoor[1], dx + 58, `D1  ${fh(G.doorW)} x ${fh(G.topDoor[1] - G.topDoor[0])}`);
   s.text(dx - 6, 276, 'TOWER DOORS, INSIDE FACE  1:10', { size: 7.5, weight: 'bold' });
-  s.para(dx - 6, 272, s.wrap(`35 mm cups, 13 deep, centres 22.5 from the ${P.doorHinge === 'outer' ? 'wall' : 'bed'}-side edge (5 mm boring distance). Plates on the side panel 37 back from its front edge at the same heights. Right-hand tower shown; the left is a mirror image.`, 104, 5.4), { size: 5.4, color: GREY });
+  const HD = G.hingeDoor, HF = G.hingeFlap;
+  s.para(dx - 6, 272, s.wrap(`${C.HINGE_HW.name}. 35 mm cups bored 13 deep, centres ${fh(HD.cup)} from the ${P.doorHinge === 'outer' ? 'wall' : 'bed'}-side edge (${fh(HD.B)} mm boring distance), screw holes 45 apart and 9.5 further in. ${HD.H} mm CLIP cruciform plates (${HD.code}) on the side panel, holes 37 back from its front edge and 32 apart, at the cup heights: ${fh(HD.overlay)} overlay. Flaps: ${HF.H} mm plates (${HF.code}) under the top, cups ${fh(HF.cup)} below the top edge. Right-hand tower shown; the left is a mirror image.`, 104, 5.4), { size: 5.4, color: GREY });
+
+  // 3. runner lines on a tower side, from inside (front edge on the right)
+  {
+    const sr = 10, rx = dx + 8, rz = 40, NL = G.runner, holes = C.runnerHoles(NL), zIn = G.zPl + P.T, zs = G.runnerZ || [];
+    const vr = View(s, 'side', sr, [rx, rz], [G.yB1, zIn]);
+    const [p0, p1] = [vr.Puv([G.yB1, zIn]), vr.Puv([G.yC, G.zS1b])];
+    s.rect(p0[0], p0[1], p1[0] - p0[0], p1[1] - p0[1], { fill: FILL.carcass, lw: LW_VIS });
+    for (const z of zs) {
+      const a = vr.Puv([G.yC - NL, z - C.RUNNER_HW.h / 2]), b = vr.Puv([G.yC, z + C.RUNNER_HW.h / 2]);
+      s.rect(a[0], a[1], b[0] - a[0], b[1] - a[1], { fill: FILL.zinc, lw: 0.12, color: [40, 42, 46] });
+      for (const h of holes) { const q = vr.Puv([G.yC - h, z]); s.circle(q[0], q[1], 0.35, { fill: INK, lw: 0 }); }
+    }
+    let prev = zIn;
+    zs.forEach((z, i) => { vr.dimAt([0, G.yB1, prev], [0, G.yB1, z], p0[0] - 4, 'v', fh(z - prev), { size: 4.8 }); prev = z; });
+    if (zs.length) {
+      const zb = zs[0];
+      vr.dimAt([0, G.yC - holes[0], zb], [0, G.yC, zb], p0[1] - 4, 'h', fh(holes[0]), { size: 4.6, side: 'over' });
+      vr.dimAt([0, G.yC - holes[holes.length - 1], zb], [0, G.yC, zb], p0[1] - 9, 'h', fh(holes[holes.length - 1]), { size: 4.8 });
+      vr.dimAt([0, G.yC - NL, zb], [0, G.yC, zb], p0[1] - 14, 'h', `${fh(NL)} runner`, { size: 4.8 });
+    }
+    s.text(dx - 6, 134, `DRAWER RUNNERS, TOWER SIDE FROM INSIDE  1:${sr}`, { size: 7.5, weight: 'bold' });
+    s.para(dx - 6, 130, s.wrap(`${C.RUNNER_HW.name} ${NL}, full extension, ${C.RUNNER_HW.load} kg, ${C.RUNNER_HW.h} x ${C.RUNNER_HW.w}, a pair per drawer, cabinet members flush with the front edge on the centre lines shown (heights above the tower bottom). Holes from the front edge: ${holes.join(', ')}; screw at least the first, a middle one and the last. Needs ${NL + C.RUNNER_HW.kt} inside the carcase (${fh(G.cD)} here) and ${C.RUNNER_HW.w} each side of the box.`, 104, 5.4), { size: 5.4, color: GREY });
+  }
 
   // 3. shelf over the bed from above: pins, latches, stays, flap hinges
   const sp = 12, px0 = 258, py0 = 250;
@@ -827,7 +851,7 @@ function pageReview(doc, M, S, info) {
     s.heading(214, y, 'FLAGGED BY THE CHECKS NOW');
     y = s.numbered(214, y - 6, live.map(c => [c.title, c.text]), 190, { size: 7.4, numColor: BAD });
   }
-  let yy = 70;
+  let yy = Math.max(70, 22 + C.SOURCES.length * 7.2);
   s.heading(14, yy, 'SOURCES');
   yy -= 6;
   for (const [t, u] of C.SOURCES) { s.text(14, yy, t, { size: 6.4 }); s.text(14, yy - 3, u, { size: 5.6, color: GREY }); yy -= 7.2; }

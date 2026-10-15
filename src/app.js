@@ -148,7 +148,7 @@ function renderReview() {
   const li = (items) => items.map(([t, b]) => `<li><b>${esc(t)}.</b> ${esc(b)}</li>`).join('');
   $('rv-edits').innerHTML = li(R.edits);
   $('rv-open').innerHTML = li(R.open);
-  $('rv-src').innerHTML = 'Hardware numbers from Create-A-Bed: ' + C.SOURCES.map(([t, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(t.replace(/^Create-A-Bed: /, ''))}</a>`).join(', ') + '.';
+  $('rv-src').innerHTML = 'Hardware numbers from: ' + C.SOURCES.map(([t, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a>`).join(', ') + '.';
 }
 
 /* ---------------------------------------------------------------- bed slider */
