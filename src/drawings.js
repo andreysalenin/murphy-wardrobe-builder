@@ -364,7 +364,7 @@ function pageOverview(doc, M, S, I, info) {
     ['Cavity (W x H x D)', `${f0(P.W)} x ${f0(P.H)} x ${f0(P.D)}`],
     ['Mattress', `${f0(P.mW)} x ${f0(P.mL)} x ${f0(P.mT)}`],
     ['Bed bay, clear', `${f0(G.bayIn)} between the bed-cabinet sides`],
-    ['Bed frame', `${f0(G.frameW)} x ${f0(G.frameL)}, face panel ${P.T} mm in two halves`],
+    ['Bed frame', `${f0(G.frameW)} x ${f0(G.frameL)}; face panel ${P.T} mm in two halves, ${f0(2 * (G.xFo + P.faceOverhang))} wide${P.faceOverhang ? `, ${f0(P.faceOverhang)} past the rails` : ''}`],
     ['Pivot', `${f0(G.pivot[1])} above the floor, ${f0(G.pivotBehindFace)} behind the face`],
     ['Bed down', `reaches ${f0(G.clear.open.reach)} from the wall, mattress top ${f0(G.clear.open.mattTop)}`],
     ['Tower, inside', `${f0(G.towerIn)} wide x ${f0(G.cD)} deep`],
@@ -409,7 +409,7 @@ function pageElevations(doc, M, S, I, info) {
   v1.parts(parts, { filter: (p) => !p.leg });
   // labels on the fronts
   for (const p of M.parts) if (p.kind === 'front' && !p.hw && (p.mark[0] === 'D' || p.mark === 'F1')) {
-    const txt = p.mark === 'F1' ? (p.name.endsWith('(L)') ? `F1  bed face\n${f0(G.frameW)} x ${f0(G.faceL)}` : null) : `${p.mark}\n${f0(p.W)} x ${f0(p.L)}`;
+    const txt = p.mark === 'F1' ? (p.name.endsWith('(L)') ? `F1  bed face\n${f0(2 * (G.xFo + P.faceOverhang))} x ${f0(G.faceL)}` : null) : `${p.mark}\n${f0(p.W)} x ${f0(p.L)}`;
     if (txt) partLabel(s, v1, p, txt, 5.4);
   }
   // reveal line at the joint between the face panels
@@ -427,7 +427,7 @@ function pageElevations(doc, M, S, I, info) {
   const yb = v1.P([0, 0, 0])[1] - 4;
   [[G.doorX[0], G.doorX[1]], [G.flapX[0], G.flapX[1]], [-G.flapX[1], -G.flapX[0]], [-G.doorX[1], -G.doorX[0]]].forEach(([a, b]) => v1.dimAt([a, 0, 0], [b, 0, 0], yb, 'h', null, { size: 5.4, noExt: true }));
   v1.dimAt([-P.W / 2, 0, 0], [P.W / 2, 0, 0], yb - 6, 'h', f0(P.W), { size: 6 });
-  v1.dimAt([-G.xFo, 0, 0], [G.xFo, 0, 0], yb - 12, 'h', `${f0(G.frameW)} bed face`, { size: 5.6 });
+  v1.dimAt([-(G.xFo + P.faceOverhang), 0, 0], [G.xFo + P.faceOverhang, 0, 0], yb - 12, 'h', `${f0(2 * (G.xFo + P.faceOverhang))} bed face`, { size: 5.6 });
 
   // 2. carcass elevation, fronts off
   const ox2 = 196;

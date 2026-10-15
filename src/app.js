@@ -22,6 +22,12 @@ if (!readLS(LS_KEY + ':gap11')) {
   if (params.gapHydr === 30 && params.packer === true && params.Tpacker === 18) { params.gapHydr = 11; params.packer = false; }
   writeLS(LS_KEY + ':gap11', 1);
 }
+// the bed face now overhangs its rails 5 mm so the reveal beside it matches the other fronts: saved settings on the
+// old flush face with the kit's gap follow, once
+if (!readLS(LS_KEY + ':reveal6')) {
+  if (params.faceOverhang === 0 && params.gapHydr === 11) params.faceOverhang = 5;
+  writeLS(LS_KEY + ':reveal6', 1);
+}
 params = C.normParams(params);
 let model = null, summary = null, viewer = null, timer = null;
 let viewOpts = Object.assign({ fronts: true, mattress: true, hw: true, section: false, bySheet: false }, readLS(LS_VIEW) || {});

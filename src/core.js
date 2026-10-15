@@ -53,7 +53,7 @@ const DEFAULTS = {
   headRailD: 200,     // head rail D, 7-7/8 in: stands 2 in above the side rails, a lip at the pillows (p.6, p.18)
   footRailD: 76.2,    // foot rail C, 3 in: the legs swing past it (p.6)
   railR: 73,          // side rails: 2-7/8 in radius on the foot-end top corner (p.10)
-  faceOverhang: 0,    // face panel past the side rails, each side (kit: 1/4 in)
+  faceOverhang: 5,    // face panel past the side rails, each side (kit: 1/4 in). 5 leaves 6 to the cabinet sides, the reveal of the other fronts
   ladderW: 45,        // deck strut width (kit: 1-1/2 in solid wood)
   struts: 10,
   // Create-A-Bed hardware, from the plan (pages in brackets)
@@ -347,8 +347,12 @@ function derived(P) {
   G.zBm0 = G.zF1 + P.gapHolder; G.zBm1 = G.zBm0 + T;          // shelf above the bed (topofmattressframe)
   G.antClear = G.zTopB - G.zBm1;                              // clear height in the space above the bed
   G.flapZ = [G.zBm0 - g, G.zTop - g];
-  G.flapX = [g / 2, G.xJ - g];
-  G.doorX = [G.xJ + g, G.xA - g];
+  // with the doors hinged at the walls, the tower fronts run in over the bed-cabinet side's front edge to its inner
+  // face; the flaps and the bed's face panel stop a reveal short of that line, so one reveal runs floor to ceiling
+  const coverB = P.doorHinge !== 'inner';
+  G.flapX = [g / 2, coverB ? G.xB - g : G.xJ - g];
+  G.doorX = [coverB ? G.xB : G.xJ + g, G.xA - g];
+  G.bedReveal = G.doorX[0] - (G.xFo + P.faceOverhang);        // beside the bed face, from the front
   G.doorOverlay = P.doorHinge === 'inner' ? G.xT2 - G.doorX[0] : G.doorX[1] - G.xOi;
   G.hingeDoor = hingeFit(G.doorOverlay);          // flap overlay: its top edge over the top's front edge
   G.hingeFlap = hingeFit(G.flapZ[1] - G.zTopB);
@@ -968,7 +972,11 @@ function checks(model) {
   // hardware gap
   const gapNow = G.effGap;
   if (Math.abs(gapNow - P.pinGap) > 2.5) w('warn', 'Pivot gap differs from the kit', `Side rail to the pivot mounting face is ${f0(gapNow)} mm; the Create-A-Bed queen plan works out to ${P.pinGap} mm (7/16 in). ${P.packer ? 'Change the packer thickness' : 'Add a packer under the cabinet-side plates'} so the pivot pins engage fully.`, 'hardware');
-  if (P.faceOverhang > 0 && P.faceOverhang > gapNow - 5) w('bad', 'Face panel rubs the pivot packer', `Overhang ${P.faceOverhang} mm leaves ${f0(gapNow - P.faceOverhang)} mm to the packer and plates.`, 'hardware');
+  if (P.faceOverhang > 0 && P.faceOverhang > gapNow - 5) w('bad', 'Face panel too close to the cabinet sides', `Overhang ${P.faceOverhang} mm leaves ${f0(gapNow - P.faceOverhang)} mm to the ${P.packer ? 'packers and ' : ''}kit plates on the bed-cabinet sides as the bed swings; the kit leaves about 5 (3/16 in). Keep the overhang to ${f0(Math.max(0, gapNow - 5))} or less.`, 'hardware');
+  if (Math.abs(G.bedReveal - P.gap) > 1) {
+    const want = P.faceOverhang + G.bedReveal - P.gap, ok = want >= 0 && want <= gapNow - 5;
+    w('info', `Reveal beside the bed face is ${f0(G.bedReveal)} mm`, `The other fronts have ${P.gap} mm.${ok ? ` A face panel overhang of ${f0(want)} would match them.` : P.doorHinge === 'inner' ? ' With the doors hinged on the bed side they stop at the tower side, so the bed-cabinet side\'s front edge shows between them and the bed.' : ` The face panel can only grow to ${f0(Math.max(0, gapNow - 5))} past the rails without coming too close to the cabinet sides.`}`, 'layout');
+  }
   if (Math.abs(G.deckDelta) > 3) w('warn', G.deckDelta > 0 ? `Legs ${f0(G.deckDelta)} mm short` : `Legs ${f0(-G.deckDelta)} mm long`,
     `The pivot sits ${f0(G.pivot[1])} above the floor; the kit's legs suit ${f0(P.cabPivotZ)} (11-3/4 in). Set "face panel past the frame's head end" to ${(P.faceBelowFrame - G.deckDelta).toFixed(0)} to put the frame where the kit has it${G.deckDelta > 0 ? ', or pad the leg feet' : ''}.`, 'hardware');
   if (G.pinY < G.yFb - P.footRailD + 5 || G.pinY > G.yFb - 5) w('warn', 'Safety pins miss the foot rail', `Pins at ${f0(G.yF - G.pinY)} from the front; the foot rail is ${f0(P.footRailD)} deep.`, 'hardware');
@@ -1031,7 +1039,7 @@ function reviewNotes(model, S) {
     ['Safety lock', P.lockType === 'twin' ? `A twin pin straddles the centre divider behind the flap joint: two 10 mm pins ${f0(P.twinSpacing)} apart, nutted through one steel bar, run through a hardwood block in the divider's front notch and go ${P.lockDepth} mm into the foot rail. One pull through either flap lifts both 30 mm; a spring ball plunger holds them up while the bed is down.${P.lockTab ? ' A 2 mm tab on the bar pokes out through the flap joint, so it can be lifted without opening a flap, and shows whether it is locked.' : ''}`
       : P.lockType === 'pins' ? `Two 10 mm drop pins, ${f0(P.lockPinX)} either side of centre behind the flaps, go down through the shelf and ${P.lockDepth} mm into the foot rail. Lift both before lowering the bed.` : 'Turned off.'],
     ['Wall anchoring', `The gas springs pull the cabinet forward as the bed comes down. ${f0(P.wallRail)} mm wall rails under the shelf and under the top take screws into the studs (the kit asks for four 3 in screws through its header rear rail for a queen).`],
-    ['Bed deck as the kit builds it', `Face panel in two ${f0(G.xFo)} halves (a sheet is 1220 wide), ${P.struts} cross struts and a ${P.Tsup} mm mattress support. Side rails ${f0(P.railD)} deep with the 2-7/8 in radius at the foot end, head rail ${f0(P.headRailD)} so it stands proud as a lip behind the pillows, foot rail ${f0(P.footRailD)} so the legs can swing past it.`],
+    ['Bed deck as the kit builds it', `Face panel in two ${f0(G.xFo + P.faceOverhang)} halves (a sheet is 1220 wide)${P.faceOverhang ? `, ${f0(P.faceOverhang)} past the side rails so the reveal to the cabinet sides matches the fronts` : ''}, ${P.struts} cross struts and a ${P.Tsup} mm mattress support. Side rails ${f0(P.railD)} deep with the 2-7/8 in radius at the foot end, head rail ${f0(P.headRailD)} so it stands proud as a lip behind the pillows, foot rail ${f0(P.footRailD)} so the legs can swing past it.`],
     ['Tower backs', `${P.Tback} mm backs square the towers and stop them racking; they stop ${f0(G.backInset)} mm short top and bottom so each comes out of one sheet. The bed bay has no back.`],
     ['Thicknesses that fit your stock', st18 ? `Deck struts in ${P.Tladder} mm, drawer boxes in ${P.Tb} mm and the backrest in ${P.Thead} mm leave the ${P.T} mm parts on ${st18.need} of your ${st18.have} sheets.` : ''],
   ].filter(e => e[1]);
