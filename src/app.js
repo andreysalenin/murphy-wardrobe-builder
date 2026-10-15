@@ -93,7 +93,7 @@ function renderSummary() {
     ['Bed bay, clear', `${f0(G.bayIn)} <small>wide</small>`],
     ['Tower inside', `${f0(G.towerIn)} x ${f0(G.cD)} <small>deep</small>`],
     ['Drawer fronts', `${f0(G.doorW)} x ${P.drawers.map(f0).join(', ')}`],
-    ['Hanging / top', `${f0(P.hangClear)} / ${f0(G.topClear)} <small>clear</small>`],
+    ['Hanging / top', `${f0(G.hangClear)} / ${f0(G.topClear)} <small>clear</small>`],
     ['Above the bed', `${f0(G.antClear)} <small>clear behind the flaps</small>`],
     ['Pivot', `${Math.round(G.pivot[1])} up, ${Math.round(P.D - G.pivot[0])} in <small>from the front</small>`],
     ['Bed open', `reaches ${Math.round(G.clear.open.reach)} <small>from the wall</small>`],

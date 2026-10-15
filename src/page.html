@@ -259,7 +259,7 @@ details.more > summary { cursor: pointer; font-size: 13.5px; color: var(--accent
             <div class="stepper"><button type="button" id="dr-dec" aria-label="Fewer drawers">&minus;</button><output id="dr-out">4</output><button type="button" id="dr-inc" aria-label="More drawers">+</button></div></div>
           <div class="drawers" id="drawers"></div>
           <div class="row-btns"><button type="button" class="btn small" id="dr-equal">Make all the same as the first</button></div>
-          <div class="field"><div><label for="hangClear">Hanging space, clear</label><small>Between the two fixed shelves.</small></div><div class="num"><input id="hangClear" type="number" min="300" max="2000" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="hangClear">Hanging space, clear</label><small>Between the two fixed shelves, plus whatever the drawers drop for the kick board.</small></div><div class="num"><input id="hangClear" type="number" min="300" max="2000" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><label for="railDrop">Rail centre below the shelf</label><div class="num"><input id="railDrop" type="number" min="25" max="150" step="1" inputmode="numeric"><span>mm</span></div></div>
           <label class="check"><input type="checkbox" id="topShelf"> <span>Extra shelf halfway up the top compartment</span></label>
           <div class="sub-hd"><span>Runners</span></div>
@@ -273,8 +273,8 @@ details.more > summary { cursor: pointer; font-size: 13.5px; color: var(--accent
         <div class="grp-body">
           <div class="field"><div><label for="gap">Reveal between fronts</label><small>Your "gapdraw".</small></div><div class="num"><input id="gap" type="number" min="1" max="12" step="0.5" inputmode="decimal"><span>mm</span></div></div>
           <div class="field"><div><label for="gapAbove">Header filler height</label><small>Scribed to the ceiling.</small></div><div class="num"><input id="gapAbove" type="number" min="0" max="300" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <div class="field"><div><label for="kickCentre">Kick board under the bed</label><small>Auto lowers it to clear the swing.</small></div>
-            <select id="kickCentre"><option value="auto">Auto height</option><option value="full">Same as the sides</option><option value="none">Leave it out</option></select></div>
+          <div class="field"><div><label for="kickCentre">Kick board</label><small>One plank right across. Auto makes it as tall as clears the bed's swing; the drawers drop to sit on it.</small></div>
+            <select id="kickCentre"><option value="auto">One piece, auto height</option><option value="full">One piece, drawer height</option><option value="none">Towers only</option></select></div>
           <div class="field"><div><label for="doorHinge">Tower doors hinged on</label><small>Wall side keeps the open door out of the way of the bed.</small></div>
             <select id="doorHinge"><option value="outer">Wall side</option><option value="inner">Bed side</option></select></div>
           <div class="field"><label for="frontGap">Fronts off the carcass</label><div class="num"><input id="frontGap" type="number" min="0" max="5" step="0.5" inputmode="decimal"><span>mm</span></div></div>

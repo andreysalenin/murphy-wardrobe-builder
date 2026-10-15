@@ -205,6 +205,7 @@ class MurphyScene {
       if (!o.fronts && p.kind === 'front' && !p.bed) vis = false;
       if (!o.mattress && p.mattress) vis = false;
       if (!o.hw && p.hw && !p.mattress) vis = false;
+      if (o.only && !o.only(p)) vis = false;
       r.grp.visible = vis;
       let m;
       if (o.colourOverride) m = o.colourOverride(p, this);
@@ -489,7 +490,8 @@ class PrintRenderer {
     this.ms.root.updateMatrixWorld(true);
     const tmp = new THREE.Vector3();
     for (const r of this.ms.recs) {
-      if (!this.ms.isVisible(r.grp)) continue;
+      if (!this.ms.opts.fitAll && !this.ms.isVisible(r.grp)) continue;
+      if (this.ms.opts.fitAll && r.part.mattress) continue;
       const pos = r.mesh.geometry.attributes.position, mw = r.mesh.matrixWorld;
       const step = Math.max(1, Math.floor(pos.count / 200));
       for (let i = 0; i < pos.count; i += step) {

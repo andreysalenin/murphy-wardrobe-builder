@@ -342,7 +342,7 @@ function pageOverview(doc, M, S, I, info) {
   const x0 = 232;
   s.text(x0, 274, 'Murphy wardrobe', { size: 21, weight: 'bold' });
   s.text(x0, 265.5, `${f0(P.W)} x ${f0(P.H)} x ${f0(P.D)} cavity, Create-A-Bed vertical queen`, { size: 9.5, color: GREY });
-  const desc = `Two plywood towers either side of a fold-down queen bed. Each tower has ${P.drawers.length} drawers, a ${f0(P.hangClear)} hanging space and a top compartment${P.topShelf ? ' with an adjustable shelf' : ''}, behind outside-hinged doors. Above the bed, two lift-up flaps close a ${f0(G.antClear)} high shelf space. The bed turns about the kit's pivots, ${f0(G.pivot[1])} above the floor.`;
+  const desc = `Two plywood towers either side of a fold-down queen bed. Each tower has ${P.drawers.length} drawers, a ${f0(G.hangClear)} hanging space and a top compartment${P.topShelf ? ' with an adjustable shelf' : ''}, behind outside-hinged doors. Above the bed, two lift-up flaps close a ${f0(G.antClear)} high shelf space. The bed turns about the kit's pivots, ${f0(G.pivot[1])} above the floor.`;
   let y = s.para(x0, 257, s.wrap(desc, 172, 7), { size: 7 });
   const st = S.sheets;
   const rows = [
@@ -354,8 +354,8 @@ function pageOverview(doc, M, S, I, info) {
     ['Bed down', `reaches ${f0(G.clear.open.reach)} from the wall, mattress top ${f0(G.clear.open.mattTop)}`],
     ['Tower, inside', `${f0(G.towerIn)} wide x ${f0(G.cD)} deep`],
     ['Drawers', `${P.drawers.length} per tower, fronts ${P.drawers.map(f0).join(' / ')}, ${G.runner} runners`],
-    ['Hanging / top', `${f0(P.hangClear)} / ${f0(G.topClear)} clear`],
-    ['Fronts', `${P.T} mm, ${f0(P.gap)} mm reveals, overlay ${f0(P.T - P.gap)} on the sides`],
+    ['Hanging / top', `${f0(G.hangClear)} / ${f0(G.topClear)} clear`],
+    ['Fronts', `${P.T} mm, ${f0(P.gap)} mm reveals, ${f0(G.doorOverlay)} overlay at the hinges; one-piece kick and header`],
     ['Plywood', st.filter(q => q.used).map(q => `${q.T} mm: ${isFinite(q.need) ? q.need : '?'} of ${q.have}`).join(', ')],
     ['Plywood mass', `about ${S.massPly.toFixed(0)} kg (bed frame ${S.massBed.toFixed(0)} kg)`],
   ];
@@ -364,7 +364,8 @@ function pageOverview(doc, M, S, I, info) {
   let yy = yb - 8;
   s.text(x0, yy, 'IN THIS SET', { size: 7.5, weight: 'bold' });
   yy = s.para(x0, yy - 5, [`1 Overview   2 Elevations and plans   3 Sections and the bed swing   4 Bed frame`,
-    `5 Hardware positions   6 Cut list   ${info.plansFrom}-${info.plansTo} Cutting plans   ${info.total} Design review`], { size: 6.2 });
+    `5 Hardware positions   6 Cut list   ${info.plansFrom}-${info.plansTo} Cutting plans   ${info.seqFrom}-${info.seqFrom + 1} Build sequence`,
+    `${info.fixAt} Fixings schedule   ${info.total} Design review`], { size: 6.2 });
   s.text(x0, yy - 3, 'READ FIRST', { size: 7.5, weight: 'bold', color: ACC });
   const bads = M.checks.filter(c => c.level !== 'info');
   const rf = ['Measure the cavity at the studs before cutting: width, height and depth drive every part.',
@@ -460,7 +461,7 @@ function pageElevations(doc, M, S, I, info) {
 
   // fronts schedule
   const tx = 375;
-  s.heading(tx - 30, 248, 'FRONTS', `${P.T} mm, ${f0(P.T - P.gap)} overlay`);
+  s.heading(tx - 30, 248, 'FRONTS', `${P.T} mm, ${f0(G.doorOverlay)} overlay at the hinges`);
   const fr = S.cut.filter(r => r.mark[0] === 'D' || r.mark === 'F1' || r.mark[0] === 'K');
   const rows = fr.map(r => [r.mark, f0(r.L) + ' x ' + f0(r.W), r.qty, r.mark.startsWith('D1') || r.mark.startsWith('D2') ? (P.doorHinge === 'outer' ? 'wall edge' : 'bed edge') : r.mark.startsWith('D4') ? 'top edge' : '']);
   s.table(tx - 30, 238, [['MARK', 12, 'left'], ['H x W', 24, 'left'], ['QTY', 9, 'right'], ['HINGED', 20, 'left']], rows, { rowH: 4.3, size: 5.8, hsize: 5.4 });
@@ -858,6 +859,186 @@ function pageReview(doc, M, S, info) {
   s.finish();
 }
 
+/* ------------------------------------------------------------------ build sequence: timeline and step cards */
+const FIX_SHORT = {
+  s50: '8g x 50 screws', s40: '8g x 40 screws', s30: '8g x 30 screws', s35: '8g x 35 screws, steel flat', s25: '8g x 25 pan heads',
+  b30: '6g x 30 screws', b20: '6g x 20 screws', r14: '4 x 14 pan heads', h15: '3.5 x 15 screws', h17: '3.5 x 17 screws',
+  d8: '8 x 30 dowels', dom: 'Dominos 8 x 40', w75: '14g x 75 into studs', kit: 'kit machine screws', m4: 'M4 x 25 handle bolts',
+  pin: '5 mm shelf pins', brad: '40 mm brads + adhesive',
+};
+const PREP = [215, 210, 202];
+function seqCard(s, B, I, i, x, yTop, cw, ch, tw) {
+  const st = B.steps[i];
+  s.rect(x, yTop - ch, cw, ch, { lw: 0.2, color: LIGHT });
+  s.text(x + 2.4, yTop - 6.2, String(i + 1), { size: 12, weight: 'bold', color: ACC });
+  s.text(x + 10.5, yTop - 4.9, st.title.toUpperCase(), { size: 6.8, weight: 'bold' });
+  const when = st.day0 === st.day1 ? `day ${st.day0}` : `days ${st.day0}-${st.day1}`;
+  s.text(x + 10.5, yTop - 8.4, `${when}, ${st.h} h${st.people === 2 ? ', two people' : ''}${st.overnight ? ', then overnight' : ''}`, { size: 5.3, color: GREY });
+  const img = I.steps && I.steps[i];
+  tw = tw || 43;
+  const th = img ? tw * img.px[1] / img.px[0] : 0, tTop = yTop - 11;
+  if (img) { s.image(img.url, x + 1.6, tTop - th, tw, th); s.rect(x + 1.6, tTop - th, tw, th, { lw: 0.1, color: LIGHT }); }
+  // fixings, from the bottom up
+  const fx = st.fix.map(([k, n]) => `${n} x ${FIX_SHORT[k] || k}`);
+  const rows = Math.ceil(fx.length / 2), fy0 = yTop - ch + 2.2, fTop = fy0 + rows * 2.7 + 3.2;
+  if (fx.length) {
+    s.text(x + 2.4, fTop - 1.6, 'FIXINGS', { size: 4.9, weight: 'bold', color: GREY });
+    fx.forEach((t, k) => s.text(x + 2.4 + (k % 2) * (cw / 2 - 1), fy0 + (rows - 1 - Math.floor(k / 2)) * 2.7 + 0.6, t, { size: 5.2 }));
+  }
+  // text beside the picture, then full width under it
+  const size = 5.5, lead = 1.42 * size / 2.835, xN = img ? x + tw + 3.6 : x + 2.4, wN = img ? cw - tw - 5.4 : cw - 4.8;
+  let y = tTop - 1.6;
+  let lines = s.wrap(st.text, wN, size), k = 0;
+  const yPic = tTop - th - 1;
+  while (k < lines.length && (!img || y > yPic)) { s.text(xN, y, lines[k], { size }); y -= lead; k++; }
+  if (k < lines.length) {
+    y = Math.min(y, yPic - 1.4);
+    for (const ln of s.wrap(lines.slice(k).join(' '), cw - 4.8, size)) { s.text(x + 2.4, y, ln, { size }); y -= lead; }
+  }
+  if (y < fTop + 1) console.warn('card text overlaps the fixings', i + 1);
+}
+function pageSequence(doc, M, S, I, info, part) {
+  const { P, G } = M, B = S.build, s = Sheet(doc, info.seqFrom + part, info.total, part ? 'BUILD SEQUENCE, CONTINUED' : 'BUILD SEQUENCE', part ? '1:1, 1:5' : 'NTS', info);
+  const cw = 96.6, gx = 2.7, X = (k) => 14 + (k % 4) * (cw + gx);
+  if (!part) {
+    s.text(14, 276, 'Build sequence', { size: 16, weight: 'bold' });
+    s.text(14, 269.5, `About ${Math.round(B.hours)} hours over ${B.days} working days of six hours, for one person with a second pair of hands where marked. Each step lists its fixings; totals, drill sizes and glue are on sheet ${info.fixAt}.`, { size: 7.4, color: GREY });
+    // timeline
+    const x0 = 14, lw = 56, w = 392, rh = 2.75, gTop = 262, dw = (w - lw) / B.days, n = B.steps.length;
+    for (let d = 0; d < B.days; d++) {
+      const xd = x0 + lw + d * dw;
+      if (d % 2 === 0) s.rect(xd, gTop - n * rh, dw, n * rh, { fill: FAINT, lw: 0 });
+      s.text(xd + dw / 2, gTop + 1.6, `DAY ${d + 1}`, { size: 5.2, ha: 'center', weight: 'bold', color: GREY });
+    }
+    B.steps.forEach((st, i) => {
+      const y = gTop - (i + 1) * rh, ym = y + rh / 2;
+      s.text(x0, ym, String(i + 1), { size: 5.3, va: 'middle', weight: 'bold', color: ACC });
+      s.text(x0 + 5, ym, st.title, { size: 5.3, va: 'middle' });
+      const xa = x0 + lw + ((st.day0 - 1) + st.t0 / 6) * dw, xb = x0 + lw + ((st.day1 - 1) + st.t1 / 6) * dw;
+      s.rect(xa, y + 0.45, Math.max(0.8, xb - xa), rh - 0.9, { fill: i < 4 ? PREP : ACC, lw: 0 });
+      const tags = [st.people === 2 ? 'two people' : '', st.overnight ? 'dry overnight' : ''].filter(Boolean).join(', ');
+      if (tags) s.text(xb + 1.2, ym, tags, { size: 4.7, va: 'middle', color: GREY });
+    });
+    s.line([x0, x0 + w], [gTop - n * rh, gTop - n * rh], { lw: 0.1, color: LIGHT });
+    // the four preparation steps (no picture), then two rows of assembly steps
+    let top = gTop - n * rh - 6;
+    const chP = 30;
+    [0, 1, 2, 3].forEach(k => seqCard(s, B, I, k, X(k), top, cw, chP));
+    top -= chP + 3;
+    const ch = (top - 41 - 3) / 2;
+    [4, 5, 6, 7, 8, 9, 10, 11].forEach((i, k) => seqCard(s, B, I, i, X(k), top - Math.floor(k / 4) * (ch + 3), cw, ch, 47));
+  } else {
+    const rest = B.steps.map((_, i) => i).slice(12), top = 280, ch = 74;
+    rest.forEach((i, k) => seqCard(s, B, I, i, X(k), top - Math.floor(k / 4) * (ch + 3), cw, ch, 50));
+    const k = rest.length;
+    if (k < 8) {
+      const x = X(k), yT = top - Math.floor(k / 4) * (ch + 3);
+      s.rect(x, yT - ch, cw, ch, { lw: 0.2, color: LIGHT, fill: FAINT });
+      s.text(x + 2.4, yT - 5.2, 'GOOD PRACTICE', { size: 6.8, weight: 'bold' });
+      s.numbered(x + 2.4, yT - 10, [
+        'Pre-drill every screw: a clearance hole in the part being fixed, a pilot in the part behind, and a countersink so the head sits just below the face. Plywood edges split without a pilot.',
+        'Screws 50 from the ends of a joint, about 200 apart and centred in the 18 mm edge; dowels between them. Clamp while the glue grabs.',
+        'PVA (D3, water resistant) on every permanent joint; wipe the squeeze-out before it skins, or the finish won\'t take.',
+        'Scan the walls before drilling. Cables run straight up and down from switches and power points: keep clear of those lines.',
+        'Gas springs are loaded. Fit and remove them only with the bed down, as the kit says, and anchor the cabinet first.',
+      ], cw - 5, { size: 5.4 });
+    }
+    jointDetail(s, M, B, top - 2 * (ch + 3) - 4);
+  }
+  s.finish();
+}
+// typical carcass joint: section at 1:1 and the spacing along a joint at 1:5
+function jointDetail(s, M, B, jy) {
+  const { P, G } = M, T = P.T;
+  s.heading(14, jy, 'TYPICAL CARCASS JOINT  1:1', 'a fixed shelf into a side: screw and dowel drawn in one plane');
+  const ox = 30, oy = jy - 76, cl = oy + 30;
+  s.rect(ox, oy, T, 62, { fill: FILL.carcass, lw: LW_VIS });
+  s.rect(ox + T, cl - T / 2, 70, T, { fill: FILL.carcass, lw: LW_VIS });
+  const sy = cl + 4; // screw: 4.5 clearance through the side, pilot 3 x 35 in the edge, 50 long, countersunk
+  s.rect(ox, sy - 2.25, T, 4.5, { fill: WHITE, lw: 0.1 });
+  s.rect(ox + T, sy - 1.5, 35, 3, { fill: WHITE, lw: 0.1 });
+  s.polyFill([[ox, sy - 4], [ox + 2.4, sy - 2], [ox + 50, sy - 2], [ox + 50, sy + 2], [ox + 2.4, sy + 2], [ox, sy + 4], [ox, sy - 4]], { fill: [120, 124, 130], lw: 0.15 });
+  const dy = cl - 4.5; // dowel 8 x 30: 12 into the side, 19 deep hole in the edge
+  s.rect(ox + T - 12, dy - 4, 31, 8, { fill: WHITE, lw: 0.1 });
+  s.rect(ox + T - 12, dy - 4, 30, 8, { fill: [200, 160, 110], lw: 0.15 });
+  const lab = (x, y, t) => s.text(x, y, t, { size: 5.8, va: 'middle' }), lx = ox + 96;
+  s.line([ox + 50, lx - 1], [sy, sy + 10], { lw: 0.1 }); lab(lx, sy + 10, '8g x 50 countersunk screw');
+  s.line([ox + T + 30, lx - 1], [sy - 1.5, sy + 4], { lw: 0.1 }); lab(lx, sy + 4, 'pilot 3, 35 deep, in the edge');
+  s.line([ox + 6, lx - 1], [sy + 2.25, sy + 16], { lw: 0.1 }); lab(lx, sy + 16, '4.5 clearance and countersink in the side');
+  s.line([ox + T + 12, lx - 1], [dy - 4, dy - 10], { lw: 0.1 }); lab(lx, dy - 10, '8 x 30 dowel, glued: holes 12 deep in the face, 19 in the edge');
+  s.dim([ox + T - 12, dy - 4], [ox + T, dy - 4], dy - 8, 'h', '12', { size: 5 });
+  s.dim([ox + T, dy - 4], [ox + T + 19, dy - 4], dy - 8, 'h', '19', { size: 5 });
+  s.dim([ox, oy], [ox + T, oy], oy - 4, 'h', String(T), { size: 5 });
+  s.text(ox + T / 2, oy + 64, 'side', { size: 5.8, ha: 'center', color: GREY });
+  s.text(ox + T + 66, cl, 'shelf', { size: 5.8, ha: 'right', va: 'middle', color: GREY });
+  // spacing along the joint
+  const L = G.cD, k5 = 1 / 5, ex = 196, ey = jy - 30;
+  const nS = Math.max(2, Math.ceil(Math.max(0, L - 100) / 200) + 1), sp = (L - 100) / (nS - 1);
+  const scr = Array.from({ length: nS }, (_, i) => 50 + i * sp), dw = scr.slice(1).map((v, i) => (v + scr[i]) / 2);
+  s.heading(ex, jy, 'ALONG THE JOINT  1:5', `a ${f0(L)} deep tower joint: ${nS} screws and ${dw.length} dowels`);
+  s.rect(ex, ey, L * k5, T * k5 * 2, { fill: FILL.carcass, lw: LW_VIS });
+  for (const v of scr) s.line([ex + v * k5, ex + v * k5], [ey - 1.5, ey + T * k5 * 2 + 1.5], { lw: 0.35, color: INK });
+  for (const v of dw) s.circle(ex + v * k5, ey + T * k5, 0.8, { fill: [200, 160, 110], lw: 0.1 });
+  s.dim([ex, ey], [ex + 50 * k5, ey], ey - 5, 'h', '50', { size: 5, side: 'start' });
+  s.dim([ex + 50 * k5, ey], [ex + (50 + sp) * k5, ey], ey - 5, 'h', f0(sp), { size: 5 });
+  s.dim([ex, ey], [ex + L * k5, ey], ey - 10, 'h', f0(L), { size: 5 });
+  s.text(ex, ey + T * k5 * 2 + 4, 'lines: screws, dots: dowels (2 mm hole, shown 2:1 thick)', { size: 5.4, color: GREY });
+  s.para(ex, ey - 17, s.wrap('Same pattern for the tops, bottoms and fixed shelves. Where a head would show (the inner tower side meets the bed-cabinet side, the shelf over the bed is seen from below), sink it flush and fill.', 58, 5.8), { size: 5.8, color: GREY });
+}
+
+/* ------------------------------------------------------------------ fixings schedule */
+function pageFixings(doc, M, S, info) {
+  const { P, G } = M, B = S.build;
+  const s = Sheet(doc, info.fixAt, info.total, 'FIXINGS SCHEDULE', '-', info);
+  s.text(14, 276, 'Fixings schedule', { size: 16, weight: 'bold' });
+  s.text(14, 269.5, `Counted from this design for the steps on sheets ${info.seqFrom} and ${info.seqFrom + 1}. BUY adds 10 % and two spare. Australian gauges with the metric size in brackets: any cabinet or chipboard screw with a sharp (Type 17) point suits plywood. Wall counts assume studs ${B.studs} apart.`, { size: 7.4, color: GREY });
+  const rows = B.fixings.map(f => [String(f.qty), String(f.buy), f.item, f.bore, f.where]);
+  const yb = s.table(14, 262, [['QTY', 12, 'right'], ['BUY', 12, 'right'], ['FIXING', 86, 'left'], ['DRILLING', 128, 'left'], ['WHERE (STEP)', 154, 'left']], rows, { rowH: 4.6, size: 5.9, hsize: 5.4 });
+
+  // notes
+  const nx = 14, ny = yb - 12, wN = 124;
+  s.heading(nx, ny, 'DRILL BITS AND TOOLS');
+  let y = s.numbered(nx, ny - 6, [
+    'Pilots 2, 2.5 and 3; clearance 3.5, 4.5 and 6.5; 5 for shelf pins and handle bolts; 6 through the drawer box fronts; 10 for the push latches; HSS bits for the steel flat.',
+    '8 brad-point with a depth stop and a dowel jig; 35 Forstner for the hinge cups, 13 deep, on a stand or hinge jig; a countersink; a 32 mm shelf-pin jig.',
+    'Track saw, drill-driver, four 600 and two 1200 clamps, a 1200 level or a laser, a stud finder, an edge-banding iron and trimmer.',
+  ], wN, { size: 5.8 });
+  const mx = nx + wN + 10;
+  s.heading(mx, ny, 'GLUE');
+  s.numbered(mx, ny - 6, [
+    'PVA wood glue, D3 water resistant, on every dowel and carcass joint and the backs.',
+    'Epoxy or PU construction adhesive under the steel flat; construction adhesive behind the kick board.',
+    'No glue on runners, hinges, plates or the kit hardware: they have to come off.',
+  ], 100, { size: 5.8 });
+  const wx = mx + 110;
+  s.heading(wx, ny, 'WALL FIXINGS');
+  s.numbered(wx, ny - 6, [
+    `Timber studs: 14g x 75 batten screws, two per stud through each wall rail, the headboard cleat and the towers' outer sides (through the packers). Pre-drill 4 into hardwood studs.`,
+    'Brick or block: 8 x 65 sleeve anchors in 10 holes. Steel studs: 12g tek screws into the stud flanges, or add noggings first. Plasterboard alone will not hold a fold-down bed.',
+    'The kit asks for four 3 in (75) screws into studs through its header rail for a queen: the rails here carry more than that.',
+  ], 146, { size: 5.8 });
+  // which parts go in at each step
+  const py = Math.min(y, ny - 30) - 10, rowsP = [];
+  B.steps.forEach((st, i) => {
+    const c = new Map();
+    for (const p of M.parts) if (!p.hw && B.stepOf(p) === i) c.set(p.mark, (c.get(p.mark) || 0) + 1);
+    if (c.size) rowsP.push([String(i + 1), st.title, [...c.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([m, n]) => n > 1 ? `${m} x${n}` : m).join(', ')]);
+  });
+  s.heading(14, py, 'PARTS BY STEP', 'plywood parts by their marks in the cut list');
+  s.table(14, py - 8, [['STEP', 12, 'left'], ['', 62, 'left'], ['PARTS', 160, 'left']], rowsP, { rowH: 4.3, size: 5.8, hsize: 5.4 });
+  // consumables
+  const area = M.parts.filter(p => !p.hw && p.L && p.W).reduce((a, p) => a + 2 * p.L * p.W, 0) / 1e6;
+  const cx = 262, cy = py;
+  s.heading(cx, cy, 'CONSUMABLES', 'roughly, for this design');
+  s.numbered(cx, cy - 9, [
+    `Edge banding: ${Math.ceil(S.bandM * 1.1)} m (the cut list's ${S.bandM.toFixed(0)} m and 10 %), 22 mm wide for 18 mm ply.`,
+    `Finish: about ${area.toFixed(0)} square metres of faces; two coats of a water-based polyurethane at about 12 square metres a litre is ${Math.ceil(area * 2 / 12)} L.`,
+    'PVA: 1 L. Construction adhesive: one tube. Epoxy or PU adhesive: a small pack, for the steel flat.',
+    'Double-sided tape and 6 mm spacers for setting the fronts; 2 to 5 mm plastic packers for levelling and the side walls.',
+  ], 146, { size: 5.8 });
+  s.finish();
+}
+
 /* ------------------------------------------------------------------ make */
 async function make(model, summary, progress) {
   progress = progress || (() => {});
@@ -865,7 +1046,7 @@ async function make(model, summary, progress) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3', compress: true });
   const P = model.P;
   const nPlans = Math.ceil(summary.sheets.reduce((a, q) => a + q.bins.length, 0) / 8) || 0;
-  const info = { project: 'Murphy wardrobe', date: new Date().toISOString().slice(0, 10), total: 7 + nPlans, plansFrom: 7, plansTo: 6 + nPlans };
+  const info = { project: 'Murphy wardrobe', date: new Date().toISOString().slice(0, 10), total: 10 + nPlans, plansFrom: 7, plansTo: 6 + nPlans, seqFrom: 7 + nPlans, fixAt: 9 + nPlans };
   const tick = () => new Promise(r => setTimeout(r, 15));
   progress('Rendering views...', 0.1); await tick();
   const I = {};
@@ -878,6 +1059,19 @@ async function make(model, summary, progress) {
     I.open = R.iso(-35, 20, 1100, 760, { bed: 90, open: 1, mattress: true });
     I.thick = R.iso(-28, 14, 1000, 760, { bed: 0, fronts: false, bySheet: true, mattress: false, hw: false });
     I.cut = R.iso(-40, 12, 1400, 900, { bed: 50 });
+    // build sequence: everything fitted so far, this step's parts in the accent colour
+    const B = summary.build;
+    I.steps = [];
+    for (let i = 0; i < B.steps.length; i++) {
+      const st = B.steps[i];
+      if (i < 4) { I.steps.push(null); continue; }
+      const isNew = (p) => B.stepOf(p) === i || (st.hl && st.hl(p));
+      I.steps.push(R.iso(-30, 16, 600, 500, { bed: st.bed || 0, open: st.open || 0, mattress: true, hw: true, fitAll: true,
+        only: (p) => B.stepOf(p) <= i,
+        colourOverride: (p, ms) => isNew(p) ? ms.mat(p.hw ? 'step-new-hw' : 'step-new', { color: p.hw ? 0x8a4a06 : 0xe0954a, rough: 0.7 })
+          : p.hw ? null : ms.mat('step-old', { color: 0xe4dfd6, rough: 0.9 }) }, 1.02));
+      if (i % 4 === 3) { progress('Rendering the build steps...', 0.2 + 0.12 * i / B.steps.length); await tick(); }
+    }
   } catch (e) {
     console.warn('3D renders unavailable', e);
     const blank = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.fillStyle = '#999'; g.font = '28px sans-serif'; g.fillText('3D view not available in this browser', 40, 60); return { url: c.toDataURL('image/jpeg', 0.9), px: [w, h] }; };
@@ -900,6 +1094,10 @@ async function make(model, summary, progress) {
   pageCutList(doc, model, summary, info);
   progress('Cutting plans...', 0.85); await tick();
   pagesPlans(doc, model, summary, info, 7);
+  progress('Build sequence...', 0.9); await tick();
+  pageSequence(doc, model, summary, I, info, 0);
+  pageSequence(doc, model, summary, I, info, 1);
+  pageFixings(doc, model, summary, info);
   progress('Design review...', 0.95); await tick();
   pageReview(doc, model, summary, info);
   doc.setProperties({ title: 'Murphy wardrobe drawings', subject: `${P.W} x ${P.H} x ${P.D} cavity`, creator: 'Murphy Wardrobe Builder' });

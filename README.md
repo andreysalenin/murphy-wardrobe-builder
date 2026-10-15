@@ -4,7 +4,7 @@
 
 A one-page tool for designing a built-in plywood wardrobe around a Create-A-Bed vertical queen Murphy bed: a fold-down bed in the middle, a tower of drawers and hanging space either side, and lift-up flaps over a storage shelf above the bed. Change a size and the 3D model, the bed's swing clearances, the cut list and the sheet nesting update straight away. Then save:
 
-- **Drawings**: an A3 PDF set of 9 sheets: overview, elevations and plans, sections with the bed's swing, the bed frame with the kit's numbers, hardware positions, cut list and hardware, cutting plans and a design review.
+- **Drawings**: an A3 PDF set of 12 sheets: overview, elevations and plans, sections with the bed's swing, the bed frame with the kit's numbers, hardware positions, cut list and hardware, cutting plans, a build sequence (a day-by-day timeline and 19 steps, each with a picture and its fixings), a fixings schedule (screws, dowels, drill sizes, glue, wall fixings, parts by step) and a design review.
 - **3D model**: a STEP (AP214) assembly for CAD, one solid per part, with the hardware and mattress if you want them, and the bed closed or at the slider's angle.
 - **Cut list**: a CSV of every part, with the sheet each piece is nested on.
 
@@ -16,6 +16,7 @@ Everything runs in the browser and nothing is uploaded. The page is a single sel
 - **Mattress and bed**: mattress size, the gaps round it (which set the frame size), the 12 mm gap between the closed bed and the shelf above it, and where the bed face panel and frame start off the floor.
 - **Side towers**: number and heights of the drawers, drawer runners (drawn as their three nested members), the hanging space, an extra shelf in the top compartment, and whether the doors hinge on the wall side or the bed side.
 - **Bought-in hardware**: drawer runners are Hettich KA 5632 (full extension, 45 kg, 46 x 12.7, 250 to 700 long) and hinges are Blum CLIP top BLUMOTION 110° full overlay (71B3550) on CLIP cruciform plates, both sold in Australia. The page picks the runner length that fits, and the hinge plate (0 or 3 mm) and boring distance for each overlay from Blum's table. It models both to the makers' dimensions and puts the runner holes and hinge positions on the drawings.
+- **Kick board and header**: each is one plank right across. The kick board is as tall as clears the bed's face panel as it swings down, so the drawers and tower plinths drop to sit on it and the hanging space gets the difference. The planks run as long as your longest sheet allows.
 - **Fronts and plywood**: reveals, the header filler at the ceiling, and the thickness used for carcass, drawers, backs, deck, plinths, packers and the headboard.
 - **Create-A-Bed hardware**: pivot, gas-spring and bed-stop positions, frame rails, legs and deck struts, each with the page of the Deluxe Queen Vertical plan it comes from, so they are easy to revise against your kit.
 - **Around the bed**: a headboard ledge behind the pillows, and a backrest that leans back over the bed's swing with a bedside shelf on top.
