@@ -102,6 +102,13 @@ const DEFAULTS = {
   ],
 };
 const RUNNER_STD = [250, 300, 350, 400, 450, 500, 550, 600, 650];
+// 45 mm three-part ball-bearing runner, 12.7 thick, in (u, w): u from the cabinet side toward the drawer, w up from
+// its centre line. Rolled channels with curled lips for the ball tracks; the ball cages ride in the gaps between them.
+const RUNNER_PROFILE = {
+  outer: [[0, -22.5], [9.6, -22.5], [9.6, -17.2], [8.4, -17.2], [8.4, -21.3], [1.2, -21.3], [1.2, 21.3], [8.4, 21.3], [8.4, 17.2], [9.6, 17.2], [9.6, 22.5], [0, 22.5]],
+  mid: [[2.4, -16], [10.6, -16], [10.6, -11.6], [9.6, -11.6], [9.6, -15], [3.4, -15], [3.4, 15], [9.6, 15], [9.6, 11.6], [10.6, 11.6], [10.6, 16], [2.4, 16]],
+  inner: [[5.2, -10], [12.7, -10], [12.7, 10], [5.2, 10], [5.2, 8.8], [11.5, 8.8], [11.5, -8.8], [5.2, -8.8]],
+};
 const PLY_DENSITY = 6.2e-7; // kg/mm3, birch-faced structural ply about 620 kg/m3
 
 function clone(o) { return JSON.parse(JSON.stringify(o)); }
@@ -194,6 +201,11 @@ function polyLoop(pts) { // CCW polygon
   const out = [];
   for (let i = 0; i < pts.length; i++) out.push(L2(pts[i], pts[(i + 1) % pts.length]));
   return out;
+}
+function ccwLoop(pts) { // polygon of either winding, returned CCW
+  let a = 0;
+  for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length]; a += p[0] * q[1] - q[0] * p[1]; }
+  return polyLoop(a < 0 ? pts.slice().reverse() : pts);
 }
 // rectangle u0..u1, v0..v1 (CCW) with the (u0,v1) corner rounded to radius r
 function rectLoopR01(u0, v0, u1, v1, r) {
@@ -352,7 +364,7 @@ function derived(P) {
 const COLORS = { // RGB 0..1 for STEP; the viewer has matching styles
   carcass: [0.86, 0.76, 0.59], front: [0.91, 0.84, 0.70], frame: [0.80, 0.66, 0.46], deck: [0.84, 0.72, 0.53],
   drawer: [0.89, 0.80, 0.64], back: [0.80, 0.71, 0.55], plinth: [0.74, 0.63, 0.47], packer: [0.70, 0.55, 0.36],
-  ledge: [0.86, 0.76, 0.59], mattress: [0.93, 0.93, 0.91], metal: [0.20, 0.21, 0.23], chrome: [0.78, 0.79, 0.81],
+  ledge: [0.86, 0.76, 0.59], mattress: [0.93, 0.93, 0.91], metal: [0.20, 0.21, 0.23], chrome: [0.78, 0.79, 0.81], zinc: [0.70, 0.73, 0.77],
   block: [0.55, 0.38, 0.22], rubber: [0.10, 0.10, 0.11], strap: [0.24, 0.30, 0.44],
 };
 
@@ -383,7 +395,7 @@ function build(params, opts) {
           ? polyLoop([[mx(face + dir * 2), G.yC - 61], [mx(face + dir * 11), G.yC - 61], [mx(face + dir * 13), G.yC - 50], [mx(face + dir * 13), G.yC - 8], [mx(face + dir * 10), G.yC - 1], [mx(face + dir * 2), G.yC - 1]])
           : polyLoop([[mx(face + dir * 2), G.yC - 61], [mx(face + dir * 2), G.yC - 1], [mx(face + dir * 10), G.yC - 1], [mx(face + dir * 13), G.yC - 8], [mx(face + dir * 13), G.yC - 50], [mx(face + dir * 11), G.yC - 61]])]),
         cyl(7, [mx(face + dir * 13), G.yC - 22, z], [mx(face + dir * 14), G.yC - 22, z]), cyl(7, [mx(face + dir * 13), G.yC - 46, z], [mx(face + dir * 14), G.yC - 46, z])] });
-    const kx = mx(face + dir * 8), dyn = { type: 'link', move: 'door', axis: anim.axis, sign: anim.sign,
+    const kx = mx(face + dir * 8), dyn = { type: 'link', move: 'door', id: anim.id, axis: anim.axis, sign: anim.sign,
       links: [-4.5, 4.5].map(dz => [[kx, G.yC - 3, z + dz], [mx(cx), G.yFb + 3, z + dz]]) };
     put({ mark: 'HG', name: name + ' links', grp: 'hardware', kind: 'chrome', hw: true, dyn, solids: linkSolids(dyn, 0) });
   };
@@ -398,7 +410,7 @@ function build(params, opts) {
       solids: [box(c - 26, c + 26, yp - 6, yp + 6, zf - 2, zf), box(c - 7, c + 7, yp - 21, yp + 21, zf - 2, zf),
         yzPrism(c - 7, c + 7, polyLoop([[G.yC - 61, zf - 11], [G.yC - 50, zf - 13], [G.yC - 8, zf - 13], [G.yC - 1, zf - 10], [G.yC - 1, zf - 2], [G.yC - 61, zf - 2]])),
         cyl(7, [c, G.yC - 22, zf - 13], [c, G.yC - 22, zf - 14]), cyl(7, [c, G.yC - 46, zf - 13], [c, G.yC - 46, zf - 14])] });
-    const dyn = { type: 'link', move: 'flap', axis: anim.axis, links: [-4.5, 4.5].map(dx => [[c + dx, G.yC - 3, zf - 8], [c + dx, G.yFb + 3, cz]]) };
+    const dyn = { type: 'link', move: 'flap', id: anim.id, axis: anim.axis, links: [-4.5, 4.5].map(dx => [[c + dx, G.yC - 3, zf - 8], [c + dx, G.yFb + 3, cz]]) };
     put({ mark: 'FH', name: nm + ' links', grp: 'hardware', kind: 'chrome', hw: true, dyn, solids: linkSolids(dyn, 0) });
   };
 
@@ -443,7 +455,7 @@ function build(params, opts) {
     const boxD = G.runner, Tb = P.Tb;
     G.fronts.forEach((f, i) => {
       const [fx0, fx1] = sx(s, G.doorX[0], G.doorX[1]);
-      const dgrp = 'drawers-' + S, anim = { type: 'drawer', dist: Math.round(boxD * 0.62) };
+      const dgrp = 'drawers-' + S, anim = { type: 'drawer', id: `drawer-${S}-${i + 1}`, dist: Math.round(boxD * 0.7) };
       put({ mark: 'D3', name: nm(`Drawer front ${i + 1}`), grp: 'fronts-' + S, kind: 'front', T, L: f.h, W: G.doorW, grain: true, band: 2 * (f.h + G.doorW), hgt: f.h,
         solids: [box(fx0, fx1, G.yFb, G.yF, f.z0, f.z1)], anim });
       const bh = f.h - P.boxLess, bz0 = f.z0 + P.boxLess / 2, by0 = G.yC - boxD;
@@ -456,11 +468,20 @@ function build(params, opts) {
       const gr = Math.min(6, Tb / 2);
       put({ mark: 'X3', name: nm(`Drawer ${i + 1} bottom`), grp: dgrp, kind: 'back', T: P.Tback, L: boxD - 2 * Tb + 2 * gr, W: G.boxW - 2 * Tb + 2 * gr, grain: false,
         solids: [box(xa + Tb - gr, xb - Tb + gr, by0 + Tb - gr, G.yC - Tb + gr, bz0 + 8, bz0 + 8 + P.Tback)], anim });
-      // runners: cabinet member and drawer member drawn as one 45 mm strip each side
-      const rz = bz0 + bh / 2 - 22.5, rc = P.runnerClear;
-      const [r0a, r0b] = sx(s, G.xT2, G.xT2 + rc), [r1a, r1b] = sx(s, G.xOi - rc, G.xOi);
-      put({ mark: 'RN', name: nm(`Drawer ${i + 1} runner pair, ${boxD}`), grp: dgrp, kind: 'metal', hw: true,
-        solids: [box(r0a, r0b, by0, G.yC, rz, rz + 45), box(r1a, r1b, by0, G.yC, rz, rz + 45)] });
+      // runners: three nested steel channels each side. The cabinet member is screwed to the side panel, the
+      // intermediate member travels half as far as the drawer, and the drawer member is screwed to the box side.
+      const zc = bz0 + bh / 2, ku = Math.max(P.runnerClear, 3) / 12.7, half = Object.assign({}, anim, { k: 0.5 });
+      const member = (face, dir, prof, y0, y1) => prism([0, y0, 0], Z, X, y1 - y0, [ccwLoop(prof.map(([u, w]) => [zc + w, face + dir * u * ku]))]);
+      for (const [face, dir, where] of [[s * G.xT2, s, 'bed side'], [s * G.xOi, -s, 'wall side']]) {
+        const rn = (t) => nm(`Drawer ${i + 1} runner ${boxD}, ${where}, ${t}`);
+        const screw = (y) => cyl(8, [face + dir * 1.2 * ku, y, zc], [face + dir * 2.3 * ku, y, zc]);
+        put({ mark: 'RN', name: rn('cabinet member'), grp: dgrp, kind: 'zinc', hw: true, pick: anim.id,
+          solids: [member(face, dir, RUNNER_PROFILE.outer, G.yC - boxD, G.yC - 2), screw(G.yC - boxD + 25), screw(G.yC - boxD / 2), screw(G.yC - 40)] });
+        put({ mark: 'RN', name: rn('intermediate member'), grp: dgrp, kind: 'zinc', hw: true, anim: half,
+          solids: [member(face, dir, RUNNER_PROFILE.mid, G.yC - boxD + 5, G.yC - 2)] });
+        put({ mark: 'RN', name: rn('drawer member'), grp: dgrp, kind: 'zinc', hw: true, anim,
+          solids: [member(face, dir, RUNNER_PROFILE.inner, G.yC - boxD + 12, G.yC)] });
+      }
     });
     // doors, hinged on the wall side (outer) or the bed side (inner)
     const [dx0, dx1] = sx(s, G.doorX[0], G.doorX[1]);
@@ -468,7 +489,7 @@ function build(params, opts) {
     const hingeEdge = inner ? G.doorX[0] : G.doorX[1];
     const sideFace = inner ? G.xT2 : G.xOi;
     for (const [mk, nmD, zr] of [['D2', 'Hanging-space door', G.midDoor], ['D1', 'Top door', G.topDoor]]) {
-      const anim = { type: 'door', axis: [s * hingeEdge, G.yF], sign: inner ? -s : s };
+      const anim = { type: 'door', id: `door-${S}-${mk}`, axis: [s * hingeEdge, G.yF], sign: inner ? -s : s };
       const hz = hingeZs(zr);
       put({ mark: mk, name: nm(nmD), grp: 'fronts-' + S, kind: 'front', T, L: zr[1] - zr[0], W: G.doorW, grain: true,
         band: 2 * (zr[1] - zr[0] + G.doorW), solids: [box(dx0, dx1, G.yFb, G.yF, zr[0], zr[1])], anim, hinges: hz, hingeEdge });
@@ -534,13 +555,13 @@ function build(params, opts) {
   G.pinY = Math.min(G.yFb - P.footRailD / 2, G.yC - (P.upstand > 0 ? T : 0) - 27);
   for (const [S, s] of sides) {
     const [x0, x1] = sx(s, G.flapX[0], G.flapX[1]);
-    const anim = { type: 'flap', axis: flapAxis };
+    const anim = { type: 'flap', id: `flap-${S}`, axis: flapAxis };
     put({ mark: 'D4', name: `Lift-up flap (${S})`, grp: 'fronts-C', kind: 'front', T, L: G.flapH, W: G.flapW, grain: true, band: 2 * (G.flapH + G.flapW),
       solids: [box(x0, x1, G.yFb, G.yF, G.flapZ[0], G.flapZ[1])], anim });
     G.flapHw.hinges.forEach((hx, k) => { const [c] = sx(s, hx, hx); flapHinge(c, S, k, anim); });
     G.flapHw.stays.forEach((hx, k) => {
       const [c] = sx(s, hx, hx);
-      const dyn = { type: 'stay', x: c, fixed: [G.yC - 250, G.zBm1 + 50], flap: [G.yFb - 10, G.flapZ[1] - 150], axis: flapAxis };
+      const dyn = { type: 'stay', id: anim.id, x: c, fixed: [G.yC - 250, G.zBm1 + 50], flap: [G.yFb - 10, G.flapZ[1] - 150], axis: flapAxis };
       put({ mark: 'FS', name: `Flap gas stay (${S}) ${k + 1}`, grp: 'hardware', kind: 'metal', hw: true, dyn, solids: staySolids(dyn, 0) });
     });
     const [lx] = sx(s, G.flapHw.latch, G.flapHw.latch);
@@ -1008,7 +1029,7 @@ function hardwareList(model) {
   return [
     ['Create-A-Bed Deluxe queen vertical kit', '1 set', 'pivots, gas springs, ball studs, legs, stops, straps (supplied)'],
     ['Machine screws for the kit plates, +' + P.Tpacker + ' mm', '8', P.packer ? 'longer than the kit\'s, through the packers' : 'not needed without packers'],
-    [`Drawer runners, side mount, ${G.runner} mm`, `${nDr} pairs`, `${P.runnerClear} mm each side, 45 mm high`],
+    [`Drawer runners, ball-bearing, full extension, ${G.runner} mm`, `${nDr} pairs`, `side mount, 3-part, ${P.runnerClear} mm each side, 45 mm high`],
     ['Concealed hinges, 35 mm cup, full overlay', `${hinges}`, `tower doors, ${P.doorHinge === 'outer' ? 'wall' : 'bed'} side; ${P.T - P.gap} mm overlay`],
     ['Concealed hinges for the flaps', '4', 'two per flap, plates under the top'],
     ['Gas stays for the flaps', '4', 'two per flap; size from the flap weight'],

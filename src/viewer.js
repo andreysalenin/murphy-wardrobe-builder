@@ -10,7 +10,7 @@ const KIND_STYLE = {
   deck: { color: 0xd7b98c, rough: 0.85 }, drawer: { color: 0xe2cfa9, rough: 0.82 }, back: { color: 0xcdb48c, rough: 0.85 },
   plinth: { color: 0xbba07a, rough: 0.85 }, packer: { color: 0xb58d5b, rough: 0.85 }, ledge: { color: 0xd9c19a, rough: 0.82 },
   mattress: { color: 0xeeeeea, rough: 0.95, edges: false }, metal: { color: 0x2f3236, rough: 0.45, metal: 0.4 },
-  chrome: { color: 0xc9ccd0, rough: 0.38, metal: 0.35 },
+  chrome: { color: 0xc9ccd0, rough: 0.38, metal: 0.35 }, zinc: { color: 0xc4ccd6, rough: 0.32, metal: 0.25 },
   block: { color: 0x8c6239, rough: 0.7 }, rubber: { color: 0x1c1c1e, rough: 0.9, edges: false }, strap: { color: 0x3d4c70, rough: 0.9, edges: false },
 };
 const T_COL = { 6: 0x7b5cc4, 12: 0x138a7e, 18: 0xc47a12 };
@@ -80,7 +80,10 @@ class MurphyScene {
     this.clip = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0);
     this.opts = { fronts: true, open: 0, section: false, mattress: true, hw: true, bySheet: false, bed: 0, room: true };
     this.recs = [];
+    this.openState = null; // Map element id -> 0..1 (the interactive viewer); null: every element at opts.open
+    this.elements = [];
   }
+  openOf(id) { const m = this.openState; return m && m.has(id) ? m.get(id) : (this.opts.open || 0); }
   mat(key, style, clipped) {
     const k = key + (clipped ? '-c' : '');
     if (!this.materials[k]) {
@@ -116,6 +119,7 @@ class MurphyScene {
         grp.add(body); grp.add(rod);
         this.root.add(grp);
         const rec = { part: p, mesh: body, rod, grp, style, dyn: p.dyn };
+        body.userData.rec = rod.userData.rec = rec;
         this.recs.push(rec); this.dyns.push(rec);
         continue;
       }
@@ -125,6 +129,7 @@ class MurphyScene {
       if (style.edges !== false) { edges = new THREE.LineSegments(new THREE.EdgesGeometry(geom, 28), this.edgeMat); }
       const grp = new THREE.Group(); grp.add(mesh); if (edges) grp.add(edges);
       const rec = { part: p, mesh, edges, grp, style };
+      mesh.userData.rec = rec;
       if (p.leg) this.legInner.add(grp);
       else if (p.bed) this.bedInner.add(grp);
       else if (p.anim && p.anim.type === 'door') {
@@ -136,6 +141,7 @@ class MurphyScene {
       } else { this.root.add(grp); if (p.anim && p.anim.type === 'drawer') this.drawers.push(rec); }
       this.recs.push(rec);
     }
+    this.elements = [...new Set(model.parts.filter(p => p.anim && p.anim.id).map(p => p.anim.id))];
     // floor and walls of the cavity (context)
     this.room = new THREE.Group();
     const P = model.P;
@@ -174,10 +180,10 @@ class MurphyScene {
     const th = (o.bed || 0) * Math.PI / 180;
     this.bedPivot.rotation.x = -th;
     this.legPivot.rotation.x = (C.legPsi(o.bed || 0) - 180) * Math.PI / 180;
-    const t = o.open || 0;
-    for (const r of this.doors) r.pv.rotation.z = -r.part.anim.sign * t * Math.PI / 2 * 0.95;
-    for (const r of this.flaps) r.pv.rotation.x = t * Math.PI / 2 * 0.92;
-    for (const r of this.drawers) r.grp.position.y = t * r.part.anim.dist;
+    const T = (id) => this.openOf(id);
+    for (const r of this.doors) r.pv.rotation.z = -r.part.anim.sign * T(r.part.anim.id) * Math.PI / 2 * 0.95;
+    for (const r of this.flaps) r.pv.rotation.x = T(r.part.anim.id) * Math.PI / 2 * 0.92;
+    for (const r of this.drawers) r.grp.position.y = T(r.part.anim.id) * r.part.anim.dist * (r.part.anim.k === undefined ? 1 : r.part.anim.k);
     const aim = (mesh, a, b, d) => {
       const va = new THREE.Vector3(...a), vb = new THREE.Vector3(...b), dir = vb.clone().sub(va), L = dir.length();
       mesh.position.copy(va).addScaledVector(dir, 0.5);
@@ -185,8 +191,8 @@ class MurphyScene {
       mesh.scale.set(d / 2, L, d / 2);
     };
     for (const r of this.dyns) {
-      if (r.dyn.type === 'link') { const [l1, l2] = C.linkEnds(r.dyn, t); aim(r.mesh, l1[0], l1[1], 5); aim(r.rod, l2[0], l2[1], 5); continue; }
-      const [a, b] = r.dyn.type === 'spring' ? C.springEnds(G, r.dyn, th) : C.stayEnds(r.dyn, t * Math.PI / 2 * 0.92);
+      if (r.dyn.type === 'link') { const [l1, l2] = C.linkEnds(r.dyn, T(r.dyn.id)); aim(r.mesh, l1[0], l1[1], 5); aim(r.rod, l2[0], l2[1], 5); continue; }
+      const [a, b] = r.dyn.type === 'spring' ? C.springEnds(G, r.dyn, th) : C.stayEnds(r.dyn, T(r.dyn.id) * Math.PI / 2 * 0.92);
       const bodyLen = r.dyn.type === 'spring' ? 390 : 150;
       const d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], L = Math.hypot(...d), k = Math.min(bodyLen, L - 40) / L;
       const m = [a[0] + d[0] * k, a[1] + d[1] * k, a[2] + d[2] * k];
@@ -225,6 +231,19 @@ class MurphyScene {
     return b;
   }
   isVisible(obj) { while (obj) { if (!obj.visible) return false; obj = obj.parent; } return true; }
+  // what a ray hits first among the visible parts: an element id, 'bed', or null (carcass and fixed parts block the ray)
+  pick(ray) {
+    const meshes = [];
+    for (const r of this.recs) if (this.isVisible(r.grp)) { meshes.push(r.mesh); if (r.rod) meshes.push(r.rod); }
+    this.scene.updateMatrixWorld(true);
+    for (const h of ray.intersectObjects(meshes, false)) {
+      if (this.opts.section && this.clip.distanceToPoint(h.point) < 0) continue;
+      const p = h.object.userData.rec.part;
+      if (p.bed) return 'bed';
+      return (p.anim && p.anim.id) || (p.dyn && p.dyn.id) || p.pick || null;
+    }
+    return null;
+  }
 }
 
 /* ------------------------------------------------------------------ interactive viewer */
@@ -245,17 +264,66 @@ class Viewer {
     this.target = new THREE.Vector3(0, 300, 1277);
     this.sph = { theta: 1.1, phi: 1.22, r: 9000 };
     this.renderer.setClearColor(0xe4e2dc, 1);
+    this.ms.openState = new Map(); // each door, flap and drawer opens on its own
+    this.openTarget = new Map(); this.openAnims = new Map();
+    this.ray = new THREE.Raycaster();
     this._bindControls();
     root.addEventListener('resize', () => this.resize());
     if (root.ResizeObserver) { this.ro = new ResizeObserver(() => this.resize()); this.ro.observe(container); }
     this.resize();
     this.dirty = true;
-    const loop = () => { if (this.dirty) { this.render(); this.dirty = false; } this.raf = root.requestAnimationFrame(loop); };
+    const loop = () => {
+      if (this.openAnims.size) this._stepOpen(root.performance.now());
+      if (this.dirty) { this.render(); this.dirty = false; }
+      this.raf = root.requestAnimationFrame(loop);
+    };
     loop();
   }
   setBackground(hex) { this.renderer.setClearColor(hex, 1); this.dirty = true; }
-  setModel(model, keepView) { this.ms.setModel(model); if (!keepView) this.fit(); this.dirty = true; }
-  set(o) { this.ms.set(o); this.dirty = true; }
+  setModel(model, keepView) { this.ms.setModel(model); if (!keepView) this.fit(); this.dirty = true; this._openChanged(); }
+  set(o) {
+    o = Object.assign({}, o);
+    if (o.open !== undefined) { // every element at once, no animation
+      for (const id of this.ms.elements) { this.ms.openState.set(id, o.open); this.openTarget.set(id, o.open > 0.5 ? 1 : 0); }
+      this.openAnims.clear(); delete o.open; this._openChanged();
+    }
+    this.ms.set(o); this.dirty = true;
+  }
+  // open or close elements (ids from ms.elements) with an eased swing
+  animateOpen(ids, to) {
+    const now = root.performance.now(), reduce = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    for (const id of ids) {
+      this.openTarget.set(id, to);
+      const from = this.ms.openOf(id);
+      if (reduce || Math.abs(from - to) < 1e-6) { this.ms.openState.set(id, to); this.openAnims.delete(id); }
+      else this.openAnims.set(id, { from, to, t0: now, dur: 150 + 600 * Math.abs(to - from) });
+    }
+    this.ms.apply(); this.dirty = true; this._openChanged();
+  }
+  toggle(id) { this.animateOpen([id], (this.openTarget.get(id) || 0) > 0.5 ? 0 : 1); }
+  setAllOpen(on) { this.animateOpen(this.ms.elements, on ? 1 : 0); }
+  openCount() { return this.ms.elements.filter(id => (this.openTarget.get(id) || 0) > 0.5).length; }
+  _openChanged() { if (this.onOpenChange) this.onOpenChange(this.openCount(), this.ms.elements.length); }
+  _stepOpen(now) {
+    for (const [id, a] of this.openAnims) {
+      const k = Math.min(1, (now - a.t0) / a.dur), e = 1 - Math.pow(1 - k, 3);
+      this.ms.openState.set(id, a.from + (a.to - a.from) * e);
+      if (k >= 1) this.openAnims.delete(id);
+    }
+    this.ms.apply(); this.dirty = true;
+  }
+  // element under a screen point (client coordinates)
+  pickAt(cx, cy) {
+    const rc = this.renderer.domElement.getBoundingClientRect();
+    if (!rc.width || !rc.height) return null;
+    this.ray.setFromCamera(new THREE.Vector2((cx - rc.left) / rc.width * 2 - 1, -(cy - rc.top) / rc.height * 2 + 1), this.camera);
+    return this.ms.pick(this.ray);
+  }
+  _click(cx, cy) {
+    const id = this.pickAt(cx, cy);
+    if (id === 'bed') { if (this.onPickBed) this.onPickBed(); }
+    else if (id) this.toggle(id);
+  }
   fit() {
     const b = this.ms.bounds();
     if (b.isEmpty()) return;
@@ -344,15 +412,26 @@ class Viewer {
       const up = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 1);
       this.target.addScaledVector(right, -dx * r).addScaledVector(up, dy * r);
     };
+    let down = null, hoverEv = null, hoverRaf = 0;
+    const hover = () => {
+      hoverRaf = 0;
+      if (!hoverEv || pts.size) return;
+      el.style.cursor = this.pickAt(hoverEv.clientX, hoverEv.clientY) ? 'pointer' : '';
+    };
     el.addEventListener('pointerdown', (e) => {
       el.setPointerCapture(e.pointerId);
       pts.set(e.pointerId, [e.clientX, e.clientY]);
+      down = pts.size === 1 && e.button === 0 && !e.shiftKey ? { id: e.pointerId, x: e.clientX, y: e.clientY, moved: 0 } : null;
       last = [e.clientX, e.clientY];
       mode = (e.button === 2 || e.shiftKey) ? 'pan' : 'rot';
       if (pts.size === 2) { const v = [...pts.values()]; pinch = { d: Math.hypot(v[0][0] - v[1][0], v[0][1] - v[1][1]), c: [(v[0][0] + v[1][0]) / 2, (v[0][1] + v[1][1]) / 2] }; }
     });
     el.addEventListener('pointermove', (e) => {
-      if (!pts.has(e.pointerId)) return;
+      if (!pts.has(e.pointerId)) {
+        if (e.pointerType === 'mouse') { hoverEv = e; if (!hoverRaf) hoverRaf = root.requestAnimationFrame(hover); }
+        return;
+      }
+      if (down && down.id === e.pointerId) down.moved = Math.max(down.moved, Math.hypot(e.clientX - down.x, e.clientY - down.y));
       pts.set(e.pointerId, [e.clientX, e.clientY]);
       if (pts.size === 2 && pinch) {
         const v = [...pts.values()];
@@ -368,8 +447,14 @@ class Viewer {
       this.dirty = true;
     });
     const end = (e) => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; if (pts.size === 1) { last = [...pts.values()][0]; mode = 'rot'; } };
-    el.addEventListener('pointerup', end);
-    el.addEventListener('pointercancel', end);
+    el.addEventListener('pointerup', (e) => {
+      // a click (not a drag) opens or closes what is under the pointer
+      const click = down && down.id === e.pointerId && down.moved < 5 && pts.size === 1;
+      down = null; end(e);
+      if (click) this._click(e.clientX, e.clientY);
+    });
+    el.addEventListener('pointercancel', (e) => { down = null; end(e); });
+    el.addEventListener('pointerleave', () => { hoverEv = null; });
     el.addEventListener('contextmenu', (e) => e.preventDefault());
     el.addEventListener('wheel', (e) => { e.preventDefault(); this.sph.r = Math.min(60000, Math.max(500, this.sph.r * Math.exp(e.deltaY * 0.0012))); this.dirty = true; }, { passive: false });
   }

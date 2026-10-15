@@ -154,7 +154,7 @@ function renderReview() {
 /* ---------------------------------------------------------------- bed slider */
 let bedAngle = 0, playing = null;
 function viewState() {
-  return { fronts: viewOpts.fronts, mattress: viewOpts.mattress, hw: viewOpts.hw, section: viewOpts.section, bySheet: viewOpts.bySheet, open: openT, bed: bedAngle };
+  return { fronts: viewOpts.fronts, mattress: viewOpts.mattress, hw: viewOpts.hw, section: viewOpts.section, bySheet: viewOpts.bySheet, bed: bedAngle };
 }
 function updateBedNote() {
   if (!model) return;
@@ -182,12 +182,14 @@ function playBed() {
   };
   playing = requestAnimationFrame(step);
 }
-let openT = 0, openAnim = null;
-function animateFronts(to) {
-  cancelAnimationFrame(openAnim);
-  const from = openT, t0 = performance.now(), dur = 700;
-  const step = (t) => { const k = Math.min(1, (t - t0) / dur); openT = from + (to - from) * (1 - Math.pow(1 - k, 3)); if (viewer) viewer.set({ open: openT }); if (k < 1) openAnim = requestAnimationFrame(step); };
-  openAnim = requestAnimationFrame(step);
+// "Open fronts": ticked when every door, flap and drawer is open, clear when all are shut, greyed part-way
+// when some have been opened by clicking them in the view. Clicking it opens or shuts the lot.
+function showOpen(n, total) {
+  const cb = $('v-open'), partial = n > 0 && n < total;
+  cb.indeterminate = partial;
+  cb.checked = total > 0 && n === total;
+  cb.parentElement.classList.toggle('partial', partial);
+  cb.parentElement.title = partial ? `${n} of ${total} open. Click to open them all.` : '';
 }
 
 /* ---------------------------------------------------------------- files */
@@ -287,7 +289,7 @@ function bind() {
     vopts();
     if ($('v-section').checked && viewer) { document.querySelectorAll('.tools [data-view]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.view === 'side'))); viewer.view('side'); }
   });
-  $('v-open').addEventListener('change', () => animateFronts($('v-open').checked ? 1 : 0));
+  $('v-open').addEventListener('change', () => { if (viewer) viewer.setAllOpen($('v-open').checked); });
   vopts();
   $('bed-angle').addEventListener('input', (e) => { if (playing) { cancelAnimationFrame(playing); playing = null; } setBed(Number(e.target.value)); });
   $('bed-play').addEventListener('click', playBed);
@@ -316,7 +318,12 @@ function themeBg() {
 
 function start() {
   fillInputs();
-  try { viewer = new V.Viewer($('viewer')); viewer.onOrient = (t) => { $('front-tag').textContent = t; }; }
+  try {
+    viewer = new V.Viewer($('viewer'));
+    viewer.onOrient = (t) => { $('front-tag').textContent = `${t}. Click a door, drawer, flap or the bed to open it.`; };
+    viewer.onOpenChange = showOpen;
+    viewer.onPickBed = playBed;
+  }
   catch (e) { console.error(e); $('front-tag').textContent = 'This browser could not start the 3D view (WebGL). The cut list, drawings and STEP file still work.'; }
   window.__murphy = { get model() { return model; }, get summary() { return summary; }, get viewer() { return viewer; }, get params() { return params; }, rebuild, setBed, stepText, csvText, downloadPdf };
   rebuild(false);
