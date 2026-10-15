@@ -23,7 +23,7 @@ const DEFAULTS = {
   gapMx: 30,          // gapmattressx: mattress to frame side rail
   gapMy: 2,           // gapmattressy: mattress to head and foot rails (2 makes the side rails the kit's 81-1/2 in)
   gapHolder: 12,      // gapholder: frame top to the shelf above the bed
-  gapHydr: 30,        // gaphydr: frame side rail to bed-cabinet side
+  gapHydr: 11,        // gaphydr: frame side rail to bed-cabinet side. 11 is the kit's 7/16 in; your TikZ had 30
   gapBelow: 60,       // gapbelow: floor to the bottom of the face panel and the first drawer
   faceBelowFrame: 10, // face panel runs this far past the frame's head end (kit: about 1/4 in); puts the pivot at the kit's 11-3/4 in
   // side towers
@@ -42,7 +42,7 @@ const DEFAULTS = {
   Tsup: 6,            // mattress support panel
   Tladder: 12,        // bed deck struts
   Tplinth: 18,
-  Tpacker: 18,        // pivot packers (bring the 30 mm hydraulics gap back to the kit's 11 mm)
+  Tpacker: 18,        // packers under the kit's cabinet plates, only when gapHydr is wider than the kit's 11 mm
   Tledge: 18,
   // drawers
   runnerClear: 12.7,  // side-mount ball-bearing runners, each side
@@ -69,7 +69,7 @@ const DEFAULTS = {
   springUpZ: 781,       // ... 30-3/4 in above the floor in the kit's cabinet (p.22)
   stopFront: 187.3,     // bed stop 7-3/8 in back from the front (p.22)
   stopBelowTop: 79.4,   // ... 6 in below the top of the 87-1/8 in vertical = 3-1/8 in below the frame top
-  packer: true,
+  packer: false,
   packerH: 950,
   packerDepth: 300,
   // around the bed
@@ -1023,7 +1023,7 @@ function reviewNotes(model, S) {
     ['Modules that fit the sheets', `Full-height sides of ${f0(P.H)} do not come out of a 2440 sheet. The wardrobe is two towers on plinths plus a bed cabinet: tower sides ${f0(G.zTopB - G.zPl - P.T)} between a top and bottom, bed-cabinet sides ${f0(G.zBm0)} from the floor to the shelf above the bed and ${f0(G.antClear)} from the shelf to the top. The doubled ${2 * P.T} mm sides of the TikZ stay doubled the full height, one tower side screwed to the bed-cabinet sides, broken only where the shelf and its steel flat pass through; a 6 mm back over the shelf space ties the box together like the towers' backs.`],
     ['Room to fit and scribe', `${P.sideClear} mm each side and ${P.backGap} mm at the back for packers into the studs; the doors still finish ${P.gap} mm off the walls as drawn. The ${f0(P.gapAbove)} header filler is scribed to the ceiling.`],
     ['Bed frame where the kit puts it', `The plan puts the pivot 9 in from the rail's head end and 11-3/4 in off the floor, so the kit's frame sits 2-3/4 in (70) up. Here the face panel still starts at ${f0(P.gapBelow)} in line with the drawers, but the frame starts ${f0(P.faceBelowFrame)} higher, behind it, and the mattress end gaps are ${P.gapMy} mm, not 7. The pivot lands at ${f0(G.pivot[1])}, the legs reach the floor as supplied, and the side rails come out at ${f0(G.frameL)} (kit: 81-1/2 in = 2070).`],
-    ['Pivot packers', `The TikZ leaves ${f0(P.gapHydr)} mm between the side rail and the cabinet side; the kit is built for 7/16 in (11 mm). ${P.packer ? f0(P.Tpacker) + ' mm packers under the pivot plates, upper ball studs and stops bring it to ' + f0(G.effGap) + ' mm. Use machine screws ' + f0(P.Tpacker) + ' mm longer than the kit\'s through the packers' : 'Without packers the pivot bars may not reach'}.`],
+    ['Side rail to cabinet side', P.packer ? `${f0(P.gapHydr)} mm between the bed frame's side rail and the bed-cabinet side, wider than the 7/16 in (11 mm) the Create-A-Bed hardware is built for, so ${f0(P.Tpacker)} mm packers go under the kit's cabinet plates (pivots, upper ball studs, bed stops) to bring them to ${f0(G.effGap)} mm. Use machine screws ${f0(P.Tpacker)} mm longer than the kit's. Closing the gap to 11 mm needs no packers and gives each tower ${f0(Math.max(0, P.gapHydr - P.pinGap))} mm.` : `${f0(P.gapHydr)} mm between the bed frame's side rail and the bed-cabinet side${Math.abs(P.gapHydr - P.pinGap) < 2.5 ? ", the 7/16 in (11 mm) the Create-A-Bed hardware is built for: the kit's cabinet plates screw straight to the side with the screws supplied, and no packers are needed" : `; the kit is built for 7/16 in (11 mm), so the pivots may not engage properly without packers`}. The gas springs run in this gap, as in the kit.`],
     ['Plinths and kick boards', `Each tower sits on a ${f0(G.zPl)} high ladder plinth so it can be levelled; the bed-cabinet sides go to the floor like the kit's verticals. ${G.kickC ? `One kick board runs right across, ${f0(G.kickC)} high because the face panel's bottom edge sweeps down to ${f0(G.clear.minZ)} mm off the floor as the bed turns; the drawers and tower plinths sit ${f0(G.drawerDrop)} lower to match, and the header filler is one piece too.` : 'There is no kick board under the bed, so each tower has its own.'}`],
     ['Headboard', G.head && !G.head.skipped ? `The bed's swing bulges furthest back at pivot height (${f0(G.clear.minY)} from the wall)${G.ledge && !G.ledge.skipped ? `, so the ledge stays below mattress height at ${f0(G.ledge.y)}` : ', so nothing stands below mattress height'}. Above the mattress nothing swings back, so a ${f0(P.headH)} backrest steps out to ${P.headGap} mm behind the open mattress and leans back ${P.headAngle} deg, on three tapered ribs, with a ${f0(G.head.capY - G.yB1)} deep bedside shelf on top at ${f0(G.head.top + P.Thead)}.` : G.ledge && !G.ledge.skipped ? `A ${f0(G.ledge.y - G.yB1)} deep ledge at mattress height fills the gap behind the open mattress.` : 'Turned off: pillows can fall behind the head of the open bed.'],
     ['Shelf above the bed', `It spans ${f0(2 * G.xB)} only ${f0(P.gapHolder)} mm above the closed bed. The centre divider carries it: glued and screwed to the shelf and the top, it turns the shelf into two ${f0(G.xB + P.T / 2)} mm bays held on three sides. ${P.edgeSteel ? `A ${f0(P.steelH)} x ${f0(P.steelT)} steel flat let into the front edge, ${f0(P.steelH - P.T)} mm proud underneath and hidden by the flaps, stiffens the free edge and takes the push latches.` : ''} ${P.upstand > 0 ? `A ${f0(P.upstand)} mm lip runs along the front edge.` : 'The top is flat to the front edge, so boxes slide straight in.'} Worst case, one bay holding 100 kg a square metre: about ${G.shelfSag.toFixed(1)} mm over time.`],
@@ -1160,7 +1160,11 @@ function joinery(model) {
     const L = b - a;
     let xs;
     if (L <= 2 * e + 1) xs = [(a + b) / 2];
-    else { const n = Math.max(2, Math.ceil((L - 2 * e) / pitch) + 1); xs = Array.from({ length: n }, (_, i) => a + e + (L - 2 * e) * i / (n - 1)); }
+    else {
+      // a whole-millimetre pitch, the run centred: chains of dimensions then read "e, n x pitch, e"
+      const n = Math.max(2, Math.ceil((L - 2 * e) / pitch) + 1), p = Math.floor((L - 2 * e) / (n - 1)), x0 = a + r05((L - (n - 1) * p) / 2);
+      xs = Array.from({ length: n }, (_, i) => x0 + i * p);
+    }
     const lo = a + Math.min(e, L / 2) * 0.5, hi = b - Math.min(e, L / 2) * 0.5, out = [];
     for (let x of xs) {
       for (const [p, q] of avoid || []) if (x > p && x < q) {

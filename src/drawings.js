@@ -1460,7 +1460,7 @@ function drawOpView(s, V0, scale, x0, y0, w, h, occ) {
       occ.seg(a, b, 1);
     }
   }
-  return { sc, P3, scale, maxSeq, cell: [x0, y0, w, h], bbox: [ox, oy, ox + bw, oy + bh] };
+  return { sc, P3, scale, maxSeq, d, close: !!V0.close, cell: [x0, y0, w, h], bbox: [ox, oy, ox + bw, oy + bh] };
 }
 // order marks beside the heads, and a tag for each kind of fixing with leaders to (up to three of) its groups
 function annotateOpView(s, A, occ) {
@@ -1657,6 +1657,202 @@ function setoutFlow(s, pats, W) {
   return { items, rows, h: rows.reduce((a, r) => a + r.h + 1.8, 0) };
 }
 
+/* dimensions on the views: for every line of holes, a chain from the edge of the part it is drilled through, hole
+   centre to hole centre, to the far edge, with equal gaps written once ("3 × 155"); and a chain across the face
+   locating the lines from its edges. Lines and faces that repeat are dimensioned once. */
+const DIM_RGB = [44, 62, 88];
+// lines of holes in a scene, in the frame of the face they are drilled from: a along the line, c across it
+function holeLines(sc) {
+  const byF = new Map();
+  for (const o of sc.fx) { if (!byF.has(o.f)) byF.set(o.f, []); byF.get(o.f).push(o); }
+  const lines = [];
+  for (const [f, os] of byF) {
+    const dir = v3.norm(f.dir), kd = [0, 1, 2].reduce((b, q) => Math.abs(dir[q]) > Math.abs(dir[b]) ? q : b, 0);
+    let a = null;
+    if (Math.abs(dir[kd]) > 0.999) {
+      const inPl = [0, 1, 2].filter(q => q !== kd), spr = (q) => { const v = f.pts.map(p => p[q]); return Math.max(...v) - Math.min(...v); };
+      let k = spr(inPl[0]) >= spr(inPl[1]) ? inPl[0] : inPl[1];
+      if (spr(k) < 0.5) { const tb = partBox(f.through); k = (tb[inPl[0] + 3] - tb[inPl[0]]) >= (tb[inPl[1] + 3] - tb[inPl[1]]) ? inPl[0] : inPl[1]; }
+      a = [0, 1, 2].map(q => q === k ? 1 : 0);
+    } else { // a slanted joint: along the run of its points
+      let best = 0;
+      for (let i = 0; i < f.pts.length; i++) for (let j = i + 1; j < f.pts.length; j++) { const dv = v3.sub(f.pts[j], f.pts[i]), l = v3.len(dv); if (l > best) { best = l; a = dv; } }
+      if (!a) continue;
+      a = v3.norm(v3.sub(a, v3.mul(dir, v3.dot(a, dir))));
+      const big = [0, 1, 2].reduce((b, q) => Math.abs(a[q]) > Math.abs(a[b]) ? q : b, 0);
+      if (a[big] < 0) a = v3.mul(a, -1);
+    }
+    const c = v3.norm(v3.cross(dir, a));
+    for (const o of os) {
+      const pt = f.pts[o.i], sv = v3.dot(pt, a), tv = v3.dot(pt, c);
+      let L = lines.find(l => l.through === f.through && v3.dot(l.dir, dir) > 0.999 && v3.dot(l.a, a) > 0.999 && Math.abs(l.t - tv) < 1);
+      if (!L) { L = { through: f.through, dir, a, c, t: tv, holes: [] }; lines.push(L); }
+      L.holes.push({ s: sv, key: f.key, seq: o.seq, wood: isWood(f.key) });
+    }
+  }
+  for (const L of lines) L.holes.sort((p, q) => p.s - q.s);
+  return lines;
+}
+// the face a line is drilled from: its extents along a and c, and the plane of the face the fixings enter
+function faceFrame(through, dir, a, c) {
+  const cs = through.solids.flatMap(pr => C.prismCorners(pr));
+  const pa = cs.map(p => v3.dot(p, a)), pc = cs.map(p => v3.dot(p, c)), pd = cs.map(p => v3.dot(p, dir));
+  return { s0: Math.min(...pa), s1: Math.max(...pa), t0: Math.min(...pc), t1: Math.max(...pc), d0: Math.min(...pd) };
+}
+const r05v = (v) => Math.round(v * 2) / 2;
+// one chain of dimensions. base(v): the 3D point at chain value v; u: the 3D direction the dimension line stands off in
+function drawChain(s, occ, P3, base, u, delta, vals, kinds) {
+  if (vals.length < 2) return;
+  const b2 = vals.map(v => P3(base(v))), d2 = vals.map(v => P3(v3.add(base(v), v3.mul(u, delta))));
+  const ex = [d2[d2.length - 1][0] - d2[0][0], d2[d2.length - 1][1] - d2[0][1]], el = Math.hypot(ex[0], ex[1]);
+  if (el < 1.2) return;
+  const e = [ex[0] / el, ex[1] / el];
+  let n = [-e[1], e[0]];
+  const off = [d2[0][0] - b2[0][0], d2[0][1] - b2[0][1]];
+  if (n[0] * off[0] + n[1] * off[1] < 0) n = [-n[0], -n[1]];
+  const doc = s.doc, YP = (y) => PH - y;
+  doc.setLineWidth(0.08); s.color(DIM_RGB);
+  vals.forEach((v, i) => {
+    const b = b2[i], dd = d2[i], w = [dd[0] - b[0], dd[1] - b[1]], wl = Math.hypot(w[0], w[1]);
+    if (wl > 1.2) { const st = [b[0] + w[0] / wl * 0.6, b[1] + w[1] / wl * 0.6]; doc.line(st[0], YP(st[1]), dd[0] + n[0] * 0.7, YP(dd[1] + n[1] * 0.7)); occ.seg(st, dd, 0.15); }
+  });
+  doc.setLineWidth(0.1);
+  doc.line(d2[0][0], YP(d2[0][1]), d2[d2.length - 1][0], YP(d2[d2.length - 1][1]));
+  occ.seg(d2[0], d2[d2.length - 1], 0.25);
+  doc.setLineWidth(0.18);
+  const tk = [(e[0] + n[0]) * 0.5, (e[1] + n[1]) * 0.5];
+  for (const dd of d2) doc.line(dd[0] - tk[0], YP(dd[1] - tk[1]), dd[0] + tk[0], YP(dd[1] + tk[1]));
+  // equal gaps run together
+  const gaps = vals.slice(1).map((v, i) => r05v(v - vals[i])), groups = [];
+  gaps.forEach((g, i) => { const last = groups[groups.length - 1]; if (last && Math.abs(last.g - g) < 0.01 && !(kinds && kinds[i] !== kinds[last.i0])) { last.i1 = i + 1; last.n++; } else groups.push({ g, i0: i, i1: i + 1, n: 1 }); });
+  const size = 4.5, hh = 1.45, labels = [];
+  let clean = true;
+  groups.forEach((G, gi) => {
+    const txt = G.n > 1 ? `${G.n} × ${fh(G.g)}` : fh(G.g), tw = s.tw(txt, size) + 0.5;
+    const A0 = d2[G.i0], A1 = d2[G.i1], L = Math.hypot(A1[0] - A0[0], A1[1] - A0[1]), mid = [(A0[0] + A1[0]) / 2, (A0[1] + A1[1]) / 2];
+    // the room the text needs along the dimension line (its projection on e)
+    const along = Math.abs(e[0]) * tw + Math.abs(e[1]) * hh, across = Math.abs(n[0]) * tw + Math.abs(n[1]) * hh, out = 0.5 + across / 2;
+    const cands = [];
+    if (L >= along + 0.6) cands.push({ c: [mid[0] + n[0] * out, mid[1] + n[1] * out], ext: null });
+    if (gi === 0) { const q = 0.9 + along / 2; cands.push({ c: [A0[0] - e[0] * q, A0[1] - e[1] * q], ext: A0 }); }
+    if (gi === groups.length - 1) { const q = 0.9 + along / 2; cands.push({ c: [A1[0] + e[0] * q, A1[1] + e[1] * q], ext: A1 }); }
+    let best = null;
+    for (const cd of cands) {
+      const box = [cd.c[0] - tw / 2, cd.c[1] - hh / 2, cd.c[0] + tw / 2, cd.c[1] + hh / 2];
+      const cost = occ.cost(box[0], box[1], box[2], box[3]) + labels.filter(p => !(box[2] < p.box[0] || box[0] > p.box[2] || box[3] < p.box[1] || box[1] > p.box[3])).length * 50;
+      if (!best || cost < best.cost) best = { cost, box, cd, txt, tw };
+    }
+    if (!best || best.cost > 2 || el < 26) clean = false; // a short chain reads better as one label
+    if (best) labels.push(best);
+  });
+  const ink = () => { doc.setLineWidth(0.08); s.color(DIM_RGB); };
+  if (clean) {
+    for (const l of labels) {
+      if (l.cd.ext) { ink(); const far = [l.cd.c[0] - (l.cd.c[0] - l.cd.ext[0]) * 0.15, l.cd.c[1] - (l.cd.c[1] - l.cd.ext[1]) * 0.15]; doc.line(l.cd.ext[0], YP(l.cd.ext[1]), far[0], YP(far[1])); }
+      s.text(l.cd.c[0], l.cd.c[1] - 0.05, l.txt, { size, ha: 'center', va: 'middle', color: DIM_RGB, box: true });
+      occ.rect(l.box[0] - 0.2, l.box[1] - 0.2, l.box[2] + 0.2, l.box[3] + 0.2);
+    }
+    return;
+  }
+  // no room for a figure on each gap: the chain's figures in one label, in the order they read on the page
+  const rev = (Math.abs(e[0]) >= Math.abs(e[1]) && e[0] < 0) || (Math.abs(e[0]) < Math.abs(e[1]) && e[1] > 0);
+  const parts = groups.map(G => G.n > 1 ? `${G.n} × ${fh(G.g)}` : fh(G.g));
+  const txt = (rev ? parts.reverse() : parts).join('  ·  '), tw = s.tw(txt, size) + 0.6;
+  const mid = [(d2[0][0] + d2[d2.length - 1][0]) / 2, (d2[0][1] + d2[d2.length - 1][1]) / 2], across = Math.abs(n[0]) * tw + Math.abs(n[1]) * hh;
+  let best = null;
+  for (const k of [0, 1, 2, 3, -1]) for (const sl of [0, -0.3, 0.3, -0.6, 0.6]) {
+    const dist = k >= 0 ? 0.5 + across / 2 + k * (hh + 0.6) : -(0.5 + across / 2), c = [mid[0] + n[0] * dist + e[0] * el * sl * 0.5, mid[1] + n[1] * dist + e[1] * el * sl * 0.5];
+    const box = [c[0] - tw / 2, c[1] - hh / 2, c[0] + tw / 2, c[1] + hh / 2];
+    const cost = occ.cost(box[0], box[1], box[2], box[3]) + Math.abs(k) * 1.5 + Math.abs(sl) * 2;
+    if (!best || cost < best.cost) best = { cost, c, box };
+  }
+  // a short leader when the label had to move off the line
+  const foot = [best.c[0] - n[0] * (Math.abs(n[0]) * tw + Math.abs(n[1]) * hh) / 2, best.c[1] - n[1] * (Math.abs(n[0]) * tw + Math.abs(n[1]) * hh) / 2];
+  const onLine = [mid[0] + e[0] * ((best.c[0] - mid[0]) * e[0] + (best.c[1] - mid[1]) * e[1]), mid[1] + e[1] * ((best.c[0] - mid[0]) * e[0] + (best.c[1] - mid[1]) * e[1])];
+  if (Math.hypot(foot[0] - onLine[0], foot[1] - onLine[1]) > 1.6) { ink(); doc.line(onLine[0], YP(onLine[1]), foot[0], YP(foot[1])); }
+  s.text(best.c[0], best.c[1] - 0.05, txt, { size, ha: 'center', va: 'middle', color: DIM_RGB, box: true });
+  occ.rect(best.box[0] - 0.2, best.box[1] - 0.2, best.box[2] + 0.2, best.box[3] + 0.2);
+}
+// all the dimensions for one drawn view
+function viewDims(s, A, occ) {
+  const { sc, P3, scale } = A, d = A.d, lines = holeLines(sc);
+  if (!lines.length) return;
+  const proj2 = (v) => { const p0 = P3([0, 0, 0]), p1 = P3(v); return [(p1[0] - p0[0]) * scale, (p1[1] - p0[1]) * scale]; }; // paper direction per model mm, x scale
+  // the window the view shows: the operation's cut, or the close-up's box
+  const lo = A.close ? sc.lo : (sc.op.clip ? [-Infinity, -Infinity, sc.op.clip[0]] : [-Infinity, -Infinity, -Infinity]);
+  const hi = A.close ? sc.hi : (sc.op.clip ? [Infinity, Infinity, sc.op.clip[1]] : [Infinity, Infinity, Infinity]);
+  // faces: lines on one part, drilled from one side
+  const faces = [];
+  for (const L of lines) {
+    let F = faces.find(q => q.through === L.through && v3.dot(q.dir, L.dir) > 0.999);
+    if (!F) { F = { through: L.through, dir: L.dir, lines: [], Dt: sc.offOf(L.through) }; faces.push(F); }
+    F.lines.push(L);
+  }
+  // a face whose lines repeat another face's (the other half, the next strut) is not dimensioned again
+  const sig = (F, mir) => F.lines.map(L => { const fr = faceFrame(F.through, L.dir, L.a, L.c); return L.holes.map(h => `${h.key}@${Math.round(mir ? fr.s1 - h.s : h.s - fr.s0)}`).sort().join(',') + `|${Math.round(L.t - fr.t0)}`; }).sort().join(';');
+  const done = [];
+  for (const F of faces) {
+    const sg = sig(F, false), sm = sig(F, true);
+    if (done.some(q => q.mark === F.through.mark && (q.sg === sg || q.sg === sm))) continue;
+    done.push({ mark: F.through.mark, sg });
+    const facing = -v3.dot(d, F.dir);
+    if (facing < -0.15) continue; // drilled from the far side in this view
+    // lines grouped by direction
+    const dirs = [];
+    for (const L of F.lines) { let g = dirs.find(q => v3.dot(q.a, L.a) > 0.999); if (!g) { g = { a: L.a, c: L.c, lines: [] }; dirs.push(g); } g.lines.push(L); }
+    for (const g of dirs) {
+      const fr = faceFrame(F.through, F.dir, g.a, g.c), Dt = F.Dt;
+      const X = (sv, tv) => v3.add(v3.add(v3.add(v3.mul(g.a, sv), v3.mul(g.c, tv)), v3.mul(F.dir, fr.d0)), Dt);
+      const inside = (p) => p.every((v, q) => v >= lo[q] - 0.5 && v <= hi[q] + 0.5);
+      const aP = proj2(g.a), cP = proj2(g.c), nP = proj2(v3.mul(F.dir, -1));
+      if (Math.hypot(...aP) < 0.25) continue; // the line runs at the viewer
+      const perp = (w) => { const el = Math.hypot(...aP), e = [aP[0] / el, aP[1] / el]; return Math.abs(w[0] * -e[1] + w[1] * e[0]); };
+      // lines alike are dimensioned once: the first of each pattern
+      const pats = [];
+      for (const L of g.lines.slice().sort((p, q) => p.t - q.t)) {
+        const key = L.holes.map(h => `${h.key}@${Math.round(h.s - fr.s0)}`).join(',');
+        if (!pats.some(p => p.key === key)) pats.push({ key, L });
+      }
+      const ts = [...new Set(g.lines.map(L => r05v(L.t)))].sort((p, q) => p - q);
+      pats.forEach(({ L }) => {
+        // chain along the line: the real edges in view, and the holes
+        const vals = [], kinds = [];
+        const e0 = inside(X(fr.s0, L.t)), e1 = inside(X(fr.s1, L.t));
+        if (e0) vals.push(fr.s0);
+        for (const h of L.holes) if (!vals.some(v => Math.abs(v - h.s) < 0.25)) vals.push(h.s);
+        if (e1) vals.push(fr.s1);
+        if (vals.length < 2) return;
+        // stand-off: across the face toward its larger side, or square off the face where the face is edge-on
+        const roomP = fr.t1 - L.t, roomN = L.t - fr.t0, cands = [];
+        cands.push({ u: roomP >= roomN ? g.c : v3.mul(g.c, -1), w: perp(roomP >= roomN ? cP : [-cP[0], -cP[1]]) * 1.15 });
+        cands.push({ u: roomP >= roomN ? v3.mul(g.c, -1) : g.c, w: perp(cP) * 0.8 });
+        cands.push({ u: v3.mul(F.dir, -1), w: perp(nP) * 0.9 });
+        const pick = cands.reduce((p, q) => q.w > p.w ? q : p);
+        if (pick.w < 0.15) return;
+        // clear of the floating screws and their marks on the main views; tight on a close-up
+        const delta = (A.close ? 4 : 6) * scale / Math.max(0.2, pick.w);
+        drawChain(s, occ, P3, (v) => X(v, L.t), pick.u, delta, vals);
+      });
+      // chain across the face, locating the lines, at the edge it starts from
+      if (A.close) continue;
+      const tvals = [], f0 = inside(X(fr.s0, fr.t0)) || inside(X(fr.s1, fr.t0)), f1 = inside(X(fr.s0, fr.t1)) || inside(X(fr.s1, fr.t1));
+      if (f0) tvals.push(fr.t0);
+      for (const t of ts) if (!tvals.some(v => Math.abs(v - t) < 0.25)) tvals.push(t);
+      if (f1) tvals.push(fr.t1);
+      if (tvals.length < 2 || (fr.t1 - fr.t0) / scale < 5) continue;
+      if (tvals.length === 3 && Math.abs(tvals[1] - (fr.t0 + fr.t1) / 2) < 0.6 && (fr.t1 - fr.t0) < 60) continue; // one line down the middle of a narrow part
+      if (Math.hypot(...cP) < 0.25) continue;
+      // at an end of the face, standing off beyond that end, or square off the face where the face is edge-on
+      const perpC = (w) => { const el = Math.hypot(...cP), e = [cP[0] / el, cP[1] / el]; return Math.abs(w[0] * -e[1] + w[1] * e[0]); };
+      const opts = [{ sE: fr.s0, u: v3.mul(g.a, -1), w: perpC(aP) * 1.1 }, { sE: fr.s1, u: g.a, w: perpC(aP) }, { sE: fr.s0, u: v3.mul(F.dir, -1), w: perpC(nP) * 0.9 }]
+        .filter(o => inside(X(o.sE, (fr.t0 + fr.t1) / 2)) || A.close === false);
+      const o = opts.reduce((p, q) => q.w > p.w ? q : p, opts[0]);
+      if (!o || o.w < 0.15) continue;
+      drawChain(s, occ, P3, (v) => X(o.sE, v), o.u, 4.5 * scale / Math.max(0.2, o.w), tvals);
+    }
+  }
+}
+
 // the steps that join plywood, in build order, with their half pages
 function detailHalves(M, S) {
   const B = S.build, J = B.joinery, out = [{ kind: 'key' }];
@@ -1688,9 +1884,9 @@ function halfStep(s, M, S, hv, region) {
   const dirs = [];
   inst.ops.forEach((op, oi) => dirs.push(chooseView(inst, oi, pref, oi ? dirs[oi - 1] : null)));
   const nOp = inst.ops.length, textLines = (op, cw, om) => 1 + Math.min(4, s.wrap((op.setout || '') + (om && om.size ? ' Not shown: ' + [...om].map(partName).join(', ') : ''), cw - 2, 5.1).length);
-  const pats = setoutPatterns(inst), flow = pats.length ? setoutFlow(s, pats, W) : null;
-  const sub = (scale, strips) => `${copies ? copies + ' ' : ''}Views at 1:${scale}, in the order of work: the parts going on are orange, pulled back along their joint, and a dashed line runs from each fixing to where it lands.${strips ? ' Below them, every line of holes with its distances.' : ''}`;
-  const headH = 3 + s.wrap(sub(25, true), W - 10, 5.9).length * 2.6 + 6.6, H = Y1 - Y0;
+  const pats = [], flow = null; // set-out strips are replaced by the dimensions on the views
+  const sub = (scale) => `${copies ? copies + ' ' : ''}Views at 1:${scale}, in the order of work: the parts going on are orange, pulled back along their joint, and a dashed line runs from each fixing to where it lands. Dimensions run from the edge of the part a fixing goes through, centre to centre: equal gaps are written once (3 × 155), and lines that repeat are dimensioned once.`;
+  const headH = 3 + s.wrap(sub(25), W - 10, 5.9).length * 2.6 + 6.6, H = Y1 - Y0;
   const fit = (views, room) => {
     let bestC = null;
     for (let cols = 1; cols <= Math.min(nOp, 5); cols++) {
@@ -1700,8 +1896,8 @@ function halfStep(s, M, S, hv, region) {
         let rh = 0, th = 0;
         for (let c = 0; c < cols; c++) {
           const i = r * cols + c; if (i >= nOp) break;
-          if (views[i].w + 8 > cw) ok = false;
-          rh = Math.max(rh, views[i].h + 5); th = Math.max(th, textLines(inst.ops[i], cw, views[i].omit) * 2.35 + 3.4);
+          if (views[i].w + 14 > cw) ok = false;
+          rh = Math.max(rh, views[i].h + 10); th = Math.max(th, textLines(inst.ops[i], cw, views[i].omit) * 2.35 + 3.4);
         }
         tot += rh + th + 3;
       }
@@ -1721,7 +1917,7 @@ function halfStep(s, M, S, hv, region) {
     }
   }
   const { scale, views, cols, cw, gapX } = plan;
-  let y = halfHeader(s, X0, Y1, W, hv.no, hv.st.title, sub(scale, plan.strips));
+  let y = halfHeader(s, X0, Y1, W, hv.no, hv.st.title, sub(scale));
   const occ = new Occ(X0 - 8, Y0 - 4, X1 + 8, Y1 + 4, 0.5);
   occ.rect(X0 - 8, y, X1 + 8, Y1 + 4);
   // spare height goes between the rows
@@ -1729,7 +1925,7 @@ function halfStep(s, M, S, hv, region) {
   const drawn = [], viewsTop = y;
   for (let r = 0; r < plan.rows; r++) {
     const idx = []; for (let c = 0; c < cols; c++) { const i = r * cols + c; if (i < nOp) idx.push(i); }
-    const rh = Math.max(...idx.map(i => views[i].h + 5)) + spare / plan.rows * 0.8;
+    const rh = Math.max(...idx.map(i => views[i].h + 10)) + spare / plan.rows * 0.8;
     const th = Math.max(...idx.map(i => textLines(inst.ops[i], cw, views[i].omit) * 2.35 + 3.4));
     idx.forEach((i, c) => {
       const op = inst.ops[i], x = X0 + c * (cw + gapX);
@@ -1742,7 +1938,9 @@ function halfStep(s, M, S, hv, region) {
       const note = (op.setout ? op.setout.charAt(0).toUpperCase() + op.setout.slice(1) + '.' : '') + (om.length ? ` Not shown: ${om.join(', ')}.` : '');
       s.wrap(note.trim(), cw - 2, 5.1).slice(0, 4).forEach((ln, k) => s.text(x + 1, ty - k * 2.35, ln, { size: 5.1, color: GREY }));
       occ.rect(x, y - th, x + cw, y + 0.5);
-      drawn.push(drawOpView(s, views[i], scale, x, y - th - rh, cw, rh, occ));
+      const A = drawOpView(s, views[i], scale, x, y - th - rh, cw, rh, occ);
+      viewDims(s, A, occ);
+      drawn.push(A);
     });
     y -= th + rh + 3 + spare / plan.rows * 0.2;
   }
@@ -1760,7 +1958,7 @@ function halfStep(s, M, S, hv, region) {
       const wood = op.fast.some(f => isWood(f.key)) ? 1 : 0, kinds = new Set(op.fast.map(f => f.key)).size;
       let k = 0;
       for (const f of gs) {
-        const sig = `${f.through.mark}|${f.into.mark}`; // a mirror image of a joint already shown adds nothing
+        const sig = `${f.through.mark}|${f.key}`; // the same fixing through the same part looks the same again
         if (seen.has(sig)) continue;
         seen.add(sig);
         cands.push({ oi, f, rank: k++, wood, kinds });
@@ -1777,7 +1975,7 @@ function halfStep(s, M, S, hv, region) {
         const cs = closeupScene(inst, c.oi, csc, c.f);
         if (!cs || !cs.fx.length) break;
         const d = chooseViewScene(cs, v3.norm(v3.add(pref, dirs[c.oi])), dirs[c.oi]), omit = blockers(cs, d), bx = opExtent(cs, d, omit);
-        const w = Math.max(38, (bx[2] - bx[0]) / csc + 14), h = (bx[3] - bx[1]) / csc + 12;
+        const w = Math.max(40, (bx[2] - bx[0]) / csc + 20), h = (bx[3] - bx[1]) / csc + 16;
         const cell = drawn[c.oi].cell, spot = findRoom(keep, [X0, y + 2, X1, viewsTop], w, h, 2.2, [cell[0] + cell[2] / 2, cell[1] + cell[3] / 2]);
         if (!spot) continue;
         const letter = String.fromCharCode(97 + close.length);
@@ -1788,6 +1986,7 @@ function halfStep(s, M, S, hv, region) {
         occ.rect(spot.x, spot.y + h - 3.4, spot.x + w, spot.y + h);
         keep.rect(spot.x, spot.y, spot.x + w, spot.y + h);
         const A = drawOpView(s, { sc: cs, d, omit, close: true }, csc, spot.x, spot.y, w, h - 4, occ);
+        viewDims(s, A, occ);
         close.push(A);
         // the same joint ringed in the operation's view
         const M0 = drawn[c.oi], pts = [];
@@ -1913,7 +2112,12 @@ function halfKey(s, M, S, region, hv, info) {
   y = sw(y, (x, yy) => { s.line([x - 5, x + 3.6], [yy, yy], { lw: 0.1, dash: [0.75, 0.5] }); s.circle(x + 4.4, yy, 0.45, { fill: HOLE, lw: 0 }); }, 'Dashed: the line a fixing travels, from its tip through the clearance hole to its pilot hole in the next part. Dark dots: holes, at their true positions; a ring marks one hidden behind a part.');
   y = sw(y, (x, yy) => { [1, 2, 3].forEach((q, k) => seqDot(s, x - 3.5 + k * 3, yy, q)); }, 'Numbers: the order for fixings of one kind: all the 1s, then the 2s. The screws are coloured to match. A run numbered 1 to 12 goes in in that order.');
   y = sw(y, (x, yy) => { drawLabelChip(s, x - 4.5, yy, 'A', 6); s.text(x - 0.6, yy - 0.05, '×8', { size: 6, va: 'middle' }); }, 'Tags: the fixing (key above) and how many go in, in that view, on the copy drawn.');
-  y = sw(y, (x, yy) => { s.rect(x - 5, yy - 0.8, 9, 1.6, { fill: PART_OLD, lw: 0.1 }); s.circle(x - 2, yy, 0.4, { fill: HOLE, lw: 0 }); s.circle(x + 1.5, yy, 0.45, { lw: 0.1, color: [130, 84, 36], dash: [0.4, 0.3] }); }, 'Set-out strips: each line of holes in a part, with every distance from the edge named at its left, to 0.5 mm.');
+  y = sw(y, (x, yy) => {
+    const xs = [x - 5, x - 2.4, x + 0.2, x + 2.8, x + 4.6];
+    s.line([xs[0], xs[4]], [yy - 0.8, yy - 0.8], { lw: 0.1, color: DIM_RGB });
+    for (const xx of xs) s.line([xx - 0.35, xx + 0.35], [yy - 1.15, yy - 0.45], { lw: 0.18, color: DIM_RGB });
+    s.text(x - 0.3, yy + 0.7, '3 × 26', { size: 4.5, ha: 'center', va: 'middle', color: DIM_RGB });
+  }, 'Dimensions: a chain along each line of holes, from the edge of the part the fixing goes through, centre to centre, to the other edge; equal gaps are written once (3 × 155 is three gaps of 155). A second chain across the face places each line from the edges. Lines and parts that repeat are dimensioned once. All to 0.5 mm.');
   sw(y, () => {}, 'Every view is to the scale on its half page and every hole is where the design puts it. Fixings are drawn at their true length; at small scales their thickness is drawn up to 0.3 mm on paper so they stay visible.');
 }
 function pagesDetails(doc, M, S, info) {

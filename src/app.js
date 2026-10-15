@@ -16,6 +16,12 @@ const readLS = (k) => { try { const v = localStorage.getItem(k); return v ? JSON
 const writeLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage off: settings just aren't remembered */ } };
 const defaults = () => JSON.parse(JSON.stringify(C.DEFAULTS));
 let params = Object.assign(defaults(), readLS(LS_KEY) || {});
+// the bed-cabinet sides moved in to the kit's 11 mm gap, with no packers: saved settings still on the old 30 mm
+// default with packers follow, once; a gap someone chose themselves stays
+if (!readLS(LS_KEY + ':gap11')) {
+  if (params.gapHydr === 30 && params.packer === true && params.Tpacker === 18) { params.gapHydr = 11; params.packer = false; }
+  writeLS(LS_KEY + ':gap11', 1);
+}
 params = C.normParams(params);
 let model = null, summary = null, viewer = null, timer = null;
 let viewOpts = Object.assign({ fronts: true, mattress: true, hw: true, section: false, bySheet: false }, readLS(LS_VIEW) || {});
