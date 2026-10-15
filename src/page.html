@@ -1,0 +1,434 @@
+<title>Murphy Wardrobe Builder</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Parametric plywood wardrobe with a Create-A-Bed vertical Murphy bed: live 3D with the bed swing, clearance checks, sheet nesting, A3 drawing set and STEP export.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a workbench. Settings rail on the left, the live model fills the right,
+   results, files and cut sheets sit under the model. Stacks to one column on phones. */
+:root {
+  --bg: #edebe6;          /* sanded birch paper */
+  --panel: #f8f7f3;
+  --ink: #1d1f21;
+  --muted: #5d6166;
+  --line: #d3cfc6;
+  --accent: #a8620a;      /* ply edge amber, deep enough for text on light */
+  --accent-soft: #f3e3c8;
+  --on-accent: #ffffff;
+  --viewer: #e4e2dc;
+  --good: #2c7146; --warn: #9a5700; --bad: #b0281f;
+  --warn-soft: #f6e7cf; --bad-soft: #f5dcd8; --info-soft: #e7e5df;
+  --t6: #7b5cc4; --t12: #138a7e; --t18: #c47a12; --tx: #6b7280;
+  --display: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', sans-serif;
+  --body: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  --r: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151617; --panel: #1c1d1f; --ink: #e8e6e1; --muted: #a09d97; --line: #33322f;
+    --accent: #eea83d; --accent-soft: #3a2c15; --on-accent: #1a1206; --viewer: #222325;
+    --good: #6cc48d; --warn: #f0b154; --bad: #ff8a7e; --warn-soft: #3a2c15; --bad-soft: #3d1e1b; --info-soft: #262624;
+    --t6: #a98ff0; --t12: #4cc7b8; --t18: #f0a64a; --tx: #9ca3af;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151617; --panel: #1c1d1f; --ink: #e8e6e1; --muted: #a09d97; --line: #33322f;
+  --accent: #eea83d; --accent-soft: #3a2c15; --on-accent: #1a1206; --viewer: #222325;
+  --good: #6cc48d; --warn: #f0b154; --bad: #ff8a7e; --warn-soft: #3a2c15; --bad-soft: #3d1e1b; --info-soft: #262624;
+  --t6: #a98ff0; --t12: #4cc7b8; --t18: #f0a64a; --tx: #9ca3af;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.4; }
+* { box-sizing: border-box; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app { min-height: 100%; display: grid; grid-template-rows: auto 1fr; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 12px 16px; gap: 12px; }
+header.top { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+.brand { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; min-width: 0; }
+.brand h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 30px; letter-spacing: 0.01em; line-height: 1; text-wrap: balance; }
+.brand .sub { color: var(--muted); font-size: 14px; }
+.brand .sub b { font-family: var(--mono); font-weight: 500; color: var(--ink); }
+
+.work { display: grid; grid-template-columns: minmax(300px, 370px) minmax(0, 1fr); gap: 12px; min-height: 0; }
+.rail { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); overflow: auto; max-height: calc(100vh - 90px); min-width: 0; align-self: start; position: sticky; top: env(safe-area-inset-top, 0px); }
+.stage { display: grid; grid-template-rows: minmax(420px, 64vh) auto auto auto; gap: 12px; min-width: 0; min-height: 0; }
+
+/* settings */
+details.grp { border-bottom: 1px solid var(--line); }
+details.grp > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; font-family: var(--display); font-weight: 600; font-size: 17px; letter-spacing: 0.04em; text-transform: uppercase; }
+details.grp > summary::-webkit-details-marker { display: none; }
+details.grp > summary .chev { width: 10px; height: 10px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform .15s; flex: none; }
+details.grp[open] > summary .chev { transform: rotate(45deg); }
+.grp-body { padding: 0 14px 14px; display: grid; gap: 10px; }
+.field { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; }
+.field label, .lbl { font-size: 14px; color: var(--ink); }
+.field small, .hint { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.3; }
+.field small b, .hint b { font-family: var(--mono); font-weight: 500; color: var(--ink); }
+.num { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg); }
+.num input { width: 72px; border: 0; background: transparent; padding: 6px 4px 6px 8px; text-align: right; font-family: var(--mono); font-size: 14px; font-variant-numeric: tabular-nums; }
+.num span { padding: 0 8px 0 2px; color: var(--muted); font-size: 12px; font-family: var(--mono); }
+.num input:focus { outline: none; }
+.num:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+select { border: 1px solid var(--line); border-radius: var(--r); background: var(--bg); padding: 6px 8px; font-size: 14px; max-width: 190px; }
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--bg); }
+.stepper button { border: 0; background: transparent; width: 34px; height: 34px; cursor: pointer; font-size: 18px; color: var(--ink); }
+.stepper button:hover { background: var(--accent-soft); }
+.stepper output { min-width: 34px; text-align: center; font-family: var(--mono); font-weight: 500; font-size: 15px; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.check input { width: 17px; height: 17px; accent-color: var(--accent); }
+.sub-hd { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; padding-top: 8px; border-top: 1px dashed var(--line); }
+.sub-hd > span { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+.src { display: inline-block; font-size: 11px; font-family: var(--mono); color: var(--accent); border: 1px solid var(--accent-soft); background: color-mix(in srgb, var(--accent-soft) 45%, transparent); border-radius: 3px; padding: 0 4px; margin-left: 4px; white-space: nowrap; }
+.drawers { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; }
+.drawers .num input { width: 52px; }
+.drawers .dn { font-size: 11px; color: var(--muted); font-family: var(--mono); padding-left: 2px; }
+.row-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.seg button { border: 0; background: var(--bg); padding: 5px 9px; font-size: 13px; cursor: pointer; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: var(--r); padding: 7px 12px; cursor: pointer; font-size: 14px; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn[disabled] { opacity: .55; cursor: progress; }
+.btn.small { font-size: 13px; padding: 4px 9px; }
+table.lib { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.lib th { font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); text-align: left; padding: 2px 3px; }
+table.lib td { padding: 2px 3px; }
+table.lib .num input { width: 54px; padding: 4px 4px 4px 6px; font-size: 13px; }
+table.lib .num.n input { width: 36px; }
+table.lib button { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 16px; padding: 2px 6px; }
+table.lib button:hover { color: var(--bad); }
+
+/* viewer */
+.viewer { position: relative; background: var(--viewer); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; min-height: 360px; }
+.viewer canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.tools { position: absolute; left: 10px; right: 10px; top: 10px; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; pointer-events: none; }
+.tools .seg, .tools .chips { pointer-events: auto; background: var(--panel); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.chips { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; max-width: 100%; }
+.chips label { display: flex; align-items: center; gap: 6px; padding: 5px 10px; font-size: 13px; cursor: pointer; border-left: 1px solid var(--line); }
+.chips label:first-child { border-left: 0; }
+.chips input { accent-color: var(--accent); }
+.vbar { position: absolute; left: 10px; right: 10px; bottom: 10px; display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; flex-wrap: wrap; pointer-events: none; }
+.legend, .front-tag { font-size: 12px; color: var(--muted); background: color-mix(in srgb, var(--panel) 85%, transparent); padding: 4px 8px; border-radius: var(--r); }
+.front-tag { color: var(--ink); }
+.swing { pointer-events: auto; display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 6px 10px; box-shadow: 0 1px 2px rgba(0,0,0,.08); flex: 1 1 340px; max-width: 560px; }
+.swing label { font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+.swing input[type=range] { flex: 1; accent-color: var(--accent); min-width: 80px; }
+.swing output { font-family: var(--mono); font-size: 13px; min-width: 40px; text-align: right; font-variant-numeric: tabular-nums; }
+.swing .play { border: 1px solid var(--line); background: var(--bg); border-radius: var(--r); width: 32px; height: 28px; cursor: pointer; display: grid; place-items: center; }
+.swing .play svg { width: 14px; height: 14px; }
+.swing small { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.legend-sheets { display: none; gap: 10px; }
+.legend-sheets i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.by-sheet .legend-sheets { display: inline-flex; }
+
+/* results */
+.results { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 12px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; min-width: 0; }
+.card h2 { margin: 0 0 10px; font-family: var(--display); font-weight: 600; font-size: 17px; letter-spacing: 0.04em; text-transform: uppercase; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.card h2 small { font-family: var(--body); text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 13px; color: var(--muted); }
+.figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 16px; }
+.fig .k { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.fig .v { font-family: var(--mono); font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.fig .v small { color: var(--muted); font-weight: 400; font-size: 12px; }
+.warns { display: grid; gap: 6px; margin-top: 12px; }
+.warn { display: grid; grid-template-columns: 8px 1fr; gap: 8px; font-size: 13.5px; padding: 7px 10px; border-radius: var(--r); background: var(--warn-soft); }
+.warn::before { content: ""; width: 8px; border-radius: 2px; background: var(--warn); }
+.warn.bad { background: var(--bad-soft); }
+.warn.bad::before { background: var(--bad); }
+.warn.info { background: var(--info-soft); }
+.warn.info::before { background: var(--muted); }
+.warn b { font-weight: 600; }
+.warn span { color: var(--ink); }
+.out-actions { display: grid; gap: 8px; }
+.out-actions .btn { width: 100%; text-align: left; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.out-actions .btn span:last-child { font-family: var(--mono); font-size: 12px; opacity: .8; }
+.status { font-size: 13px; color: var(--muted); min-height: 1.3em; }
+.prog { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.prog > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+.small-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.small-actions .btn { font-size: 13px; padding: 5px 10px; }
+.opt-row { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; }
+
+/* cut sheets */
+.stock { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.stock .s { border: 1px solid var(--line); border-radius: var(--r); padding: 8px 10px; display: grid; gap: 4px; }
+.stock .s .h { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.stock .s .h b { font-family: var(--display); font-size: 18px; font-weight: 700; }
+.stock .s .h span { font-family: var(--mono); font-size: 13px; }
+.stock .bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; display: flex; }
+.stock .bar i { display: block; height: 100%; }
+.stock .s.over { border-color: var(--bad); }
+.stock .s.over .h span { color: var(--bad); font-weight: 600; }
+.sheets { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.sheet { border: 1px solid var(--line); border-radius: var(--r); padding: 6px; min-width: 0; }
+.sheet .cap { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); padding: 0 2px 4px; font-family: var(--mono); }
+.sheet svg { display: block; width: 100%; height: auto; }
+.sheet svg .board { fill: var(--bg); stroke: var(--muted); stroke-width: 2; }
+.sheet svg .pc { stroke: var(--ink); stroke-width: 2; }
+.sheet svg text { fill: var(--ink); font-family: var(--mono); }
+.sheet svg .pc.t6 { fill: color-mix(in srgb, var(--t6) 28%, var(--panel)); }
+.sheet svg .pc.t12 { fill: color-mix(in srgb, var(--t12) 28%, var(--panel)); }
+.sheet svg .pc.t18 { fill: color-mix(in srgb, var(--t18) 28%, var(--panel)); }
+.sheet svg .pc.tx { fill: color-mix(in srgb, var(--tx) 28%, var(--panel)); }
+.tablewrap { overflow-x: auto; margin-top: 12px; }
+table.cut { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 560px; }
+table.cut th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+table.cut td { padding: 4px 6px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); font-variant-numeric: tabular-nums; }
+table.cut td.m { font-family: var(--mono); font-weight: 500; }
+table.cut td.n { font-family: var(--mono); text-align: right; }
+table.cut th.n { text-align: right; }
+table.cut .chip { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; }
+details.more > summary { cursor: pointer; font-size: 13.5px; color: var(--accent); margin-top: 10px; }
+
+.review { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 8px 24px; }
+.review h3 { margin: 0 0 6px; font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.review ol { margin: 0; padding-left: 22px; display: grid; gap: 7px; font-size: 13.5px; max-width: 70ch; }
+.review li::marker { color: var(--accent); font-family: var(--mono); font-size: 12px; }
+.review li b { font-weight: 600; }
+#rv-src { margin-top: 12px; }
+#rv-src a { color: var(--accent); }
+@media (max-width: 900px) {
+  .legend { display: none; }
+  .fig .v { font-size: 14px; }
+  .work { grid-template-columns: minmax(0, 1fr); }
+  .rail { max-height: none; order: 2; position: static; }
+  .stage { order: 1; grid-template-rows: 62vh auto auto auto; }
+  .results { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) { header.top { grid-template-columns: minmax(0, 1fr); } .brand h1 { font-size: 26px; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <h1>Murphy Wardrobe Builder</h1>
+      <div class="sub">Plywood wardrobe around a Create-A-Bed vertical queen, <b id="hdr-size">2458 x 2554 x 600</b>. Change a size and the model, clearances, cut sheets and drawings follow.</div>
+    </div>
+    <div class="seg" role="group" aria-label="Theme" id="theme-seg">
+      <button type="button" data-theme-set="auto" aria-pressed="true">Auto</button>
+      <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
+      <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
+    </div>
+  </header>
+
+  <div class="work">
+    <aside class="rail" aria-label="Settings">
+      <details class="grp" open>
+        <summary>Cavity <i class="chev"></i></summary>
+        <div class="grp-body">
+          <div class="hint">Measured once the old wardrobe is out and the top is open. Everything else follows these three.</div>
+          <div class="field"><label for="W">Width, wall to wall</label><div class="num"><input id="W" type="number" min="1800" max="4000" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><label for="H">Height, floor to ceiling</label><div class="num"><input id="H" type="number" min="2100" max="3200" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="D">Depth</label><small>510 + 90 once the top is opened.</small></div><div class="num"><input id="D" type="number" min="400" max="900" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="sub-hd"><span>Fitting room</span></div>
+          <div class="field"><div><label for="sideClear">Gap to each side wall</label><small>Packed and screwed to the studs.</small></div><div class="num"><input id="sideClear" type="number" min="0" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><label for="backGap">Gap to the back wall</label><div class="num"><input id="backGap" type="number" min="0" max="60" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="frontSetback">Fronts set back</label><small>From the room wall face.</small></div><div class="num"><input id="frontSetback" type="number" min="0" max="100" step="1" inputmode="numeric"><span>mm</span></div></div>
+        </div>
+      </details>
+      <details class="grp" open>
+        <summary>Mattress and bed <i class="chev"></i></summary>
+        <div class="grp-body">
+          <div class="field"><label for="mW">Mattress width</label><div class="num"><input id="mW" type="number" min="800" max="2000" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><label for="mL">Mattress length</label><div class="num"><input id="mL" type="number" min="1800" max="2200" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="mT">Mattress thickness</label><small>Kit takes 8 to 12 in (203 to 305).</small></div><div class="num"><input id="mT" type="number" min="120" max="400" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="sub-hd"><span>Gaps round the bed</span></div>
+          <div class="field"><div><label for="gapMx">Mattress to side rail</label><small>The folded legs live here.</small></div><div class="num"><input id="gapMx" type="number" min="5" max="80" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="gapMy">Mattress to head and foot rails</label><small>2 makes the side rails the kit's 81-1/2 in.</small></div><div class="num"><input id="gapMy" type="number" min="0" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="gapHydr">Side rail to cabinet side</label><small>Your "gaphydr". Packers bring the pivot side back to the kit's spacing.</small></div><div class="num"><input id="gapHydr" type="number" min="5" max="80" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><label for="gapHolder">Bed top to the shelf above</label><div class="num"><input id="gapHolder" type="number" min="0" max="80" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="gapBelow">Floor to face panel and first drawer</label><small>The drawer fronts and the bed face line up here.</small></div><div class="num"><input id="gapBelow" type="number" min="0" max="200" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="faceBelowFrame">Face panel past the frame's head end</label><small>Lifts the frame so the pivot lands at the kit's 11-3/4 in.</small></div><div class="num"><input id="faceBelowFrame" type="number" min="0" max="60" step="0.5" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><label for="faceOverhang">Face panel past the rails</label><div class="num"><input id="faceOverhang" type="number" min="0" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+        </div>
+      </details>
+      <details class="grp" open>
+        <summary>Side towers <i class="chev"></i></summary>
+        <div class="grp-body">
+          <div class="field"><div><span class="lbl">Drawers each side</span><small>Heights are the fronts, bottom first.</small></div>
+            <div class="stepper"><button type="button" id="dr-dec" aria-label="Fewer drawers">&minus;</button><output id="dr-out">4</output><button type="button" id="dr-inc" aria-label="More drawers">+</button></div></div>
+          <div class="drawers" id="drawers"></div>
+          <div class="row-btns"><button type="button" class="btn small" id="dr-equal">Make all the same as the first</button></div>
+          <div class="field"><div><label for="hangClear">Hanging space, clear</label><small>Between the two fixed shelves.</small></div><div class="num"><input id="hangClear" type="number" min="300" max="2000" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><label for="railDrop">Rail centre below the shelf</label><div class="num"><input id="railDrop" type="number" min="25" max="150" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <label class="check"><input type="checkbox" id="topShelf"> <span>Extra shelf halfway up the top compartment</span></label>
+          <div class="sub-hd"><span>Runners</span></div>
+          <div class="field"><label for="runnerClear">Runner clearance each side</label><div class="num"><input id="runnerClear" type="number" min="0" max="30" step="0.1" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="runnerLen">Runner length</label><small>0 picks the longest standard size that fits.</small></div><div class="num"><input id="runnerLen" type="number" min="0" max="900" step="50" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><label for="boxLess">Box lower than its front by</label><div class="num"><input id="boxLess" type="number" min="10" max="150" step="1" inputmode="numeric"><span>mm</span></div></div>
+        </div>
+      </details>
+      <details class="grp">
+        <summary>Fronts <i class="chev"></i></summary>
+        <div class="grp-body">
+          <div class="field"><div><label for="gap">Reveal between fronts</label><small>Your "gapdraw".</small></div><div class="num"><input id="gap" type="number" min="1" max="12" step="0.5" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="gapAbove">Header filler height</label><small>Scribed to the ceiling.</small></div><div class="num"><input id="gapAbove" type="number" min="0" max="300" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="kickCentre">Kick board under the bed</label><small>Auto lowers it to clear the swing.</small></div>
+            <select id="kickCentre"><option value="auto">Auto height</option><option value="full">Same as the sides</option><option value="none">Leave it out</option></select></div>
+          <div class="field"><div><label for="doorHinge">Tower doors hinged on</label><small>Wall side keeps the open door out of the way of the bed.</small></div>
+            <select id="doorHinge"><option value="outer">Wall side</option><option value="inner">Bed side</option></select></div>
+          <div class="field"><label for="frontGap">Fronts off the carcass</label><div class="num"><input id="frontGap" type="number" min="0" max="5" step="0.5" inputmode="decimal"><span>mm</span></div></div>
+        </div>
+      </details>
+      <details class="grp">
+        <summary>Plywood <i class="chev"></i></summary>
+        <div class="grp-body">
+          <div class="field"><div><label for="T">Carcass, fronts, bed frame</label><small>"plythicka"</small></div><div class="num"><input id="T" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="Tb">Drawer boxes</label><small>"plythickb"</small></div><div class="num"><input id="Tb" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><label for="Tback">Backs and drawer bottoms</label><div class="num"><input id="Tback" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><label for="Tsup">Mattress support</label><div class="num"><input id="Tsup" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><label for="Tladder">Bed deck struts</label><div class="num"><input id="Tladder" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><label for="Tplinth">Plinths</label><div class="num"><input id="Tplinth" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><label for="Tpacker">Pivot packers</label><div class="num"><input id="Tpacker" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><label for="Tledge">Headboard ledge</label><div class="num"><input id="Tledge" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><label for="Thead">Backrest, ribs, bedside shelf</label><div class="num"><input id="Thead" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+        </div>
+      </details>
+      <details class="grp">
+        <summary>Create-A-Bed hardware <i class="chev"></i></summary>
+        <div class="grp-body">
+          <div class="hint">From the Deluxe Queen Vertical plan (page numbers in the tags). Heights match the kit's cabinet when the frame sits where the kit puts it; depths are measured from the bed's face, which stands 19 mm proud of the carcass here.</div>
+          <div class="sub-hd"><span>Pivot</span></div>
+          <div class="field"><div><label for="pivotFromRail">From the rail's face-panel edge</label><small><span class="src">p.15: 4 in</span></small></div><div class="num"><input id="pivotFromRail" type="number" min="10" max="300" step="0.1" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="pivotAboveHead">From the rail's head end</label><small><span class="src">p.15: 9 in</span></small></div><div class="num"><input id="pivotAboveHead" type="number" min="30" max="600" step="0.1" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="cabPivotZ">Height in the kit's cabinet</label><small><span class="src">p.22: 11-3/4 in</span> the legs suit this</small></div><div class="num"><input id="cabPivotZ" type="number" min="50" max="600" step="0.1" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="pinGap">Rail to mounting face</label><small><span class="src">p.6: 7/16 in</span> what the pivot bars are made for</small></div><div class="num"><input id="pinGap" type="number" min="0" max="60" step="0.5" inputmode="decimal"><span>mm</span></div></div>
+          <label class="check"><input type="checkbox" id="packer"> <span>Packers under the cabinet-side plates and bed stops</span></label>
+          <div class="field"><label for="packerH">Packer height</label><div class="num"><input id="packerH" type="number" min="200" max="2000" step="10" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><label for="packerDepth">Packer depth</label><div class="num"><input id="packerDepth" type="number" min="80" max="600" step="10" inputmode="numeric"><span>mm</span></div></div>
+          <div class="sub-hd"><span>Gas springs and stops</span></div>
+          <div class="field"><div><label for="springLowAlong">Lower stud, pivot toward head end</label><small><span class="src">p.15: 7-1/2 in</span></small></div><div class="num"><input id="springLowAlong" type="number" min="20" max="600" step="0.1" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="springLowOut">Lower stud past the rail's top edge</label><small><span class="src">p.15</span> the plate overhangs</small></div><div class="num"><input id="springLowOut" type="number" min="-100" max="100" step="0.5" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="springUpFront">Upper stud back from the front</label><small><span class="src">p.22: 10 in</span></small></div><div class="num"><input id="springUpFront" type="number" min="50" max="600" step="0.1" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="springUpZ">Upper stud height, kit cabinet</label><small><span class="src">p.22: 30-3/4 in</span></small></div><div class="num"><input id="springUpZ" type="number" min="200" max="1500" step="0.1" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="stopFront">Bed stop back from the front</label><small><span class="src">p.22: 7-3/8 in</span></small></div><div class="num"><input id="stopFront" type="number" min="50" max="600" step="0.1" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="stopBelowTop">Bed stop below the frame top</label><small><span class="src">p.22: 6 in below the 87-1/8 in vertical</span></small></div><div class="num"><input id="stopBelowTop" type="number" min="10" max="600" step="0.1" inputmode="decimal"><span>mm</span></div></div>
+          <div class="sub-hd"><span>Bed frame</span></div>
+          <div class="field"><div><label for="railD">Side rail depth</label><small><span class="src">p.6: 5-7/8 in</span></small></div><div class="num"><input id="railD" type="number" min="60" max="300" step="0.1" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="headRailD">Head rail depth</label><small><span class="src">p.6: 7-7/8 in</span> stands proud as a pillow lip</small></div><div class="num"><input id="headRailD" type="number" min="18" max="300" step="0.1" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="footRailD">Foot rail depth</label><small><span class="src">p.6: 3 in</span> the legs swing past it</small></div><div class="num"><input id="footRailD" type="number" min="18" max="300" step="0.1" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="railR">Side rail radius, foot end</label><small><span class="src">p.10: 2-7/8 in</span> top corner</small></div><div class="num"><input id="railR" type="number" min="0" max="140" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="legFromFoot">Leg pivot in from the foot</label><small><span class="src">p.10: 3-1/8 in</span></small></div><div class="num"><input id="legFromFoot" type="number" min="20" max="300" step="0.1" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="legFromTop">Leg pivot down from rail top</label><small><span class="src">p.10: 2-1/2 in</span></small></div><div class="num"><input id="legFromTop" type="number" min="10" max="250" step="0.1" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><label for="struts">Deck cross struts</label><div class="num"><input id="struts" type="number" min="2" max="20" step="1" inputmode="numeric"><span>no.</span></div></div>
+          <div class="field"><label for="ladderW">Strut width</label><div class="num"><input id="ladderW" type="number" min="20" max="120" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="sub-hd"><span>Around the bed</span></div>
+          <label class="check"><input type="checkbox" id="ledge"> <span>Headboard ledge behind the pillows</span></label>
+          <div class="field"><label for="ledgeClear">Ledge clear of the swing</label><div class="num"><input id="ledgeClear" type="number" min="0" max="100" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <label class="check"><input type="checkbox" id="headboard"> <span>Reclined backrest over the ledge, with a bedside shelf on top</span></label>
+          <div class="field"><div><label for="headAngle">Backrest lean</label><small>From vertical.</small></div><div class="num"><input id="headAngle" type="number" min="0" max="20" step="0.5" inputmode="decimal"><span>deg</span></div></div>
+          <div class="field"><label for="headH">Backrest height</label><div class="num"><input id="headH" type="number" min="150" max="1200" step="10" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="headGap">Backrest to the open mattress</label><small>How close the pillows get.</small></div><div class="num"><input id="headGap" type="number" min="0" max="80" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="sub-hd"><span>Shelf over the bed</span></div>
+          <label class="check"><input type="checkbox" id="edgeSteel"> <span>Steel flat hidden in the shelf's front edge</span></label>
+          <div class="field"><div><label for="steelH">Steel flat height</label><small>2 mm more than the shelf: it sits proud underneath.</small></div><div class="num"><input id="steelH" type="number" min="10" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><label for="steelT">Steel flat thickness</label><div class="num"><input id="steelT" type="number" min="5" max="20" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="upstand">Lip on the shelf's front edge</label><small>0 keeps the shelf flat so boxes slide in.</small></div><div class="num"><input id="upstand" type="number" min="0" max="200" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="lockType">Safety lock into the foot rail</label><small>Twin pin: two pins on one bar either side of the divider, one pull.</small></div>
+            <select id="lockType"><option value="twin">Twin pin at the divider</option><option value="pins">Two pins mid-bay</option><option value="none">None</option></select></div>
+          <div class="field"><label for="twinSpacing">Twin pin centres</label><div class="num"><input id="twinSpacing" type="number" min="40" max="90" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <label class="check"><input type="checkbox" id="lockTab"> <span>Tab through the flap joint, to unlock without opening a flap</span></label>
+          <div class="field"><label for="lockPinX">Mid-bay pins either side of centre</label><div class="num"><input id="lockPinX" type="number" min="50" max="800" step="10" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><label for="wallRail">Wall rail height</label><div class="num"><input id="wallRail" type="number" min="40" max="200" step="1" inputmode="numeric"><span>mm</span></div></div>
+        </div>
+      </details>
+      <details class="grp">
+        <summary>Sheets and cutting <i class="chev"></i></summary>
+        <div class="grp-body">
+          <div class="hint">The sheets you have. Parts are nested onto them by thickness, with straight through-cuts a track saw can follow.</div>
+          <table class="lib"><thead><tr><th>Thick</th><th>Length</th><th>Width</th><th>Qty</th><th></th></tr></thead><tbody id="lib"></tbody></table>
+          <div class="row-btns"><button type="button" class="btn small" id="lib-add">Add a sheet size</button></div>
+          <div class="field"><label for="kerf">Saw kerf</label><div class="num"><input id="kerf" type="number" min="0" max="8" step="0.1" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><label for="trim">Trim off each sheet edge</label><div class="num"><input id="trim" type="number" min="0" max="30" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <label class="check"><input type="checkbox" id="grain"> <span>Keep the grain running up the visible parts</span></label>
+        </div>
+      </details>
+      <div class="grp-body" style="padding-top:12px">
+        <div class="small-actions">
+          <button type="button" class="btn" id="save-json">Save settings</button>
+          <button type="button" class="btn" id="load-json">Load settings</button>
+          <button type="button" class="btn" id="reset">Back to the TikZ sizes</button>
+          <input type="file" id="load-file" accept="application/json,.json" hidden>
+        </div>
+      </div>
+    </aside>
+
+    <section class="stage">
+      <div class="viewer" id="viewer">
+        <div class="tools">
+          <div class="seg" role="group" aria-label="View">
+            <button type="button" data-view="iso" aria-pressed="true">3D</button>
+            <button type="button" data-view="front" aria-pressed="false">Front</button>
+            <button type="button" data-view="side" aria-pressed="false">Side</button>
+            <button type="button" data-view="top" aria-pressed="false">Top</button>
+          </div>
+          <div class="chips" role="group" aria-label="Show">
+            <label><input type="checkbox" id="v-fronts" checked> Fronts</label>
+            <label><input type="checkbox" id="v-open"> Open fronts</label>
+            <label><input type="checkbox" id="v-section"> Cut at the bed</label>
+            <label><input type="checkbox" id="v-mattress" checked> Mattress</label>
+            <label><input type="checkbox" id="v-hw" checked> Hardware</label>
+            <label><input type="checkbox" id="v-sheet"> By thickness</label>
+          </div>
+        </div>
+        <div class="vbar">
+          <div class="swing">
+            <label for="bed-angle">Bed</label>
+            <button type="button" class="play" id="bed-play" aria-label="Open or close the bed"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg></button>
+            <input type="range" id="bed-angle" min="0" max="90" step="0.5" value="0" aria-label="Bed opening angle">
+            <output id="bed-out">0&deg;</output>
+            <small id="bed-note"></small>
+          </div>
+          <div class="legend legend-sheets"><span><i style="background:var(--t6)"></i>6</span><span><i style="background:var(--t12)"></i>12</span><span><i style="background:var(--t18)"></i>18 mm</span></div>
+          <div class="front-tag" id="front-tag"></div>
+        </div>
+      </div>
+      <div class="results">
+        <div class="card">
+          <h2>This design <small id="sum-note"></small></h2>
+          <div class="figs" id="figs"></div>
+          <div class="warns" id="warns"></div>
+        </div>
+        <div class="card">
+          <h2>Files</h2>
+          <div class="out-actions">
+            <button type="button" class="btn primary" id="dl-pdf"><span>Drawings and cut sheets, A3 PDF</span><span id="pdf-pages">A3</span></button>
+            <button type="button" class="btn" id="dl-step"><span>3D model, STEP</span><span id="step-size">AP214</span></button>
+            <div class="opt-row">
+              <label class="check"><input type="checkbox" id="step-hw" checked> <span>Hardware and mattress in the STEP</span></label>
+              <label class="check"><input type="checkbox" id="step-angle"> <span>Bed at the slider angle</span></label>
+            </div>
+            <button type="button" class="btn" id="dl-csv"><span>Cut list, CSV</span><span>spreadsheet</span></button>
+            <div class="prog" aria-hidden="true"><i id="prog"></i></div>
+            <div class="status" id="status" role="status"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card" id="cut-card">
+        <h2>Cut sheets <small id="cut-note"></small></h2>
+        <div class="stock" id="stock"></div>
+        <div class="sheets" id="sheets"></div>
+        <details class="more" id="cut-more"><summary>Cut list</summary>
+          <div class="tablewrap"><table class="cut" id="cut-table"></table></div>
+        </details>
+      </div>
+      <div class="card" id="review-card">
+        <h2>Design review <small>what changed from murphy_bed.tikz, and what to check before cutting</small></h2>
+        <div class="review">
+          <div><h3>Edits made</h3><ol id="rv-edits"></ol></div>
+          <div><h3>Still to check</h3><ol id="rv-open"></ol></div>
+        </div>
+        <div class="hint" id="rv-src"></div>
+      </div>
+    </section>
+  </div>
+</div>
+<!--SCRIPTS-->

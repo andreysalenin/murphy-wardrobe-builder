@@ -1,0 +1,16 @@
+{
+  "name": "murphy-wardrobe-builder",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Parametric plywood wardrobe around a Create-A-Bed vertical Murphy bed: live 3D with the bed swing, clearance checks, sheet nesting, A3 drawing set and STEP export in one HTML page.",
+  "scripts": {
+    "build": "node build.js",
+    "check": "node test/verify.js",
+    "test": "node test/verify.js && node test/export.js"
+  },
+  "devDependencies": {
+    "jspdf": "2.5.1",
+    "playwright-core": "1.47.2",
+    "three": "0.128.0"
+  }
+}
