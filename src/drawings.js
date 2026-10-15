@@ -76,6 +76,21 @@ function Sheet(doc, num, total, title, scale, info) {
   };
   s.circle = (x, y, r, o) => { o = o || {}; if (o.fill) s.color(o.fill, 'fill'); doc.setLineWidth(o.lw === undefined ? LW_THIN : (o.lw || 0.01)); s.color(o.color || INK); if (o.dash) s.dash(o.dash); doc.circle(x, Y(y), r, o.fill ? (o.lw === 0 ? 'F' : 'FD') : 'S'); if (o.dash) s.dash(null); };
   s.image = (url, x, y, w, h) => doc.addImage(url, 'JPEG', x, Y(y + h), w, h, undefined, 'FAST');
+  // a vector render (VectorRenderer.iso) into the box x, y (bottom left), w x h: filled faces back to front, then edges
+  s.vimage = (img, x, y, w, h) => {
+    if (!img || !img.polys) return;
+    const kx = w / img.px[0], ky = h / img.px[1], y0 = Y(y + h), lwE = Math.max(0.035, Math.min(0.09, w / 2500));
+    for (const pg of img.polys) {
+      const p = pg.p, f = pg.f, segs = [];
+      for (let i = 1; i < p.length; i++) segs.push([(p[i][0] - p[i - 1][0]) * kx, (p[i][1] - p[i - 1][1]) * ky]);
+      doc.setFillColor(f[0], f[1], f[2]); doc.setDrawColor(f[0], f[1], f[2]); doc.setLineWidth(0.04);
+      doc.lines(segs, x + p[0][0] * kx, y0 + p[0][1] * ky, [1, 1], 'FD', true);
+      if (pg.e.length) {
+        doc.setDrawColor(72, 68, 62); doc.setLineWidth(lwE);
+        for (const e of pg.e) doc.line(x + e[0] * kx, y0 + e[1] * ky, x + e[2] * kx, y0 + e[3] * ky);
+      }
+    }
+  };
   s.arrow = (tip, dir, o) => {
     o = o || {};
     const L = o.L || 2.2, W = o.W || 0.62;
@@ -330,13 +345,13 @@ function pageOverview(doc, M, S, I, info) {
   const { P, G } = M;
   const s = Sheet(doc, 1, info.total, 'OVERVIEW', 'NTS', info);
   const hw = 200, hh = hw * I.hero.px[1] / I.hero.px[0];
-  s.image(I.hero.url, 14, 289 - 6 - hh, hw, hh);
+  s.vimage(I.hero, 14, 289 - 6 - hh, hw, hh);
   s.text(16, 289 - 9, 'Closed, from the front left', { size: 6, color: GREY });
   const ow = 132, oh = ow * I.open.px[1] / I.open.px[0];
-  s.image(I.open.url, 14, 12, ow, oh);
+  s.vimage(I.open, 14, 12, ow, oh);
   s.text(16, 12 + oh + 2, 'Bed down, fronts open', { size: 6, color: GREY });
   const tw = 108, th = tw * I.thick.px[1] / I.thick.px[0];
-  s.image(I.thick.url, 150, 12, tw, th);
+  s.vimage(I.thick, 150, 12, tw, th);
   s.text(152, 12 + th + 2, 'Fronts off, coloured by sheet thickness', { size: 6, color: GREY });
   [[6, '6 mm'], [12, '12 mm'], [18, '18 mm']].forEach(([t, l], i) => { s.rect(153 + i * 18, 15, 3, 3, { fill: T_RGB[t], lw: 0 }); s.text(157.5 + i * 18, 15.6, l, { size: 5.6 }); });
   const x0 = 232;
@@ -377,7 +392,7 @@ function pageOverview(doc, M, S, I, info) {
     const top = yEnd - 6, bottom = 42, h = top - bottom;
     if (h > 45) {
       const w = Math.min(176, h * I.cut.px[0] / I.cut.px[1]), hh2 = w * I.cut.px[1] / I.cut.px[0];
-      s.image(I.cut.url, x0 + (176 - w) / 2, bottom + (h - hh2) / 2, w, hh2);
+      s.vimage(I.cut, x0 + (176 - w) / 2, bottom + (h - hh2) / 2, w, hh2);
       s.text(x0, bottom + (h + hh2) / 2 - 2, 'Bed halfway down', { size: 6, color: GREY });
     }
   }
@@ -716,7 +731,7 @@ function pageHardware(doc, M, S, info) {
   // 3. shelf over the bed from above: pins, latches, stays, flap hinges
   const sp = 12, px0 = 258, py0 = 250;
   const vp = View(s, 'top', sp, [px0 + G.xJ / sp, py0], [0, 0]);
-  vp.parts(M.parts.filter(p => !p.leg && !p.mattress && !p.bed), { cut: G.zBm1 + 70, filter: (p) => ['B2', 'B4', 'B5', 'T2', 'LP', 'PL', 'FS', 'D4', 'SF'].includes(p.mark) || (p.mark === 'FH' && p.name.endsWith('plate')) });
+  vp.parts(M.parts.filter(p => !p.leg && !p.mattress && !p.bed), { cut: G.zBm1 + 70, filter: (p) => ['B2', 'B4', 'B5', 'B10', 'B11', 'T2', 'LP', 'PL', 'FS', 'D4', 'SF'].includes(p.mark) || (p.mark === 'FH' && p.name.endsWith('plate')) });
   const yB = vp.P([0, G.yC, 0])[1] - 6;
   if (P.lockType === 'twin') {
     const hs = P.twinSpacing / 2;
@@ -876,11 +891,13 @@ function seqCard(s, B, I, i, x, yTop, cw, ch, tw) {
   s.text(x + 10.5, yTop - 8.4, `${when}, ${st.h} h${st.people === 2 ? ', two people' : ''}${st.overnight ? ', then overnight' : ''}`, { size: 5.3, color: GREY });
   const img = I.steps && I.steps[i];
   tw = tw || 43;
-  const th = img ? tw * img.px[1] / img.px[0] : 0, tTop = yTop - 11;
-  if (img) { s.image(img.url, x + 1.6, tTop - th, tw, th); s.rect(x + 1.6, tTop - th, tw, th, { lw: 0.1, color: LIGHT }); }
+  const tTop = yTop - 11;
   // fixings, from the bottom up
   const fx = st.fix.map(([k, n]) => `${n} x ${FIX_SHORT[k] || k}`);
   const rows = Math.ceil(fx.length / 2), fy0 = yTop - ch + 2.2, fTop = fy0 + rows * 2.7 + 3.2;
+  let th = img ? tw * img.px[1] / img.px[0] : 0;
+  if (img && th > tTop - fTop - 1.5) { th = tTop - fTop - 1.5; tw = th * img.px[0] / img.px[1]; }
+  if (img) { s.rect(x + 1.6, tTop - th, tw, th, { fill: WHITE, lw: 0 }); s.vimage(img, x + 1.6, tTop - th, tw, th); s.rect(x + 1.6, tTop - th, tw, th, { lw: 0.1, color: LIGHT }); }
   if (fx.length) {
     s.text(x + 2.4, fTop - 1.6, 'FIXINGS', { size: 4.9, weight: 'bold', color: GREY });
     fx.forEach((t, k) => s.text(x + 2.4 + (k % 2) * (cw / 2 - 1), fy0 + (rows - 1 - Math.floor(k / 2)) * 2.7 + 0.6, t, { size: 5.2 }));
@@ -1052,13 +1069,16 @@ async function make(model, summary, progress) {
   const I = {};
   let R = null;
   try {
-    R = new V.PrintRenderer();
+    R = new V.VectorRenderer();
     R.setModel(model);
     I.hero = R.iso(-28, 14, 1400, 1400 * 0.82, { bed: 0 });
     progress('Rendering views...', 0.2); await tick();
     I.open = R.iso(-35, 20, 1100, 760, { bed: 90, open: 1, mattress: true });
+    await tick();
     I.thick = R.iso(-28, 14, 1000, 760, { bed: 0, fronts: false, bySheet: true, mattress: false, hw: false });
+    await tick();
     I.cut = R.iso(-40, 12, 1400, 900, { bed: 50 });
+    await tick();
     // build sequence: everything fitted so far, this step's parts in the accent colour
     const B = summary.build;
     I.steps = [];
@@ -1070,12 +1090,12 @@ async function make(model, summary, progress) {
         only: (p) => B.stepOf(p) <= i,
         colourOverride: (p, ms) => isNew(p) ? ms.mat(p.hw ? 'step-new-hw' : 'step-new', { color: p.hw ? 0x8a4a06 : 0xe0954a, rough: 0.7 })
           : p.hw ? null : ms.mat('step-old', { color: 0xe4dfd6, rough: 0.9 }) }, 1.02));
-      if (i % 4 === 3) { progress('Rendering the build steps...', 0.2 + 0.12 * i / B.steps.length); await tick(); }
+      progress('Rendering the build steps...', 0.2 + 0.12 * i / B.steps.length); await tick();
     }
   } catch (e) {
     console.warn('3D renders unavailable', e);
-    const blank = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.fillStyle = '#999'; g.font = '28px sans-serif'; g.fillText('3D view not available in this browser', 40, 60); return { url: c.toDataURL('image/jpeg', 0.9), px: [w, h] }; };
-    I.hero = blank(1500, 1080); I.open = blank(1100, 760); I.thick = blank(1000, 760);
+    const blank = (w, h) => ({ px: [w, h], polys: [] });
+    I.hero = blank(1400, 1148); I.open = blank(1100, 760); I.thick = blank(1000, 760); I.cut = null;
   }
   if (R) R.dispose();
   // the plans fit 8 per page (the 9th slot is under the title block)

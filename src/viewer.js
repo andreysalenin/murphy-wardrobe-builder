@@ -189,6 +189,7 @@ class MurphyScene {
       mesh.position.copy(va).addScaledVector(dir, 0.5);
       mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
       mesh.scale.set(d / 2, L, d / 2);
+      mesh.userData.seg = [a, b, d]; // for the vector renderer
     };
     for (const r of this.dyns) {
       if (r.dyn.type === 'link') { const [l1, l2] = C.linkEnds(r.dyn, T(r.dyn.id)); aim(r.mesh, l1[0], l1[1], 5); aim(r.rod, l2[0], l2[1], 5); continue; }
@@ -513,5 +514,229 @@ class PrintRenderer {
   dispose() { this.renderer.dispose(); }
 }
 
-root.MurphyViewer = { Viewer, PrintRenderer, MurphyScene, T_COL };
+/* ------------------------------------------------------------------ vector renders for the PDF
+   The same scene as the screen, drawn as flat-shaded polygons so the drawings stay vector: front faces only, put in
+   exact back-to-front order by a BSP tree (faces are split where they cross another face's plane), faces wholly
+   hidden behind others dropped with a small software buffer of fragment ids, and the hard edges (more than 28 deg
+   between faces, as on screen) drawn as lines. No WebGL needed. */
+const V_EPS = 1e-4, V_HARD = Math.cos(28 * Math.PI / 180);
+const vdot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+function vnorm(a) { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; }
+function newellN(pts) {
+  let x = 0, y = 0, z = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    x += (a[1] - b[1]) * (a[2] + b[2]); y += (a[2] - b[2]) * (a[0] + b[0]); z += (a[0] - b[0]) * (a[1] + b[1]);
+  }
+  const l = Math.hypot(x, y, z);
+  return l > 1e-9 ? [x / l, y / l, z / l] : null;
+}
+function loopConvex(lp) {
+  let sg = 0;
+  for (let i = 0; i < lp.length; i++) {
+    const a = lp[i], b = lp[(i + 1) % lp.length], c = lp[(i + 2) % lp.length];
+    const cr = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
+    if (Math.abs(cr) < 1e-9) continue;
+    if (!sg) sg = Math.sign(cr); else if (Math.sign(cr) !== sg) return false;
+  }
+  return true;
+}
+// faces of a prism in world space: { pts, hard: [edge i -> i+1 is a hard edge] }
+function prismFaces(pr, tf) {
+  const outer = C.loopPolyline(pr.loops[0], 12), holes = pr.loops.slice(1).map(l => C.loopPolyline(l, 12));
+  const P = (q, w) => tf(C.to3(pr, q, w)), faces = [];
+  const corner = (lp) => lp.map((q, i) => {
+    const a = lp[(i - 1 + lp.length) % lp.length], c = lp[(i + 1) % lp.length];
+    const d1 = [q[0] - a[0], q[1] - a[1]], d2 = [c[0] - q[0], c[1] - q[1]], l = Math.hypot(...d1) * Math.hypot(...d2) || 1;
+    return (d1[0] * d2[0] + d1[1] * d2[1]) / l < V_HARD;
+  });
+  if (!holes.length && loopConvex(outer)) {
+    const t = outer.map(q => P(q, pr.len)), b = outer.map(q => P(q, 0)).reverse();
+    faces.push({ pts: t, hard: t.map(() => true) }, { pts: b, hard: b.map(() => true) });
+  } else {
+    const all = outer.concat(...holes), loops = [outer, ...holes], start = [];
+    let o = 0; for (const lp of loops) { start.push(o); o += lp.length; }
+    const loopOf = (k) => { let j = 0; while (j + 1 < start.length && k >= start[j + 1]) j++; return j; };
+    const boundary = (i, k) => { const li = loopOf(i); if (li !== loopOf(k)) return false; const n = loops[li].length, a = i - start[li], b = k - start[li]; return (a + 1) % n === b || (b + 1) % n === a; };
+    const tris = THREE.ShapeUtils.triangulateShape(outer.map(q => new THREE.Vector2(q[0], q[1])), holes.map(h => h.map(q => new THREE.Vector2(q[0], q[1]))));
+    for (const tr of tris) {
+      let [i, j, k] = tr;
+      const cr = (all[j][0] - all[i][0]) * (all[k][1] - all[i][1]) - (all[j][1] - all[i][1]) * (all[k][0] - all[i][0]);
+      if (cr < 0) [j, k] = [k, j];
+      faces.push({ pts: [P(all[i], pr.len), P(all[j], pr.len), P(all[k], pr.len)], hard: [boundary(i, j), boundary(j, k), boundary(k, i)] });
+      faces.push({ pts: [P(all[i], 0), P(all[k], 0), P(all[j], 0)], hard: [boundary(i, k), boundary(k, j), boundary(j, i)] });
+    }
+  }
+  for (const lp of [outer, ...holes]) {
+    const h = corner(lp);
+    for (let i = 0; i < lp.length; i++) {
+      const j = (i + 1) % lp.length;
+      faces.push({ pts: [P(lp[i], 0), P(lp[j], 0), P(lp[j], pr.len), P(lp[i], pr.len)], hard: [true, h[j], true, h[i]] });
+    }
+  }
+  return faces;
+}
+// split a convex polygon by the plane N.x = w; keeps the hard flags, the new edge along the plane is soft
+function vsplit(poly, N, w) {
+  const pts = poly.pts, n = pts.length, ds = pts.map(p => vdot(N, p) - w);
+  let f = 0, b = 0;
+  for (const x of ds) { if (x > V_EPS) f++; else if (x < -V_EPS) b++; }
+  if (!f && !b) return { co: poly };
+  if (!b) return { front: poly };
+  if (!f) return { back: poly };
+  const F = [], Fh = [], B = [], Bh = [];
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n, a = pts[i], c = pts[j], da = ds[i], dc = ds[j], h = poly.hard[i];
+    const cross = (da > V_EPS && dc < -V_EPS) || (da < -V_EPS && dc > V_EPS);
+    const x = cross ? (() => { const t = da / (da - dc); return [a[0] + (c[0] - a[0]) * t, a[1] + (c[1] - a[1]) * t, a[2] + (c[2] - a[2]) * t]; })() : null;
+    if (da >= -V_EPS) { F.push(a); Fh.push(dc >= -V_EPS || da > V_EPS ? h : false); }
+    if (da <= V_EPS) { B.push(a); Bh.push(dc <= V_EPS || da < -V_EPS ? h : false); }
+    if (cross) {
+      if (da > V_EPS) { F.push(x); Fh.push(false); B.push(x); Bh.push(h); }
+      else { B.push(x); Bh.push(false); F.push(x); Fh.push(h); }
+    }
+  }
+  return { front: F.length >= 3 ? Object.assign({}, poly, { pts: F, hard: Fh }) : null, back: B.length >= 3 ? Object.assign({}, poly, { pts: B, hard: Bh }) : null };
+}
+function bspOrder(polys, d) {
+  if (!polys.length) return [];
+  const root = { list: polys }, stack = [root];
+  while (stack.length) {
+    const node = stack.pop(), list = node.list;
+    node.list = null;
+    let best = 0, bestScore = Infinity;
+    const K = Math.min(list.length, 10), M = Math.min(list.length, 48);
+    for (let k = 0; k < K && bestScore > 0; k++) {
+      const i = Math.floor(k * list.length / K), c = list[i], w = vdot(c.n, c.pts[0]);
+      let sp = 0;
+      for (let jj = 0; jj < M; jj++) {
+        const q = list[Math.floor(jj * list.length / M)];
+        let f = 0, b = 0;
+        for (const p of q.pts) { const x = vdot(c.n, p) - w; if (x > V_EPS) f++; else if (x < -V_EPS) b++; }
+        if (f && b) sp++;
+      }
+      if (sp < bestScore) { bestScore = sp; best = i; }
+    }
+    const sp = list[best], N = sp.n, w = vdot(N, sp.pts[0]), co = [sp], F = [], B = [];
+    for (let i = 0; i < list.length; i++) {
+      if (i === best) continue;
+      const r = vsplit(list[i], N, w);
+      if (r.co) co.push(r.co);
+      if (r.front) F.push(r.front);
+      if (r.back) B.push(r.back);
+    }
+    Object.assign(node, { N, w, co });
+    if (F.length) { node.front = { list: F }; stack.push(node.front); }
+    if (B.length) { node.back = { list: B }; stack.push(node.back); }
+  }
+  const out = [], st = [root];
+  while (st.length) {
+    const t = st.pop();
+    if (t.emit) { for (const p of t.emit) out.push(p); continue; }
+    const camFront = vdot(t.N, d) > 0, first = camFront ? t.back : t.front, last = camFront ? t.front : t.back;
+    if (last) st.push(last);
+    st.push({ emit: t.co });
+    if (first) st.push(first);
+  }
+  return out;
+}
+// ids of the convex polygons (screen px, back to front) that keep at least one pixel
+function visibleIds(polys, W, H) {
+  const buf = new Int32Array(W * H).fill(-1);
+  polys.forEach((pg, id) => {
+    const p = pg.s;
+    let y0 = Infinity, y1 = -Infinity;
+    for (const q of p) { if (q[1] < y0) y0 = q[1]; if (q[1] > y1) y1 = q[1]; }
+    const r0 = Math.max(0, Math.ceil(y0 - 0.5)), r1 = Math.min(H - 1, Math.floor(y1 - 0.5));
+    for (let r = r0; r <= r1; r++) {
+      const yc = r + 0.5;
+      let xl = Infinity, xr = -Infinity;
+      for (let i = 0; i < p.length; i++) {
+        const a = p[i], b = p[(i + 1) % p.length];
+        if ((a[1] <= yc && b[1] > yc) || (b[1] <= yc && a[1] > yc)) {
+          const x = a[0] + (yc - a[1]) / (b[1] - a[1]) * (b[0] - a[0]);
+          if (x < xl) xl = x; if (x > xr) xr = x;
+        }
+      }
+      const c0 = Math.max(0, Math.ceil(xl - 0.5)), c1 = Math.min(W - 1, Math.floor(xr - 0.5));
+      for (let c = c0; c <= c1; c++) buf[r * W + c] = id;
+    }
+  });
+  const vis = new Uint8Array(polys.length);
+  for (let i = 0; i < buf.length; i++) if (buf[i] >= 0) vis[buf[i]] = 1;
+  return vis;
+}
+const LIN2SRGB = (x) => { x = Math.max(0, Math.min(1, x)); return x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 1 / 2.4) - 0.055; };
+
+class VectorRenderer {
+  constructor() { this.ms = new MurphyScene(); }
+  setModel(model) { this.ms.setModel(model); }
+  // same arguments as PrintRenderer.iso; returns { px: [w, h], polys: [{ p: [[x, y]...] (px, y down), f: [r, g, b], e: [[x1, y1, x2, y2]...] }] }
+  iso(az, el, pxW, pxH, opts, margin) {
+    const ms = this.ms;
+    ms.opts = Object.assign({ fronts: true, open: 0, section: false, mattress: true, hw: true, bySheet: false, bed: 0, room: false }, opts || {});
+    ms.apply();
+    ms.root.updateMatrixWorld(true);
+    const azr = az * Math.PI / 180, elr = el * Math.PI / 180;
+    const d = [Math.cos(elr) * Math.sin(azr), Math.cos(elr) * Math.cos(azr), Math.sin(elr)];
+    const right = vnorm([-d[1], d[0], 0]), up = [d[1] * right[2] - d[2] * right[1], d[2] * right[0] - d[0] * right[2], d[0] * right[1] - d[1] * right[0]];
+    // lights as on screen: hemisphere, a key light from about the viewer, a fill from the right
+    const keyD = vnorm([d[0] * 4000 - 1500, d[1] * 4000 + 1200, d[2] * 4000 + 3000]), fillD = vnorm([2500, 1500, 800]);
+    const sky = [0.965, 0.953, 0.933], ground = [0.275, 0.259, 0.235];
+    const shade = (col, metal, n) => {
+      const t = 0.5 + 0.5 * n[2], k = 0.72 * Math.max(0, vdot(n, keyD)), f = 0.22 * Math.max(0, vdot(n, fillD));
+      const dm = 1 - 0.45 * (metal || 0);
+      return [0, 1, 2].map(i => Math.round(255 * LIN2SRGB(col[i] * dm * ((ground[i] + (sky[i] - ground[i]) * t) * 0.62 + k + f) + (metal ? 0.04 * k : 0))));
+    };
+    const polys = [], tmp = new THREE.Vector3();
+    const addSolid = (pr, M, col, metal, edges, noFit) => {
+      const tf = (p) => { tmp.set(p[0], p[1], p[2]).applyMatrix4(M); return [tmp.x, tmp.y, tmp.z]; };
+      for (const fc of prismFaces(pr, tf)) {
+        const n = newellN(fc.pts);
+        if (!n || vdot(n, d) <= 1e-7) continue;
+        fc.n = n; fc.fill = shade(col, metal, n); fc.edges = edges; fc.noFit = noFit;
+        polys.push(fc);
+      }
+    };
+    const I = new THREE.Matrix4();
+    const all = [];
+    for (const r of ms.recs) {
+      const vis = ms.isVisible(r.grp);
+      if (!vis && !(ms.opts.fitAll && !r.part.mattress)) continue;
+      const meshes = r.dyn ? [r.mesh, r.rod] : [r.mesh];
+      for (const mesh of meshes) {
+        const mat = mesh.material, col = [mat.color.r, mat.color.g, mat.color.b];
+        const sols = r.dyn ? (mesh.userData.seg ? [C.cyl(mesh.userData.seg[2], mesh.userData.seg[0], mesh.userData.seg[1])] : []) : r.part.solids;
+        const M = r.dyn ? I : mesh.matrixWorld;
+        if (!vis) { for (const pr of sols) for (const c of C.prismCorners(pr)) all.push(tmp.set(c[0], c[1], c[2]).applyMatrix4(M).clone()); continue; }
+        for (const pr of sols) addSolid(pr, M, col, mat.metalness, r.style.edges !== false, !!(ms.opts.fitAll && r.part.mattress));
+      }
+    }
+    const order = bspOrder(polys, d);
+    // fit the frame
+    const proj = (p) => [vdot(p, right), vdot(p, up)];
+    let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
+    const grow = (q) => { if (q[0] < xmin) xmin = q[0]; if (q[0] > xmax) xmax = q[0]; if (q[1] < ymin) ymin = q[1]; if (q[1] > ymax) ymax = q[1]; };
+    for (const pg of order) { pg.s2 = pg.pts.map(proj); if (!pg.noFit) pg.s2.forEach(grow); }
+    for (const v of all) grow(proj([v.x, v.y, v.z]));
+    margin = margin || 1.04;
+    const cx = (xmin + xmax) / 2, cy = (ymin + ymax) / 2;
+    let hw = (xmax - xmin) / 2 * margin, hh = (ymax - ymin) / 2 * margin;
+    if (hw / hh > pxW / pxH) hh = hw * pxH / pxW; else hw = hh * pxW / pxH;
+    const k = pxW / (2 * hw), S = (q) => [pxW / 2 + (q[0] - cx) * k, pxH / 2 - (q[1] - cy) * k];
+    for (const pg of order) pg.s = pg.s2.map(S);
+    const vis = visibleIds(order, Math.round(pxW), Math.round(pxH));
+    const out = [];
+    order.forEach((pg, i) => {
+      if (!vis[i]) return;
+      const r1 = (x) => Math.round(x * 100) / 100, p = pg.s.map(q => [r1(q[0]), r1(q[1])]), e = [];
+      if (pg.edges) pg.hard.forEach((h, j) => { if (h) { const a = p[j], b = p[(j + 1) % p.length]; e.push([a[0], a[1], b[0], b[1]]); } });
+      out.push({ p, f: pg.fill, e });
+    });
+    return { px: [pxW, pxH], polys: out, faces: polys.length, fragments: order.length };
+  }
+  dispose() {}
+}
+
+root.MurphyViewer = { Viewer, PrintRenderer, VectorRenderer, MurphyScene, T_COL };
 })(typeof window !== 'undefined' ? window : globalThis);

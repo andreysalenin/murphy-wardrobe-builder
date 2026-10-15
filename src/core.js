@@ -594,11 +594,16 @@ function build(params, opts) {
   put({ mark: 'B4', name: G.twin ? 'Centre divider, notched at its front foot' : 'Centre divider', grp: bgrp, kind: 'carcass', T, L: G.zTopB - G.zBm1, W: G.cD, grain: true, band: G.zTopB - G.zBm1,
     solids: [yzPrism(-T / 2, T / 2, divLoop)],
     draw: G.twin ? [box(-T / 2, T / 2, G.yB1, G.yC - G.twin.notchD, G.zBm1, G.zBm1 + G.twin.notchH), box(-T / 2, T / 2, G.yB1, G.yC, G.zBm1 + G.twin.notchH, G.zTopB)] : null });
+  // upper bed-cabinet sides between the shelf and the top: the doubled 2 x 18 sides run the full height, broken only
+  // by the shelf (and its steel flat) passing through, so shelf, sides, divider and top make one box
   for (const [S, s] of sides) {
-    const [x0, x1] = sx(s, G.xJ - T, G.xJ);
-    put({ mark: 'B10', name: `Cleat under the top (${S})`, grp: bgrp, kind: 'carcass', T, L: G.cD - T - 20, W: 36, grain: false,
-      solids: [box(x0, x1, G.yB1 + T, G.yC - 20, G.zTopB - 36, G.zTopB)] });
+    const [x0, x1] = sx(s, G.xB, G.xJ);
+    put({ mark: 'B10', name: `Bed-cabinet side, upper (${S})`, grp: bgrp, kind: 'carcass', T, L: G.antClear, W: G.cD, grain: true, band: G.antClear,
+      solids: [box(x0, x1, G.yB1, G.yC, G.zBm1, G.zTopB)] });
   }
+  // 6 mm back over the shelf space: on the back edges of the shelf, upper sides, divider and top, tying the box
+  put({ mark: 'B11', name: 'Back over the bed, 6 mm', grp: bgrp, kind: 'back', T: P.Tback, L: 2 * G.xJ, W: G.zTop - G.zBm0 - 4, grain: false,
+    solids: [box(-G.xJ, G.xJ, G.yB0, G.yB1, G.zBm0 + 2, G.zTop - 2)] });
   if (P.upstand > 0) for (const [S, s] of sides) {
     const [x0, x1] = sx(s, T / 2, G.xJ);
     put({ mark: 'B5', name: `Shelf stiffener, front (${S})`, grp: bgrp, kind: 'carcass', T, L: G.xJ - T / 2, W: P.upstand, grain: false, band: G.xJ - T / 2,
@@ -607,13 +612,13 @@ function build(params, opts) {
   put({ mark: 'B6', name: 'Wall rail under the shelf', grp: bgrp, kind: 'carcass', T, L: 2 * G.xB, W: P.wallRail, grain: false,
     solids: [box(-G.xB, G.xB, G.yB1, G.yB1 + T, G.zBm0 - P.wallRail, G.zBm0)] });
   for (const [S, s] of sides) {
-    const [x0, x1] = sx(s, T / 2, G.xJ);
-    put({ mark: 'B7', name: `Wall rail under the top (${S})`, grp: bgrp, kind: 'carcass', T, L: G.xJ - T / 2, W: P.wallRail, grain: false,
+    const [x0, x1] = sx(s, T / 2, G.xB);
+    put({ mark: 'B7', name: `Wall rail under the top (${S})`, grp: bgrp, kind: 'carcass', T, L: G.xB - T / 2, W: P.wallRail, grain: false,
       solids: [box(x0, x1, G.yB1, G.yB1 + T, G.zTopB - P.wallRail, G.zTopB)] });
   }
   // flaps above the bed: hinged at the top edge, gas stays each side, a push latch, and the safety pins behind them
   const flapAxis = [G.yF, G.flapZ[1]];
-  G.flapHw = { hinges: [G.flapX[0] + 90, G.flapX[1] - 90], stays: [G.xJ - 12, T / 2 + 12], latch: Math.min(G.flapX[1] - 160, Math.max(G.flapX[0] + 160, (G.flapX[0] + G.flapX[1]) / 2 + 170)) };
+  G.flapHw = { hinges: [G.flapX[0] + 90, G.flapX[1] - 90], stays: [G.xB - 12, T / 2 + 12], latch: Math.min(G.flapX[1] - 160, Math.max(G.flapX[0] + 160, (G.flapX[0] + G.flapX[1]) / 2 + 170)) };
   G.pinY = Math.min(G.yFb - P.footRailD / 2, G.yC - (P.upstand > 0 ? T : 0) - 27);
   for (const [S, s] of sides) {
     const [x0, x1] = sx(s, G.flapX[0], G.flapX[1]);
@@ -663,7 +668,7 @@ function build(params, opts) {
   if (P.gapAbove >= T + 10) {
     const bw = 30, xe = Math.min(G.xOo, G.plankL / 2);
     for (const [nmB, x0, x1] of [['Header batten (R)', -xe, -G.xJ], ['Header batten, centre', -G.xJ, G.xJ], ['Header batten (L)', G.xJ, xe]])
-      put({ mark: 'B11', name: nmB, cutName: 'Header batten', grp: 'fronts-C', kind: 'carcass', T, L: x1 - x0, W: bw, grain: false,
+      put({ mark: 'B12', name: nmB, cutName: 'Header batten', grp: 'fronts-C', kind: 'carcass', T, L: x1 - x0, W: bw, grain: false,
         solids: [box(x0, x1, G.yFb - bw, G.yFb, G.zTop, G.zTop + T)] });
   }
 
@@ -1015,14 +1020,14 @@ function reviewNotes(model, S) {
   const { P, G } = model, f0 = (v) => String(Math.round(v));
   const st18 = S ? S.sheets.find(q => q.T === P.T) : null;
   const edits = [
-    ['Modules that fit the sheets', `Full-height sides of ${f0(P.H)} do not come out of a 2440 sheet. The wardrobe is two towers on plinths plus a bed cabinet: tower sides ${f0(G.zTopB - G.zPl - P.T)} between a top and bottom, bed-cabinet sides ${f0(G.zBm0)} from the floor to the shelf above the bed. The doubled ${2 * P.T} mm sides of the TikZ become one tower side screwed to one bed-cabinet side.`],
+    ['Modules that fit the sheets', `Full-height sides of ${f0(P.H)} do not come out of a 2440 sheet. The wardrobe is two towers on plinths plus a bed cabinet: tower sides ${f0(G.zTopB - G.zPl - P.T)} between a top and bottom, bed-cabinet sides ${f0(G.zBm0)} from the floor to the shelf above the bed and ${f0(G.antClear)} from the shelf to the top. The doubled ${2 * P.T} mm sides of the TikZ stay doubled the full height, one tower side screwed to the bed-cabinet sides, broken only where the shelf and its steel flat pass through; a 6 mm back over the shelf space ties the box together like the towers' backs.`],
     ['Room to fit and scribe', `${P.sideClear} mm each side and ${P.backGap} mm at the back for packers into the studs; the doors still finish ${P.gap} mm off the walls as drawn. The ${f0(P.gapAbove)} header filler is scribed to the ceiling.`],
     ['Bed frame where the kit puts it', `The plan puts the pivot 9 in from the rail's head end and 11-3/4 in off the floor, so the kit's frame sits 2-3/4 in (70) up. Here the face panel still starts at ${f0(P.gapBelow)} in line with the drawers, but the frame starts ${f0(P.faceBelowFrame)} higher, behind it, and the mattress end gaps are ${P.gapMy} mm, not 7. The pivot lands at ${f0(G.pivot[1])}, the legs reach the floor as supplied, and the side rails come out at ${f0(G.frameL)} (kit: 81-1/2 in = 2070).`],
     ['Pivot packers', `The TikZ leaves ${f0(P.gapHydr)} mm between the side rail and the cabinet side; the kit is built for 7/16 in (11 mm). ${P.packer ? f0(P.Tpacker) + ' mm packers under the pivot plates, upper ball studs and stops bring it to ' + f0(G.effGap) + ' mm. Use machine screws ' + f0(P.Tpacker) + ' mm longer than the kit\'s through the packers' : 'Without packers the pivot bars may not reach'}.`],
     ['Plinths and kick boards', `Each tower sits on a ${f0(G.zPl)} high ladder plinth so it can be levelled; the bed-cabinet sides go to the floor like the kit's verticals. ${G.kickC ? `One kick board runs right across, ${f0(G.kickC)} high because the face panel's bottom edge sweeps down to ${f0(G.clear.minZ)} mm off the floor as the bed turns; the drawers and tower plinths sit ${f0(G.drawerDrop)} lower to match, and the header filler is one piece too.` : 'There is no kick board under the bed, so each tower has its own.'}`],
     ['Headboard', G.head && !G.head.skipped ? `The bed's swing bulges furthest back at pivot height (${f0(G.clear.minY)} from the wall), so the ledge stays below mattress height at ${f0(G.ledge.y)}. Above the mattress nothing swings back, so a ${f0(P.headH)} backrest steps out to ${P.headGap} mm behind the open mattress and leans back ${P.headAngle} deg, on three tapered ribs, with a ${f0(G.head.capY - G.yB1)} deep bedside shelf on top at ${f0(G.head.top + P.Thead)}.` : G.ledge && !G.ledge.skipped ? `A ${f0(G.ledge.y - G.yB1)} deep ledge at mattress height fills the gap behind the open mattress.` : 'Turned off: pillows can fall behind the head of the open bed.'],
     ['Shelf above the bed', `It spans ${f0(2 * G.xB)} only ${f0(P.gapHolder)} mm above the closed bed. The centre divider carries it: glued and screwed to the shelf and the top, it turns the shelf into two ${f0(G.xB + P.T / 2)} mm bays held on three sides. ${P.edgeSteel ? `A ${f0(P.steelH)} x ${f0(P.steelT)} steel flat let into the front edge, ${f0(P.steelH - P.T)} mm proud underneath and hidden by the flaps, stiffens the free edge and takes the push latches.` : ''} ${P.upstand > 0 ? `A ${f0(P.upstand)} mm lip runs along the front edge.` : 'The top is flat to the front edge, so boxes slide straight in.'} Worst case, one bay holding 100 kg a square metre: about ${G.shelfSag.toFixed(1)} mm over time.`],
-    ['Shelf fixings', 'The divider only works if it cannot rack: glue it with Dominos or biscuits and screws along each edge (no deep housing). Make the shelf, divider, top and their wall rails up as one box on the floor, slide it in onto the bed-cabinet sides, screw it down and through the tower sides, then fit the cleats under the top and screw the rails into the studs; the build sequence sheets have the steps and screws.'],
+    ['Shelf fixings', 'The divider only works if it cannot rack: glue it with Dominos or biscuits and screws along each edge (no deep housing). Make the shelf, upper sides, divider, top, wall rails and the 6 mm back up as one box on the floor, slide it in onto the bed-cabinet sides, screw it down and through the tower sides, and screw the rails into the studs; the build sequence sheets have the steps and screws.'],
     ['Safety lock', P.lockType === 'twin' ? `A twin pin straddles the centre divider behind the flap joint: two 10 mm pins ${f0(P.twinSpacing)} apart, nutted through one steel bar, run through a hardwood block in the divider's front notch and go ${P.lockDepth} mm into the foot rail. One pull through either flap lifts both 30 mm; a spring ball plunger holds them up while the bed is down.${P.lockTab ? ' A 2 mm tab on the bar pokes out through the flap joint, so it can be lifted without opening a flap, and shows whether it is locked.' : ''}`
       : P.lockType === 'pins' ? `Two 10 mm drop pins, ${f0(P.lockPinX)} either side of centre behind the flaps, go down through the shelf and ${P.lockDepth} mm into the foot rail. Lift both before lowering the bed.` : 'Turned off.'],
     ['Wall anchoring', `The gas springs pull the cabinet forward as the bed comes down. ${f0(P.wallRail)} mm wall rails under the shelf and under the top take screws into the studs (the kit asks for four 3 in screws through its header rear rail for a queen).`],
@@ -1158,7 +1163,7 @@ function assembly(model, sheets) {
   const sideL = G.zTopB - G.zPl - T, backL = (G.zTop - G.zPl) - 2 * G.backInset;
   const holes = runnerHoles(G.runner), useR = holes.length > 3 ? 4 : holes.length;
   const doorHinges = parts.filter(p => p.hinges).reduce((a, p) => a + p.hinges.length, 0);
-  const B7L = G.xJ - T / 2, cleatL = G.cD - T - 20;
+  const B7L = G.xB - T / 2, backH = G.zTop - G.zBm0 - 4;
   const usedSheets = (sheets || []).reduce((a, q) => a + (q.used || 0), 0);
   const band = parts.filter(p => !p.hw).reduce((a, p) => a + (p.band || 0), 0) / 1000;
   const isPlate = (p) => /arm and \d+ mm plate$/.test(p.name);
@@ -1189,16 +1194,19 @@ function assembly(model, sheets) {
     text: `${P.packer ? 'Glue and screw the packers to the bed-cabinet sides, then' : 'First'} fit the kit's cabinet plates (pivots, upper ball studs, bed stops) from sheet 5 while the sides are loose. Stand each side against its tower, plumb, and screw through the tower side into it from inside the tower, two rows every 300.` });
   if (P.packer) add(st, 's30', 2 * (2 * nS(P.packerH, 50, 250) + 4));
   add(st, 's30', 2 * 2 * nS(G.zBm0, 80, 300)); add(st, 'kit', 8);
-  st = step({ title: 'Make up the shelf box', h: 2.5, parts: (p) => ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'SF'].includes(p.mark),
-    text: `On the floor: ${P.edgeSteel ? `bed the steel flat in epoxy or PU adhesive in the shelf's front notch and screw it every 150; ` : ''}screw the wall rail under the shelf through the shelf; glue the divider between the shelf and the top with Dominos and screw through both into it; screw the top's two wall rails on through the top. Check it is square.` });
+  const boxParts = ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B10', 'B11', 'SF'];
+  st = step({ title: 'Make up the shelf box', h: 3, people: 2, parts: (p) => boxParts.includes(p.mark),
+    text: `On the floor: ${P.edgeSteel ? `bed the steel flat in epoxy or PU adhesive in the shelf's front notch and screw it every 150; ` : ''}screw the wall rail under the shelf through the shelf. Glue, dowel and screw the two upper sides between the shelf and the top (through the shelf and the top into their edges), the divider in the middle with Dominos, and the top's wall rails. Square it, then glue and screw the 6 mm back onto the back edges every 150: it ties the two sides together.` });
   if (P.edgeSteel) add(st, 's35', nS(2 * G.xB, 50, 150));
-  add(st, 's50', nS(2 * G.xB)); add(st, 'dom', 2 * nD(G.cD)); add(st, 's50', nS(G.cD) + nS(G.cD - (G.twin ? G.twin.notchD : 0)) + 2 * nS(B7L));
-  st = step({ title: 'Fit the shelf box', h: 2, people: 2, parts: (p) => p.mark === 'B10', hl: (p) => ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'SF'].includes(p.mark),
-    text: `Slide the box in from the front onto the bed-cabinet sides. Screw down through the shelf into them and, from inside the towers, through the tower sides into the shelf's and the top's ends. Then the cleats under the top: screw them to the tower sides and up into the top. Screw the three wall rails into the studs.` });
-  add(st, 's50', 2 * nS(G.cD) + 2 * nS(G.cD) + 2 * 3); add(st, 's30', 2 * nS(cleatL)); add(st, 's50', 2 * nS(cleatL));
+  add(st, 's50', nS(2 * G.xB)); add(st, 'd8', 2 * 2 * nD(G.cD)); add(st, 's50', 2 * 2 * nS(G.cD));
+  add(st, 'dom', 2 * nD(G.cD)); add(st, 's50', nS(G.cD) + nS(G.cD - (G.twin ? G.twin.notchD : 0)) + 2 * nS(B7L));
+  add(st, 'b20', 2 * nS(2 * G.xJ, 25, 150) + 2 * nS(backH, 25, 150) + nS(backH, 25, 150));
+  st = step({ title: 'Fit the shelf box', h: 1.5, people: 2, parts: () => false, hl: (p) => boxParts.includes(p.mark),
+    text: `Slide the box in from the front onto the bed-cabinet sides, so the upper sides stand on the lower ones with the shelf between. Screw down through the shelf into the lower sides and, from inside the towers, through the tower sides into the upper sides, two rows. Screw the three wall rails through the back into the studs.` });
+  add(st, 's50', 2 * nS(G.cD)); add(st, 's30', 2 * 2 * nS(G.antClear, 50, 200));
   add(st, 'w75', 2 * studs(2 * G.xB) + 2 * 2 * studs(B7L));
   st = step({ title: 'Flaps, stays, latches' + (G.twin ? ' and twin pin' : ''), h: 2, parts: (p) => ['D4', 'FH', 'FS', 'PL'].includes(p.mark) || (p.mark === 'LP' && !p.bed),
-    text: `Hinge plates under the top (${G.hingeFlap.H} mm, ${G.hingeFlap.code}), hinges in the flaps, then hang them and set the reveals. Gas stays on the tower sides and the divider, push latches drilled 10 into the shelf edge.${G.twin ? ' Glue and screw the twin-pin block into the divider\'s notch, press the bushes in and try the pins.' : ''}` });
+    text: `Hinge plates under the top (${G.hingeFlap.H} mm, ${G.hingeFlap.code}), hinges in the flaps, then hang them and set the reveals. Gas stays on the upper sides and the divider, push latches drilled 10 into the shelf edge.${G.twin ? ' Glue and screw the twin-pin block into the divider\'s notch, press the bushes in and try the pins.' : ''}` });
   add(st, 'h17', 4 * 2); add(st, 'h15', 4 * 2 + 4 * 4); if (G.twin) add(st, 's50', 4);
   const nStrut = parts.filter(p => p.mark === 'F6').length;
   st = step({ title: 'Bed frame and gas springs', h: 4, people: 2, parts: (p) => (p.bed && !p.mattress && p.mark !== 'HD' && p.mark !== 'SP') || p.mark === 'GS', bed: 70,
@@ -1221,7 +1229,7 @@ function assembly(model, sheets) {
   st = step({ title: 'Hang the doors', h: Math.round(parts.filter(p => p.mark === 'D1' || p.mark === 'D2').length * 0.4 * 2) / 2, parts: (p) => p.mark === 'D1' || p.mark === 'D2' || (p.mark === 'HG' && !isPlate(p)),
     text: `Screw the hinges into the cups, clip them onto the plates and adjust: side ±2, depth +3/-2, height ±2 for even ${f0(P.gap)} reveals.` });
   add(st, 'h15', doorHinges * 2);
-  st = step({ title: 'Kick board and header', h: 1.5, parts: (p) => /^K[1-4]$/.test(p.mark) || p.mark === 'B11',
+  st = step({ title: 'Kick board and header', h: 1.5, parts: (p) => /^K[1-4]$/.test(p.mark) || p.mark === 'B12',
     text: `Glue and pin the battens to the back of the header at its bottom edge, scribe the header to the ceiling, then screw up through the tops into the battens from inside the top compartments and through the flaps. Kick board: construction adhesive on the plinth fronts and the bed-cabinet sides' front edges, and two brads at each.` });
   add(st, 's30', nTow * nS(G.towerW, 40, 150) + nS(2 * G.xJ, 50, 250)); add(st, 'brad', 2 * 4 + 3 * 4);
   st = step({ title: 'Handles, adjust, final checks', h: 1.5, parts: () => true, bed: 0,
@@ -1287,6 +1295,19 @@ function packBest(list, stock, kerf, trim) {
     const r = packGuillotine(list.slice().sort(so), stock, kerf, trim, fit, split);
     const score = [r.unplaced.length, r.bins.length, r.lastFill];
     if (!best || score[0] < best.score[0] || (score[0] === best.score[0] && (score[1] < best.score[1] || (score[1] === best.score[1] && score[2] < best.score[2])))) best = Object.assign(r, { score });
+  }
+  // still parts over: try perturbed orders (seeded, so the same design always nests the same way)
+  if (best.unplaced.length) {
+    let seed = 12345;
+    const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+    const fits = ['baf', 'bssf', 'blsf'], splits = ['sas', 'las', 'minas', 'maxas'];
+    for (let it = 0; it < 400 && best.unplaced.length; it++) {
+      const jit = 0.15 + 0.35 * rnd(), keyed = list.map(p => [p, Math.max(p.L, p.W) * (1 + jit * (rnd() - 0.5)) + (rnd() < 0.5 ? p.L * p.W / 1e4 : 0)]);
+      keyed.sort((a, b) => b[1] - a[1]);
+      const r = packGuillotine(keyed.map(k => k[0]), stock, kerf, trim, fits[Math.floor(rnd() * 3)], splits[Math.floor(rnd() * 4)]);
+      const score = [r.unplaced.length, r.bins.length, r.lastFill];
+      if (score[0] < best.score[0] || (score[0] === best.score[0] && (score[1] < best.score[1] || (score[1] === best.score[1] && score[2] < best.score[2])))) best = Object.assign(r, { score });
+    }
   }
   return best;
 }
@@ -1541,7 +1562,7 @@ function makeZip(files) { // files: [{name, data: Uint8Array}]
   return out;
 }
 
-const api = { DEFAULTS, COLORS, SOURCES, HW_ASSUMPTIONS, reviewNotes, assembly, RUNNER_STD, RUNNER_HW, HINGE_HW, runnerHoles, hingeFit, PLY_DENSITY, normParams, derived, build, cutList, nest, summary, writeSTEP, makeZip, crc32,
+const api = { DEFAULTS, COLORS, SOURCES, HW_ASSUMPTIONS, reviewNotes, assembly, cyl, box, RUNNER_STD, RUNNER_HW, HINGE_HW, runnerHoles, hingeFit, PLY_DENSITY, normParams, derived, build, cutList, nest, summary, writeSTEP, makeZip, crc32,
   prismBox, prismCorners, prismVolume, loopPolyline, to3, rot2, rotYZ, rotatePrism, legGeom, legPsi, bedProfile, clearances, hingeZs, springEnds, stayEnds, springSolids, staySolids, linkEnds, linkSolids, rectLoopR01 };
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
 else root.MurphyCore = api;

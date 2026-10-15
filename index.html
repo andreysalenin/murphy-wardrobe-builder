@@ -1446,11 +1446,16 @@ function build(params, opts) {
   put({ mark: 'B4', name: G.twin ? 'Centre divider, notched at its front foot' : 'Centre divider', grp: bgrp, kind: 'carcass', T, L: G.zTopB - G.zBm1, W: G.cD, grain: true, band: G.zTopB - G.zBm1,
     solids: [yzPrism(-T / 2, T / 2, divLoop)],
     draw: G.twin ? [box(-T / 2, T / 2, G.yB1, G.yC - G.twin.notchD, G.zBm1, G.zBm1 + G.twin.notchH), box(-T / 2, T / 2, G.yB1, G.yC, G.zBm1 + G.twin.notchH, G.zTopB)] : null });
+  // upper bed-cabinet sides between the shelf and the top: the doubled 2 x 18 sides run the full height, broken only
+  // by the shelf (and its steel flat) passing through, so shelf, sides, divider and top make one box
   for (const [S, s] of sides) {
-    const [x0, x1] = sx(s, G.xJ - T, G.xJ);
-    put({ mark: 'B10', name: `Cleat under the top (${S})`, grp: bgrp, kind: 'carcass', T, L: G.cD - T - 20, W: 36, grain: false,
-      solids: [box(x0, x1, G.yB1 + T, G.yC - 20, G.zTopB - 36, G.zTopB)] });
+    const [x0, x1] = sx(s, G.xB, G.xJ);
+    put({ mark: 'B10', name: `Bed-cabinet side, upper (${S})`, grp: bgrp, kind: 'carcass', T, L: G.antClear, W: G.cD, grain: true, band: G.antClear,
+      solids: [box(x0, x1, G.yB1, G.yC, G.zBm1, G.zTopB)] });
   }
+  // 6 mm back over the shelf space: on the back edges of the shelf, upper sides, divider and top, tying the box
+  put({ mark: 'B11', name: 'Back over the bed, 6 mm', grp: bgrp, kind: 'back', T: P.Tback, L: 2 * G.xJ, W: G.zTop - G.zBm0 - 4, grain: false,
+    solids: [box(-G.xJ, G.xJ, G.yB0, G.yB1, G.zBm0 + 2, G.zTop - 2)] });
   if (P.upstand > 0) for (const [S, s] of sides) {
     const [x0, x1] = sx(s, T / 2, G.xJ);
     put({ mark: 'B5', name: `Shelf stiffener, front (${S})`, grp: bgrp, kind: 'carcass', T, L: G.xJ - T / 2, W: P.upstand, grain: false, band: G.xJ - T / 2,
@@ -1459,13 +1464,13 @@ function build(params, opts) {
   put({ mark: 'B6', name: 'Wall rail under the shelf', grp: bgrp, kind: 'carcass', T, L: 2 * G.xB, W: P.wallRail, grain: false,
     solids: [box(-G.xB, G.xB, G.yB1, G.yB1 + T, G.zBm0 - P.wallRail, G.zBm0)] });
   for (const [S, s] of sides) {
-    const [x0, x1] = sx(s, T / 2, G.xJ);
-    put({ mark: 'B7', name: `Wall rail under the top (${S})`, grp: bgrp, kind: 'carcass', T, L: G.xJ - T / 2, W: P.wallRail, grain: false,
+    const [x0, x1] = sx(s, T / 2, G.xB);
+    put({ mark: 'B7', name: `Wall rail under the top (${S})`, grp: bgrp, kind: 'carcass', T, L: G.xB - T / 2, W: P.wallRail, grain: false,
       solids: [box(x0, x1, G.yB1, G.yB1 + T, G.zTopB - P.wallRail, G.zTopB)] });
   }
   // flaps above the bed: hinged at the top edge, gas stays each side, a push latch, and the safety pins behind them
   const flapAxis = [G.yF, G.flapZ[1]];
-  G.flapHw = { hinges: [G.flapX[0] + 90, G.flapX[1] - 90], stays: [G.xJ - 12, T / 2 + 12], latch: Math.min(G.flapX[1] - 160, Math.max(G.flapX[0] + 160, (G.flapX[0] + G.flapX[1]) / 2 + 170)) };
+  G.flapHw = { hinges: [G.flapX[0] + 90, G.flapX[1] - 90], stays: [G.xB - 12, T / 2 + 12], latch: Math.min(G.flapX[1] - 160, Math.max(G.flapX[0] + 160, (G.flapX[0] + G.flapX[1]) / 2 + 170)) };
   G.pinY = Math.min(G.yFb - P.footRailD / 2, G.yC - (P.upstand > 0 ? T : 0) - 27);
   for (const [S, s] of sides) {
     const [x0, x1] = sx(s, G.flapX[0], G.flapX[1]);
@@ -1515,7 +1520,7 @@ function build(params, opts) {
   if (P.gapAbove >= T + 10) {
     const bw = 30, xe = Math.min(G.xOo, G.plankL / 2);
     for (const [nmB, x0, x1] of [['Header batten (R)', -xe, -G.xJ], ['Header batten, centre', -G.xJ, G.xJ], ['Header batten (L)', G.xJ, xe]])
-      put({ mark: 'B11', name: nmB, cutName: 'Header batten', grp: 'fronts-C', kind: 'carcass', T, L: x1 - x0, W: bw, grain: false,
+      put({ mark: 'B12', name: nmB, cutName: 'Header batten', grp: 'fronts-C', kind: 'carcass', T, L: x1 - x0, W: bw, grain: false,
         solids: [box(x0, x1, G.yFb - bw, G.yFb, G.zTop, G.zTop + T)] });
   }
 
@@ -1867,14 +1872,14 @@ function reviewNotes(model, S) {
   const { P, G } = model, f0 = (v) => String(Math.round(v));
   const st18 = S ? S.sheets.find(q => q.T === P.T) : null;
   const edits = [
-    ['Modules that fit the sheets', `Full-height sides of ${f0(P.H)} do not come out of a 2440 sheet. The wardrobe is two towers on plinths plus a bed cabinet: tower sides ${f0(G.zTopB - G.zPl - P.T)} between a top and bottom, bed-cabinet sides ${f0(G.zBm0)} from the floor to the shelf above the bed. The doubled ${2 * P.T} mm sides of the TikZ become one tower side screwed to one bed-cabinet side.`],
+    ['Modules that fit the sheets', `Full-height sides of ${f0(P.H)} do not come out of a 2440 sheet. The wardrobe is two towers on plinths plus a bed cabinet: tower sides ${f0(G.zTopB - G.zPl - P.T)} between a top and bottom, bed-cabinet sides ${f0(G.zBm0)} from the floor to the shelf above the bed and ${f0(G.antClear)} from the shelf to the top. The doubled ${2 * P.T} mm sides of the TikZ stay doubled the full height, one tower side screwed to the bed-cabinet sides, broken only where the shelf and its steel flat pass through; a 6 mm back over the shelf space ties the box together like the towers' backs.`],
     ['Room to fit and scribe', `${P.sideClear} mm each side and ${P.backGap} mm at the back for packers into the studs; the doors still finish ${P.gap} mm off the walls as drawn. The ${f0(P.gapAbove)} header filler is scribed to the ceiling.`],
     ['Bed frame where the kit puts it', `The plan puts the pivot 9 in from the rail's head end and 11-3/4 in off the floor, so the kit's frame sits 2-3/4 in (70) up. Here the face panel still starts at ${f0(P.gapBelow)} in line with the drawers, but the frame starts ${f0(P.faceBelowFrame)} higher, behind it, and the mattress end gaps are ${P.gapMy} mm, not 7. The pivot lands at ${f0(G.pivot[1])}, the legs reach the floor as supplied, and the side rails come out at ${f0(G.frameL)} (kit: 81-1/2 in = 2070).`],
     ['Pivot packers', `The TikZ leaves ${f0(P.gapHydr)} mm between the side rail and the cabinet side; the kit is built for 7/16 in (11 mm). ${P.packer ? f0(P.Tpacker) + ' mm packers under the pivot plates, upper ball studs and stops bring it to ' + f0(G.effGap) + ' mm. Use machine screws ' + f0(P.Tpacker) + ' mm longer than the kit\'s through the packers' : 'Without packers the pivot bars may not reach'}.`],
     ['Plinths and kick boards', `Each tower sits on a ${f0(G.zPl)} high ladder plinth so it can be levelled; the bed-cabinet sides go to the floor like the kit's verticals. ${G.kickC ? `One kick board runs right across, ${f0(G.kickC)} high because the face panel's bottom edge sweeps down to ${f0(G.clear.minZ)} mm off the floor as the bed turns; the drawers and tower plinths sit ${f0(G.drawerDrop)} lower to match, and the header filler is one piece too.` : 'There is no kick board under the bed, so each tower has its own.'}`],
     ['Headboard', G.head && !G.head.skipped ? `The bed's swing bulges furthest back at pivot height (${f0(G.clear.minY)} from the wall), so the ledge stays below mattress height at ${f0(G.ledge.y)}. Above the mattress nothing swings back, so a ${f0(P.headH)} backrest steps out to ${P.headGap} mm behind the open mattress and leans back ${P.headAngle} deg, on three tapered ribs, with a ${f0(G.head.capY - G.yB1)} deep bedside shelf on top at ${f0(G.head.top + P.Thead)}.` : G.ledge && !G.ledge.skipped ? `A ${f0(G.ledge.y - G.yB1)} deep ledge at mattress height fills the gap behind the open mattress.` : 'Turned off: pillows can fall behind the head of the open bed.'],
     ['Shelf above the bed', `It spans ${f0(2 * G.xB)} only ${f0(P.gapHolder)} mm above the closed bed. The centre divider carries it: glued and screwed to the shelf and the top, it turns the shelf into two ${f0(G.xB + P.T / 2)} mm bays held on three sides. ${P.edgeSteel ? `A ${f0(P.steelH)} x ${f0(P.steelT)} steel flat let into the front edge, ${f0(P.steelH - P.T)} mm proud underneath and hidden by the flaps, stiffens the free edge and takes the push latches.` : ''} ${P.upstand > 0 ? `A ${f0(P.upstand)} mm lip runs along the front edge.` : 'The top is flat to the front edge, so boxes slide straight in.'} Worst case, one bay holding 100 kg a square metre: about ${G.shelfSag.toFixed(1)} mm over time.`],
-    ['Shelf fixings', 'The divider only works if it cannot rack: glue it with Dominos or biscuits and screws along each edge (no deep housing). Make the shelf, divider, top and their wall rails up as one box on the floor, slide it in onto the bed-cabinet sides, screw it down and through the tower sides, then fit the cleats under the top and screw the rails into the studs; the build sequence sheets have the steps and screws.'],
+    ['Shelf fixings', 'The divider only works if it cannot rack: glue it with Dominos or biscuits and screws along each edge (no deep housing). Make the shelf, upper sides, divider, top, wall rails and the 6 mm back up as one box on the floor, slide it in onto the bed-cabinet sides, screw it down and through the tower sides, and screw the rails into the studs; the build sequence sheets have the steps and screws.'],
     ['Safety lock', P.lockType === 'twin' ? `A twin pin straddles the centre divider behind the flap joint: two 10 mm pins ${f0(P.twinSpacing)} apart, nutted through one steel bar, run through a hardwood block in the divider's front notch and go ${P.lockDepth} mm into the foot rail. One pull through either flap lifts both 30 mm; a spring ball plunger holds them up while the bed is down.${P.lockTab ? ' A 2 mm tab on the bar pokes out through the flap joint, so it can be lifted without opening a flap, and shows whether it is locked.' : ''}`
       : P.lockType === 'pins' ? `Two 10 mm drop pins, ${f0(P.lockPinX)} either side of centre behind the flaps, go down through the shelf and ${P.lockDepth} mm into the foot rail. Lift both before lowering the bed.` : 'Turned off.'],
     ['Wall anchoring', `The gas springs pull the cabinet forward as the bed comes down. ${f0(P.wallRail)} mm wall rails under the shelf and under the top take screws into the studs (the kit asks for four 3 in screws through its header rear rail for a queen).`],
@@ -2010,7 +2015,7 @@ function assembly(model, sheets) {
   const sideL = G.zTopB - G.zPl - T, backL = (G.zTop - G.zPl) - 2 * G.backInset;
   const holes = runnerHoles(G.runner), useR = holes.length > 3 ? 4 : holes.length;
   const doorHinges = parts.filter(p => p.hinges).reduce((a, p) => a + p.hinges.length, 0);
-  const B7L = G.xJ - T / 2, cleatL = G.cD - T - 20;
+  const B7L = G.xB - T / 2, backH = G.zTop - G.zBm0 - 4;
   const usedSheets = (sheets || []).reduce((a, q) => a + (q.used || 0), 0);
   const band = parts.filter(p => !p.hw).reduce((a, p) => a + (p.band || 0), 0) / 1000;
   const isPlate = (p) => /arm and \d+ mm plate$/.test(p.name);
@@ -2041,16 +2046,19 @@ function assembly(model, sheets) {
     text: `${P.packer ? 'Glue and screw the packers to the bed-cabinet sides, then' : 'First'} fit the kit's cabinet plates (pivots, upper ball studs, bed stops) from sheet 5 while the sides are loose. Stand each side against its tower, plumb, and screw through the tower side into it from inside the tower, two rows every 300.` });
   if (P.packer) add(st, 's30', 2 * (2 * nS(P.packerH, 50, 250) + 4));
   add(st, 's30', 2 * 2 * nS(G.zBm0, 80, 300)); add(st, 'kit', 8);
-  st = step({ title: 'Make up the shelf box', h: 2.5, parts: (p) => ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'SF'].includes(p.mark),
-    text: `On the floor: ${P.edgeSteel ? `bed the steel flat in epoxy or PU adhesive in the shelf's front notch and screw it every 150; ` : ''}screw the wall rail under the shelf through the shelf; glue the divider between the shelf and the top with Dominos and screw through both into it; screw the top's two wall rails on through the top. Check it is square.` });
+  const boxParts = ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B10', 'B11', 'SF'];
+  st = step({ title: 'Make up the shelf box', h: 3, people: 2, parts: (p) => boxParts.includes(p.mark),
+    text: `On the floor: ${P.edgeSteel ? `bed the steel flat in epoxy or PU adhesive in the shelf's front notch and screw it every 150; ` : ''}screw the wall rail under the shelf through the shelf. Glue, dowel and screw the two upper sides between the shelf and the top (through the shelf and the top into their edges), the divider in the middle with Dominos, and the top's wall rails. Square it, then glue and screw the 6 mm back onto the back edges every 150: it ties the two sides together.` });
   if (P.edgeSteel) add(st, 's35', nS(2 * G.xB, 50, 150));
-  add(st, 's50', nS(2 * G.xB)); add(st, 'dom', 2 * nD(G.cD)); add(st, 's50', nS(G.cD) + nS(G.cD - (G.twin ? G.twin.notchD : 0)) + 2 * nS(B7L));
-  st = step({ title: 'Fit the shelf box', h: 2, people: 2, parts: (p) => p.mark === 'B10', hl: (p) => ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'SF'].includes(p.mark),
-    text: `Slide the box in from the front onto the bed-cabinet sides. Screw down through the shelf into them and, from inside the towers, through the tower sides into the shelf's and the top's ends. Then the cleats under the top: screw them to the tower sides and up into the top. Screw the three wall rails into the studs.` });
-  add(st, 's50', 2 * nS(G.cD) + 2 * nS(G.cD) + 2 * 3); add(st, 's30', 2 * nS(cleatL)); add(st, 's50', 2 * nS(cleatL));
+  add(st, 's50', nS(2 * G.xB)); add(st, 'd8', 2 * 2 * nD(G.cD)); add(st, 's50', 2 * 2 * nS(G.cD));
+  add(st, 'dom', 2 * nD(G.cD)); add(st, 's50', nS(G.cD) + nS(G.cD - (G.twin ? G.twin.notchD : 0)) + 2 * nS(B7L));
+  add(st, 'b20', 2 * nS(2 * G.xJ, 25, 150) + 2 * nS(backH, 25, 150) + nS(backH, 25, 150));
+  st = step({ title: 'Fit the shelf box', h: 1.5, people: 2, parts: () => false, hl: (p) => boxParts.includes(p.mark),
+    text: `Slide the box in from the front onto the bed-cabinet sides, so the upper sides stand on the lower ones with the shelf between. Screw down through the shelf into the lower sides and, from inside the towers, through the tower sides into the upper sides, two rows. Screw the three wall rails through the back into the studs.` });
+  add(st, 's50', 2 * nS(G.cD)); add(st, 's30', 2 * 2 * nS(G.antClear, 50, 200));
   add(st, 'w75', 2 * studs(2 * G.xB) + 2 * 2 * studs(B7L));
   st = step({ title: 'Flaps, stays, latches' + (G.twin ? ' and twin pin' : ''), h: 2, parts: (p) => ['D4', 'FH', 'FS', 'PL'].includes(p.mark) || (p.mark === 'LP' && !p.bed),
-    text: `Hinge plates under the top (${G.hingeFlap.H} mm, ${G.hingeFlap.code}), hinges in the flaps, then hang them and set the reveals. Gas stays on the tower sides and the divider, push latches drilled 10 into the shelf edge.${G.twin ? ' Glue and screw the twin-pin block into the divider\'s notch, press the bushes in and try the pins.' : ''}` });
+    text: `Hinge plates under the top (${G.hingeFlap.H} mm, ${G.hingeFlap.code}), hinges in the flaps, then hang them and set the reveals. Gas stays on the upper sides and the divider, push latches drilled 10 into the shelf edge.${G.twin ? ' Glue and screw the twin-pin block into the divider\'s notch, press the bushes in and try the pins.' : ''}` });
   add(st, 'h17', 4 * 2); add(st, 'h15', 4 * 2 + 4 * 4); if (G.twin) add(st, 's50', 4);
   const nStrut = parts.filter(p => p.mark === 'F6').length;
   st = step({ title: 'Bed frame and gas springs', h: 4, people: 2, parts: (p) => (p.bed && !p.mattress && p.mark !== 'HD' && p.mark !== 'SP') || p.mark === 'GS', bed: 70,
@@ -2073,7 +2081,7 @@ function assembly(model, sheets) {
   st = step({ title: 'Hang the doors', h: Math.round(parts.filter(p => p.mark === 'D1' || p.mark === 'D2').length * 0.4 * 2) / 2, parts: (p) => p.mark === 'D1' || p.mark === 'D2' || (p.mark === 'HG' && !isPlate(p)),
     text: `Screw the hinges into the cups, clip them onto the plates and adjust: side ±2, depth +3/-2, height ±2 for even ${f0(P.gap)} reveals.` });
   add(st, 'h15', doorHinges * 2);
-  st = step({ title: 'Kick board and header', h: 1.5, parts: (p) => /^K[1-4]$/.test(p.mark) || p.mark === 'B11',
+  st = step({ title: 'Kick board and header', h: 1.5, parts: (p) => /^K[1-4]$/.test(p.mark) || p.mark === 'B12',
     text: `Glue and pin the battens to the back of the header at its bottom edge, scribe the header to the ceiling, then screw up through the tops into the battens from inside the top compartments and through the flaps. Kick board: construction adhesive on the plinth fronts and the bed-cabinet sides' front edges, and two brads at each.` });
   add(st, 's30', nTow * nS(G.towerW, 40, 150) + nS(2 * G.xJ, 50, 250)); add(st, 'brad', 2 * 4 + 3 * 4);
   st = step({ title: 'Handles, adjust, final checks', h: 1.5, parts: () => true, bed: 0,
@@ -2139,6 +2147,19 @@ function packBest(list, stock, kerf, trim) {
     const r = packGuillotine(list.slice().sort(so), stock, kerf, trim, fit, split);
     const score = [r.unplaced.length, r.bins.length, r.lastFill];
     if (!best || score[0] < best.score[0] || (score[0] === best.score[0] && (score[1] < best.score[1] || (score[1] === best.score[1] && score[2] < best.score[2])))) best = Object.assign(r, { score });
+  }
+  // still parts over: try perturbed orders (seeded, so the same design always nests the same way)
+  if (best.unplaced.length) {
+    let seed = 12345;
+    const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+    const fits = ['baf', 'bssf', 'blsf'], splits = ['sas', 'las', 'minas', 'maxas'];
+    for (let it = 0; it < 400 && best.unplaced.length; it++) {
+      const jit = 0.15 + 0.35 * rnd(), keyed = list.map(p => [p, Math.max(p.L, p.W) * (1 + jit * (rnd() - 0.5)) + (rnd() < 0.5 ? p.L * p.W / 1e4 : 0)]);
+      keyed.sort((a, b) => b[1] - a[1]);
+      const r = packGuillotine(keyed.map(k => k[0]), stock, kerf, trim, fits[Math.floor(rnd() * 3)], splits[Math.floor(rnd() * 4)]);
+      const score = [r.unplaced.length, r.bins.length, r.lastFill];
+      if (score[0] < best.score[0] || (score[0] === best.score[0] && (score[1] < best.score[1] || (score[1] === best.score[1] && score[2] < best.score[2])))) best = Object.assign(r, { score });
+    }
   }
   return best;
 }
@@ -2393,7 +2414,7 @@ function makeZip(files) { // files: [{name, data: Uint8Array}]
   return out;
 }
 
-const api = { DEFAULTS, COLORS, SOURCES, HW_ASSUMPTIONS, reviewNotes, assembly, RUNNER_STD, RUNNER_HW, HINGE_HW, runnerHoles, hingeFit, PLY_DENSITY, normParams, derived, build, cutList, nest, summary, writeSTEP, makeZip, crc32,
+const api = { DEFAULTS, COLORS, SOURCES, HW_ASSUMPTIONS, reviewNotes, assembly, cyl, box, RUNNER_STD, RUNNER_HW, HINGE_HW, runnerHoles, hingeFit, PLY_DENSITY, normParams, derived, build, cutList, nest, summary, writeSTEP, makeZip, crc32,
   prismBox, prismCorners, prismVolume, loopPolyline, to3, rot2, rotYZ, rotatePrism, legGeom, legPsi, bedProfile, clearances, hingeZs, springEnds, stayEnds, springSolids, staySolids, linkEnds, linkSolids, rectLoopR01 };
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
 else root.MurphyCore = api;
@@ -2592,6 +2613,7 @@ class MurphyScene {
       mesh.position.copy(va).addScaledVector(dir, 0.5);
       mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
       mesh.scale.set(d / 2, L, d / 2);
+      mesh.userData.seg = [a, b, d]; // for the vector renderer
     };
     for (const r of this.dyns) {
       if (r.dyn.type === 'link') { const [l1, l2] = C.linkEnds(r.dyn, T(r.dyn.id)); aim(r.mesh, l1[0], l1[1], 5); aim(r.rod, l2[0], l2[1], 5); continue; }
@@ -2916,7 +2938,231 @@ class PrintRenderer {
   dispose() { this.renderer.dispose(); }
 }
 
-root.MurphyViewer = { Viewer, PrintRenderer, MurphyScene, T_COL };
+/* ------------------------------------------------------------------ vector renders for the PDF
+   The same scene as the screen, drawn as flat-shaded polygons so the drawings stay vector: front faces only, put in
+   exact back-to-front order by a BSP tree (faces are split where they cross another face's plane), faces wholly
+   hidden behind others dropped with a small software buffer of fragment ids, and the hard edges (more than 28 deg
+   between faces, as on screen) drawn as lines. No WebGL needed. */
+const V_EPS = 1e-4, V_HARD = Math.cos(28 * Math.PI / 180);
+const vdot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+function vnorm(a) { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; }
+function newellN(pts) {
+  let x = 0, y = 0, z = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    x += (a[1] - b[1]) * (a[2] + b[2]); y += (a[2] - b[2]) * (a[0] + b[0]); z += (a[0] - b[0]) * (a[1] + b[1]);
+  }
+  const l = Math.hypot(x, y, z);
+  return l > 1e-9 ? [x / l, y / l, z / l] : null;
+}
+function loopConvex(lp) {
+  let sg = 0;
+  for (let i = 0; i < lp.length; i++) {
+    const a = lp[i], b = lp[(i + 1) % lp.length], c = lp[(i + 2) % lp.length];
+    const cr = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
+    if (Math.abs(cr) < 1e-9) continue;
+    if (!sg) sg = Math.sign(cr); else if (Math.sign(cr) !== sg) return false;
+  }
+  return true;
+}
+// faces of a prism in world space: { pts, hard: [edge i -> i+1 is a hard edge] }
+function prismFaces(pr, tf) {
+  const outer = C.loopPolyline(pr.loops[0], 12), holes = pr.loops.slice(1).map(l => C.loopPolyline(l, 12));
+  const P = (q, w) => tf(C.to3(pr, q, w)), faces = [];
+  const corner = (lp) => lp.map((q, i) => {
+    const a = lp[(i - 1 + lp.length) % lp.length], c = lp[(i + 1) % lp.length];
+    const d1 = [q[0] - a[0], q[1] - a[1]], d2 = [c[0] - q[0], c[1] - q[1]], l = Math.hypot(...d1) * Math.hypot(...d2) || 1;
+    return (d1[0] * d2[0] + d1[1] * d2[1]) / l < V_HARD;
+  });
+  if (!holes.length && loopConvex(outer)) {
+    const t = outer.map(q => P(q, pr.len)), b = outer.map(q => P(q, 0)).reverse();
+    faces.push({ pts: t, hard: t.map(() => true) }, { pts: b, hard: b.map(() => true) });
+  } else {
+    const all = outer.concat(...holes), loops = [outer, ...holes], start = [];
+    let o = 0; for (const lp of loops) { start.push(o); o += lp.length; }
+    const loopOf = (k) => { let j = 0; while (j + 1 < start.length && k >= start[j + 1]) j++; return j; };
+    const boundary = (i, k) => { const li = loopOf(i); if (li !== loopOf(k)) return false; const n = loops[li].length, a = i - start[li], b = k - start[li]; return (a + 1) % n === b || (b + 1) % n === a; };
+    const tris = THREE.ShapeUtils.triangulateShape(outer.map(q => new THREE.Vector2(q[0], q[1])), holes.map(h => h.map(q => new THREE.Vector2(q[0], q[1]))));
+    for (const tr of tris) {
+      let [i, j, k] = tr;
+      const cr = (all[j][0] - all[i][0]) * (all[k][1] - all[i][1]) - (all[j][1] - all[i][1]) * (all[k][0] - all[i][0]);
+      if (cr < 0) [j, k] = [k, j];
+      faces.push({ pts: [P(all[i], pr.len), P(all[j], pr.len), P(all[k], pr.len)], hard: [boundary(i, j), boundary(j, k), boundary(k, i)] });
+      faces.push({ pts: [P(all[i], 0), P(all[k], 0), P(all[j], 0)], hard: [boundary(i, k), boundary(k, j), boundary(j, i)] });
+    }
+  }
+  for (const lp of [outer, ...holes]) {
+    const h = corner(lp);
+    for (let i = 0; i < lp.length; i++) {
+      const j = (i + 1) % lp.length;
+      faces.push({ pts: [P(lp[i], 0), P(lp[j], 0), P(lp[j], pr.len), P(lp[i], pr.len)], hard: [true, h[j], true, h[i]] });
+    }
+  }
+  return faces;
+}
+// split a convex polygon by the plane N.x = w; keeps the hard flags, the new edge along the plane is soft
+function vsplit(poly, N, w) {
+  const pts = poly.pts, n = pts.length, ds = pts.map(p => vdot(N, p) - w);
+  let f = 0, b = 0;
+  for (const x of ds) { if (x > V_EPS) f++; else if (x < -V_EPS) b++; }
+  if (!f && !b) return { co: poly };
+  if (!b) return { front: poly };
+  if (!f) return { back: poly };
+  const F = [], Fh = [], B = [], Bh = [];
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n, a = pts[i], c = pts[j], da = ds[i], dc = ds[j], h = poly.hard[i];
+    const cross = (da > V_EPS && dc < -V_EPS) || (da < -V_EPS && dc > V_EPS);
+    const x = cross ? (() => { const t = da / (da - dc); return [a[0] + (c[0] - a[0]) * t, a[1] + (c[1] - a[1]) * t, a[2] + (c[2] - a[2]) * t]; })() : null;
+    if (da >= -V_EPS) { F.push(a); Fh.push(dc >= -V_EPS || da > V_EPS ? h : false); }
+    if (da <= V_EPS) { B.push(a); Bh.push(dc <= V_EPS || da < -V_EPS ? h : false); }
+    if (cross) {
+      if (da > V_EPS) { F.push(x); Fh.push(false); B.push(x); Bh.push(h); }
+      else { B.push(x); Bh.push(false); F.push(x); Fh.push(h); }
+    }
+  }
+  return { front: F.length >= 3 ? Object.assign({}, poly, { pts: F, hard: Fh }) : null, back: B.length >= 3 ? Object.assign({}, poly, { pts: B, hard: Bh }) : null };
+}
+function bspOrder(polys, d) {
+  if (!polys.length) return [];
+  const root = { list: polys }, stack = [root];
+  while (stack.length) {
+    const node = stack.pop(), list = node.list;
+    node.list = null;
+    let best = 0, bestScore = Infinity;
+    const K = Math.min(list.length, 10), M = Math.min(list.length, 48);
+    for (let k = 0; k < K && bestScore > 0; k++) {
+      const i = Math.floor(k * list.length / K), c = list[i], w = vdot(c.n, c.pts[0]);
+      let sp = 0;
+      for (let jj = 0; jj < M; jj++) {
+        const q = list[Math.floor(jj * list.length / M)];
+        let f = 0, b = 0;
+        for (const p of q.pts) { const x = vdot(c.n, p) - w; if (x > V_EPS) f++; else if (x < -V_EPS) b++; }
+        if (f && b) sp++;
+      }
+      if (sp < bestScore) { bestScore = sp; best = i; }
+    }
+    const sp = list[best], N = sp.n, w = vdot(N, sp.pts[0]), co = [sp], F = [], B = [];
+    for (let i = 0; i < list.length; i++) {
+      if (i === best) continue;
+      const r = vsplit(list[i], N, w);
+      if (r.co) co.push(r.co);
+      if (r.front) F.push(r.front);
+      if (r.back) B.push(r.back);
+    }
+    Object.assign(node, { N, w, co });
+    if (F.length) { node.front = { list: F }; stack.push(node.front); }
+    if (B.length) { node.back = { list: B }; stack.push(node.back); }
+  }
+  const out = [], st = [root];
+  while (st.length) {
+    const t = st.pop();
+    if (t.emit) { for (const p of t.emit) out.push(p); continue; }
+    const camFront = vdot(t.N, d) > 0, first = camFront ? t.back : t.front, last = camFront ? t.front : t.back;
+    if (last) st.push(last);
+    st.push({ emit: t.co });
+    if (first) st.push(first);
+  }
+  return out;
+}
+// ids of the convex polygons (screen px, back to front) that keep at least one pixel
+function visibleIds(polys, W, H) {
+  const buf = new Int32Array(W * H).fill(-1);
+  polys.forEach((pg, id) => {
+    const p = pg.s;
+    let y0 = Infinity, y1 = -Infinity;
+    for (const q of p) { if (q[1] < y0) y0 = q[1]; if (q[1] > y1) y1 = q[1]; }
+    const r0 = Math.max(0, Math.ceil(y0 - 0.5)), r1 = Math.min(H - 1, Math.floor(y1 - 0.5));
+    for (let r = r0; r <= r1; r++) {
+      const yc = r + 0.5;
+      let xl = Infinity, xr = -Infinity;
+      for (let i = 0; i < p.length; i++) {
+        const a = p[i], b = p[(i + 1) % p.length];
+        if ((a[1] <= yc && b[1] > yc) || (b[1] <= yc && a[1] > yc)) {
+          const x = a[0] + (yc - a[1]) / (b[1] - a[1]) * (b[0] - a[0]);
+          if (x < xl) xl = x; if (x > xr) xr = x;
+        }
+      }
+      const c0 = Math.max(0, Math.ceil(xl - 0.5)), c1 = Math.min(W - 1, Math.floor(xr - 0.5));
+      for (let c = c0; c <= c1; c++) buf[r * W + c] = id;
+    }
+  });
+  const vis = new Uint8Array(polys.length);
+  for (let i = 0; i < buf.length; i++) if (buf[i] >= 0) vis[buf[i]] = 1;
+  return vis;
+}
+const LIN2SRGB = (x) => { x = Math.max(0, Math.min(1, x)); return x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 1 / 2.4) - 0.055; };
+
+class VectorRenderer {
+  constructor() { this.ms = new MurphyScene(); }
+  setModel(model) { this.ms.setModel(model); }
+  // same arguments as PrintRenderer.iso; returns { px: [w, h], polys: [{ p: [[x, y]...] (px, y down), f: [r, g, b], e: [[x1, y1, x2, y2]...] }] }
+  iso(az, el, pxW, pxH, opts, margin) {
+    const ms = this.ms;
+    ms.opts = Object.assign({ fronts: true, open: 0, section: false, mattress: true, hw: true, bySheet: false, bed: 0, room: false }, opts || {});
+    ms.apply();
+    ms.root.updateMatrixWorld(true);
+    const azr = az * Math.PI / 180, elr = el * Math.PI / 180;
+    const d = [Math.cos(elr) * Math.sin(azr), Math.cos(elr) * Math.cos(azr), Math.sin(elr)];
+    const right = vnorm([-d[1], d[0], 0]), up = [d[1] * right[2] - d[2] * right[1], d[2] * right[0] - d[0] * right[2], d[0] * right[1] - d[1] * right[0]];
+    // lights as on screen: hemisphere, a key light from about the viewer, a fill from the right
+    const keyD = vnorm([d[0] * 4000 - 1500, d[1] * 4000 + 1200, d[2] * 4000 + 3000]), fillD = vnorm([2500, 1500, 800]);
+    const sky = [0.965, 0.953, 0.933], ground = [0.275, 0.259, 0.235];
+    const shade = (col, metal, n) => {
+      const t = 0.5 + 0.5 * n[2], k = 0.72 * Math.max(0, vdot(n, keyD)), f = 0.22 * Math.max(0, vdot(n, fillD));
+      const dm = 1 - 0.45 * (metal || 0);
+      return [0, 1, 2].map(i => Math.round(255 * LIN2SRGB(col[i] * dm * ((ground[i] + (sky[i] - ground[i]) * t) * 0.62 + k + f) + (metal ? 0.04 * k : 0))));
+    };
+    const polys = [], tmp = new THREE.Vector3();
+    const addSolid = (pr, M, col, metal, edges, noFit) => {
+      const tf = (p) => { tmp.set(p[0], p[1], p[2]).applyMatrix4(M); return [tmp.x, tmp.y, tmp.z]; };
+      for (const fc of prismFaces(pr, tf)) {
+        const n = newellN(fc.pts);
+        if (!n || vdot(n, d) <= 1e-7) continue;
+        fc.n = n; fc.fill = shade(col, metal, n); fc.edges = edges; fc.noFit = noFit;
+        polys.push(fc);
+      }
+    };
+    const I = new THREE.Matrix4();
+    const all = [];
+    for (const r of ms.recs) {
+      const vis = ms.isVisible(r.grp);
+      if (!vis && !(ms.opts.fitAll && !r.part.mattress)) continue;
+      const meshes = r.dyn ? [r.mesh, r.rod] : [r.mesh];
+      for (const mesh of meshes) {
+        const mat = mesh.material, col = [mat.color.r, mat.color.g, mat.color.b];
+        const sols = r.dyn ? (mesh.userData.seg ? [C.cyl(mesh.userData.seg[2], mesh.userData.seg[0], mesh.userData.seg[1])] : []) : r.part.solids;
+        const M = r.dyn ? I : mesh.matrixWorld;
+        if (!vis) { for (const pr of sols) for (const c of C.prismCorners(pr)) all.push(tmp.set(c[0], c[1], c[2]).applyMatrix4(M).clone()); continue; }
+        for (const pr of sols) addSolid(pr, M, col, mat.metalness, r.style.edges !== false, !!(ms.opts.fitAll && r.part.mattress));
+      }
+    }
+    const order = bspOrder(polys, d);
+    // fit the frame
+    const proj = (p) => [vdot(p, right), vdot(p, up)];
+    let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
+    const grow = (q) => { if (q[0] < xmin) xmin = q[0]; if (q[0] > xmax) xmax = q[0]; if (q[1] < ymin) ymin = q[1]; if (q[1] > ymax) ymax = q[1]; };
+    for (const pg of order) { pg.s2 = pg.pts.map(proj); if (!pg.noFit) pg.s2.forEach(grow); }
+    for (const v of all) grow(proj([v.x, v.y, v.z]));
+    margin = margin || 1.04;
+    const cx = (xmin + xmax) / 2, cy = (ymin + ymax) / 2;
+    let hw = (xmax - xmin) / 2 * margin, hh = (ymax - ymin) / 2 * margin;
+    if (hw / hh > pxW / pxH) hh = hw * pxH / pxW; else hw = hh * pxW / pxH;
+    const k = pxW / (2 * hw), S = (q) => [pxW / 2 + (q[0] - cx) * k, pxH / 2 - (q[1] - cy) * k];
+    for (const pg of order) pg.s = pg.s2.map(S);
+    const vis = visibleIds(order, Math.round(pxW), Math.round(pxH));
+    const out = [];
+    order.forEach((pg, i) => {
+      if (!vis[i]) return;
+      const r1 = (x) => Math.round(x * 100) / 100, p = pg.s.map(q => [r1(q[0]), r1(q[1])]), e = [];
+      if (pg.edges) pg.hard.forEach((h, j) => { if (h) { const a = p[j], b = p[(j + 1) % p.length]; e.push([a[0], a[1], b[0], b[1]]); } });
+      out.push({ p, f: pg.fill, e });
+    });
+    return { px: [pxW, pxH], polys: out, faces: polys.length, fragments: order.length };
+  }
+  dispose() {}
+}
+
+root.MurphyViewer = { Viewer, PrintRenderer, VectorRenderer, MurphyScene, T_COL };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -2999,6 +3245,21 @@ function Sheet(doc, num, total, title, scale, info) {
   };
   s.circle = (x, y, r, o) => { o = o || {}; if (o.fill) s.color(o.fill, 'fill'); doc.setLineWidth(o.lw === undefined ? LW_THIN : (o.lw || 0.01)); s.color(o.color || INK); if (o.dash) s.dash(o.dash); doc.circle(x, Y(y), r, o.fill ? (o.lw === 0 ? 'F' : 'FD') : 'S'); if (o.dash) s.dash(null); };
   s.image = (url, x, y, w, h) => doc.addImage(url, 'JPEG', x, Y(y + h), w, h, undefined, 'FAST');
+  // a vector render (VectorRenderer.iso) into the box x, y (bottom left), w x h: filled faces back to front, then edges
+  s.vimage = (img, x, y, w, h) => {
+    if (!img || !img.polys) return;
+    const kx = w / img.px[0], ky = h / img.px[1], y0 = Y(y + h), lwE = Math.max(0.035, Math.min(0.09, w / 2500));
+    for (const pg of img.polys) {
+      const p = pg.p, f = pg.f, segs = [];
+      for (let i = 1; i < p.length; i++) segs.push([(p[i][0] - p[i - 1][0]) * kx, (p[i][1] - p[i - 1][1]) * ky]);
+      doc.setFillColor(f[0], f[1], f[2]); doc.setDrawColor(f[0], f[1], f[2]); doc.setLineWidth(0.04);
+      doc.lines(segs, x + p[0][0] * kx, y0 + p[0][1] * ky, [1, 1], 'FD', true);
+      if (pg.e.length) {
+        doc.setDrawColor(72, 68, 62); doc.setLineWidth(lwE);
+        for (const e of pg.e) doc.line(x + e[0] * kx, y0 + e[1] * ky, x + e[2] * kx, y0 + e[3] * ky);
+      }
+    }
+  };
   s.arrow = (tip, dir, o) => {
     o = o || {};
     const L = o.L || 2.2, W = o.W || 0.62;
@@ -3253,13 +3514,13 @@ function pageOverview(doc, M, S, I, info) {
   const { P, G } = M;
   const s = Sheet(doc, 1, info.total, 'OVERVIEW', 'NTS', info);
   const hw = 200, hh = hw * I.hero.px[1] / I.hero.px[0];
-  s.image(I.hero.url, 14, 289 - 6 - hh, hw, hh);
+  s.vimage(I.hero, 14, 289 - 6 - hh, hw, hh);
   s.text(16, 289 - 9, 'Closed, from the front left', { size: 6, color: GREY });
   const ow = 132, oh = ow * I.open.px[1] / I.open.px[0];
-  s.image(I.open.url, 14, 12, ow, oh);
+  s.vimage(I.open, 14, 12, ow, oh);
   s.text(16, 12 + oh + 2, 'Bed down, fronts open', { size: 6, color: GREY });
   const tw = 108, th = tw * I.thick.px[1] / I.thick.px[0];
-  s.image(I.thick.url, 150, 12, tw, th);
+  s.vimage(I.thick, 150, 12, tw, th);
   s.text(152, 12 + th + 2, 'Fronts off, coloured by sheet thickness', { size: 6, color: GREY });
   [[6, '6 mm'], [12, '12 mm'], [18, '18 mm']].forEach(([t, l], i) => { s.rect(153 + i * 18, 15, 3, 3, { fill: T_RGB[t], lw: 0 }); s.text(157.5 + i * 18, 15.6, l, { size: 5.6 }); });
   const x0 = 232;
@@ -3300,7 +3561,7 @@ function pageOverview(doc, M, S, I, info) {
     const top = yEnd - 6, bottom = 42, h = top - bottom;
     if (h > 45) {
       const w = Math.min(176, h * I.cut.px[0] / I.cut.px[1]), hh2 = w * I.cut.px[1] / I.cut.px[0];
-      s.image(I.cut.url, x0 + (176 - w) / 2, bottom + (h - hh2) / 2, w, hh2);
+      s.vimage(I.cut, x0 + (176 - w) / 2, bottom + (h - hh2) / 2, w, hh2);
       s.text(x0, bottom + (h + hh2) / 2 - 2, 'Bed halfway down', { size: 6, color: GREY });
     }
   }
@@ -3639,7 +3900,7 @@ function pageHardware(doc, M, S, info) {
   // 3. shelf over the bed from above: pins, latches, stays, flap hinges
   const sp = 12, px0 = 258, py0 = 250;
   const vp = View(s, 'top', sp, [px0 + G.xJ / sp, py0], [0, 0]);
-  vp.parts(M.parts.filter(p => !p.leg && !p.mattress && !p.bed), { cut: G.zBm1 + 70, filter: (p) => ['B2', 'B4', 'B5', 'T2', 'LP', 'PL', 'FS', 'D4', 'SF'].includes(p.mark) || (p.mark === 'FH' && p.name.endsWith('plate')) });
+  vp.parts(M.parts.filter(p => !p.leg && !p.mattress && !p.bed), { cut: G.zBm1 + 70, filter: (p) => ['B2', 'B4', 'B5', 'B10', 'B11', 'T2', 'LP', 'PL', 'FS', 'D4', 'SF'].includes(p.mark) || (p.mark === 'FH' && p.name.endsWith('plate')) });
   const yB = vp.P([0, G.yC, 0])[1] - 6;
   if (P.lockType === 'twin') {
     const hs = P.twinSpacing / 2;
@@ -3799,11 +4060,13 @@ function seqCard(s, B, I, i, x, yTop, cw, ch, tw) {
   s.text(x + 10.5, yTop - 8.4, `${when}, ${st.h} h${st.people === 2 ? ', two people' : ''}${st.overnight ? ', then overnight' : ''}`, { size: 5.3, color: GREY });
   const img = I.steps && I.steps[i];
   tw = tw || 43;
-  const th = img ? tw * img.px[1] / img.px[0] : 0, tTop = yTop - 11;
-  if (img) { s.image(img.url, x + 1.6, tTop - th, tw, th); s.rect(x + 1.6, tTop - th, tw, th, { lw: 0.1, color: LIGHT }); }
+  const tTop = yTop - 11;
   // fixings, from the bottom up
   const fx = st.fix.map(([k, n]) => `${n} x ${FIX_SHORT[k] || k}`);
   const rows = Math.ceil(fx.length / 2), fy0 = yTop - ch + 2.2, fTop = fy0 + rows * 2.7 + 3.2;
+  let th = img ? tw * img.px[1] / img.px[0] : 0;
+  if (img && th > tTop - fTop - 1.5) { th = tTop - fTop - 1.5; tw = th * img.px[0] / img.px[1]; }
+  if (img) { s.rect(x + 1.6, tTop - th, tw, th, { fill: WHITE, lw: 0 }); s.vimage(img, x + 1.6, tTop - th, tw, th); s.rect(x + 1.6, tTop - th, tw, th, { lw: 0.1, color: LIGHT }); }
   if (fx.length) {
     s.text(x + 2.4, fTop - 1.6, 'FIXINGS', { size: 4.9, weight: 'bold', color: GREY });
     fx.forEach((t, k) => s.text(x + 2.4 + (k % 2) * (cw / 2 - 1), fy0 + (rows - 1 - Math.floor(k / 2)) * 2.7 + 0.6, t, { size: 5.2 }));
@@ -3975,13 +4238,16 @@ async function make(model, summary, progress) {
   const I = {};
   let R = null;
   try {
-    R = new V.PrintRenderer();
+    R = new V.VectorRenderer();
     R.setModel(model);
     I.hero = R.iso(-28, 14, 1400, 1400 * 0.82, { bed: 0 });
     progress('Rendering views...', 0.2); await tick();
     I.open = R.iso(-35, 20, 1100, 760, { bed: 90, open: 1, mattress: true });
+    await tick();
     I.thick = R.iso(-28, 14, 1000, 760, { bed: 0, fronts: false, bySheet: true, mattress: false, hw: false });
+    await tick();
     I.cut = R.iso(-40, 12, 1400, 900, { bed: 50 });
+    await tick();
     // build sequence: everything fitted so far, this step's parts in the accent colour
     const B = summary.build;
     I.steps = [];
@@ -3993,12 +4259,12 @@ async function make(model, summary, progress) {
         only: (p) => B.stepOf(p) <= i,
         colourOverride: (p, ms) => isNew(p) ? ms.mat(p.hw ? 'step-new-hw' : 'step-new', { color: p.hw ? 0x8a4a06 : 0xe0954a, rough: 0.7 })
           : p.hw ? null : ms.mat('step-old', { color: 0xe4dfd6, rough: 0.9 }) }, 1.02));
-      if (i % 4 === 3) { progress('Rendering the build steps...', 0.2 + 0.12 * i / B.steps.length); await tick(); }
+      progress('Rendering the build steps...', 0.2 + 0.12 * i / B.steps.length); await tick();
     }
   } catch (e) {
     console.warn('3D renders unavailable', e);
-    const blank = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.fillStyle = '#999'; g.font = '28px sans-serif'; g.fillText('3D view not available in this browser', 40, 60); return { url: c.toDataURL('image/jpeg', 0.9), px: [w, h] }; };
-    I.hero = blank(1500, 1080); I.open = blank(1100, 760); I.thick = blank(1000, 760);
+    const blank = (w, h) => ({ px: [w, h], polys: [] });
+    I.hero = blank(1400, 1148); I.open = blank(1100, 760); I.thick = blank(1000, 760); I.cut = null;
   }
   if (R) R.dispose();
   // the plans fit 8 per page (the 9th slot is under the title block)
