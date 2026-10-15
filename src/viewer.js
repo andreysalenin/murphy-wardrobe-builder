@@ -738,5 +738,161 @@ class VectorRenderer {
   dispose() {}
 }
 
-root.MurphyViewer = { Viewer, PrintRenderer, VectorRenderer, MurphyScene, T_COL };
+
+/* ------------------------------------------------------------------ exploded views for the assembly sheets
+   renderItems draws any list of faces (parts moved apart, fixings, hole marks) with the same exact ordering and
+   hidden-face culling as the 3D views. Items: { faces: [{pts, hard}], fill: [r, g, b] (0-255), flat, edges, ink, lw }.
+   d points from the subject toward the viewer. Returns polygons in the view plane (model mm, v up). */
+const vcross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+function perpPair(ax) { // unit u, v with u x v = ax
+  const t = Math.abs(ax[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0], u = vnorm(vcross(ax, t));
+  return [u, vcross(ax, u)];
+}
+// cone frustum from a (radius r0) to b (radius r1, 0 for a point); outward faces
+function frustumFaces(a, b, r0, r1, n) {
+  n = n || 10;
+  const ax = vnorm([b[0] - a[0], b[1] - a[1], b[2] - a[2]]), [u, v] = perpPair(ax);
+  const ring = (c, r) => Array.from({ length: n }, (_, i) => { const th = 2 * Math.PI * i / n, cs = Math.cos(th) * r, sn = Math.sin(th) * r; return [c[0] + u[0] * cs + v[0] * sn, c[1] + u[1] * cs + v[1] * sn, c[2] + u[2] * cs + v[2] * sn]; });
+  const A = ring(a, r0), faces = [];
+  if (r0 > 1e-6) faces.push({ pts: A.slice().reverse(), hard: A.map(() => true) });
+  if (r1 > 1e-6) {
+    const B = ring(b, r1);
+    faces.push({ pts: B, hard: B.map(() => true) });
+    for (let i = 0; i < n; i++) { const j = (i + 1) % n; faces.push({ pts: [A[i], A[j], B[j], B[i]], hard: [true, false, true, false] }); }
+  } else for (let i = 0; i < n; i++) { const j = (i + 1) % n; faces.push({ pts: [A[i], A[j], b.slice()], hard: [true, false, false] }); }
+  return faces;
+}
+function cylFaces(a, b, r, n) { return frustumFaces(a, b, r, r, n); }
+// flat disk (or stadium: half length `ext` along `along`) facing nrm
+function diskFace(c, nrm, r, n, along, ext) {
+  n = n || 12;
+  let [u, v] = perpPair(vnorm(nrm));
+  if (along) { u = vnorm(along); v = vcross(vnorm(nrm), u); }
+  const pts = [];
+  if (ext) {
+    for (let i = 0; i <= n / 2; i++) { const th = -Math.PI / 2 + Math.PI * i / (n / 2); pts.push([0, 1, 2].map(k => c[k] + u[k] * (ext + r * Math.cos(th)) + v[k] * r * Math.sin(th))); }
+    for (let i = 0; i <= n / 2; i++) { const th = Math.PI / 2 + Math.PI * i / (n / 2); pts.push([0, 1, 2].map(k => c[k] + u[k] * (-ext + r * Math.cos(th)) + v[k] * r * Math.sin(th))); }
+  } else for (let i = 0; i < n; i++) { const th = 2 * Math.PI * i / n; pts.push([0, 1, 2].map(k => c[k] + u[k] * r * Math.cos(th) + v[k] * r * Math.sin(th))); }
+  return { pts, hard: pts.map(() => true) };
+}
+// box with centre c, unit axes e1 e2 e3 (right handed) and half sizes h
+function boxFaces(c, e1, e2, e3, h) {
+  const P = (s1, s2, s3) => [0, 1, 2].map(k => c[k] + e1[k] * h[0] * s1 + e2[k] * h[1] * s2 + e3[k] * h[2] * s3);
+  const q = (pts) => ({ pts, hard: [true, true, true, true] });
+  return [q([P(-1, -1, 1), P(1, -1, 1), P(1, 1, 1), P(-1, 1, 1)]), q([P(-1, 1, -1), P(1, 1, -1), P(1, -1, -1), P(-1, -1, -1)]),
+    q([P(-1, -1, -1), P(1, -1, -1), P(1, -1, 1), P(-1, -1, 1)]), q([P(1, 1, -1), P(-1, 1, -1), P(-1, 1, 1), P(1, 1, 1)]),
+    q([P(1, -1, -1), P(1, 1, -1), P(1, 1, 1), P(1, -1, 1)]), q([P(-1, 1, -1), P(-1, -1, -1), P(-1, -1, 1), P(-1, 1, 1)])];
+}
+// a prism cut to the box lo..hi (bounds may be infinite). Prisms whose axes all lie along x, y and z are cut exactly
+// (the cut faces close the solid); any other prism is kept whole if it reaches into the box.
+function clip2(pts, r) { // Sutherland-Hodgman against u in [r0, r1], v in [r2, r3]
+  const edges = [[0, r[0], 1], [0, r[1], -1], [1, r[2], 1], [1, r[3], -1]];
+  let out = pts;
+  for (const [k, c, sg] of edges) {
+    if (!isFinite(c) || !out.length) continue;
+    const inp = out; out = [];
+    for (let i = 0; i < inp.length; i++) {
+      const A = inp[i], B = inp[(i + 1) % inp.length], ia = (A[k] - c) * sg >= 0, ib = (B[k] - c) * sg >= 0;
+      if (ia) out.push(A);
+      if (ia !== ib) { const t = (c - A[k]) / (B[k] - A[k]); out.push([A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t]); }
+    }
+  }
+  const clean = [];
+  for (const q of out) { const l = clean[clean.length - 1]; if (!l || Math.hypot(q[0] - l[0], q[1] - l[1]) > 1e-6) clean.push(q); }
+  while (clean.length > 1 && Math.hypot(clean[0][0] - clean[clean.length - 1][0], clean[0][1] - clean[clean.length - 1][1]) < 1e-6) clean.pop();
+  // drop points in the middle of straight runs
+  const res = clean.filter((q, i) => { const a = clean[(i - 1 + clean.length) % clean.length], b = clean[(i + 1) % clean.length]; return Math.abs((q[0] - a[0]) * (b[1] - q[1]) - (q[1] - a[1]) * (b[0] - q[0])) > 1e-7; });
+  return res.length >= 3 ? res : [];
+}
+function clipPrism(pr, lo, hi) {
+  const b = C.prismBox(pr);
+  if (b[3] < lo[0] || b[0] > hi[0] || b[4] < lo[1] || b[1] > hi[1] || b[5] < lo[2] || b[2] > hi[2]) return null;
+  if (b[0] >= lo[0] && b[3] <= hi[0] && b[1] >= lo[1] && b[4] <= hi[1] && b[2] >= lo[2] && b[5] <= hi[2]) return pr;
+  const ax = (v) => { for (let k = 0; k < 3; k++) if (Math.abs(Math.abs(v[k]) - 1) < 1e-9) return k; return -1; };
+  const ku = ax(pr.u), kv = ax(pr.v), kn = ax(pr.n);
+  if (ku < 0 || kv < 0 || kn < 0) return pr;
+  const wl = (lo[kn] - pr.o[kn]) / pr.n[kn], wh = (hi[kn] - pr.o[kn]) / pr.n[kn];
+  const w0 = Math.max(0, Math.min(wl, wh)), w1 = Math.min(pr.len, Math.max(wl, wh));
+  if (!(w1 - w0 > 1e-6)) return null;
+  const lim = (k, s) => { const a = (lo[k] - pr.o[k]) / s, c = (hi[k] - pr.o[k]) / s; return [Math.min(a, c), Math.max(a, c)]; };
+  const ru = lim(ku, pr.u[ku]), rv = lim(kv, pr.v[kv]), rect = [ru[0], ru[1], rv[0], rv[1]];
+  const outer = clip2(C.loopPolyline(pr.loops[0], 12), rect);
+  if (!outer.length) return null;
+  const holes = pr.loops.slice(1).map(l => C.loopPolyline(l, 12)).filter(h => h.every(q => q[0] > rect[0] && q[0] < rect[1] && q[1] > rect[2] && q[1] < rect[3]));
+  const seg = (pts) => pts.map((a, i) => ({ t: 'L', a, b: pts[(i + 1) % pts.length] }));
+  return { o: pr.o.map((x, k) => x + pr.n[k] * w0), u: pr.u, v: pr.v, n: pr.n, len: w1 - w0, loops: [seg(outer), ...holes.map(seg)] };
+}
+// faces of a prism, cut to the box lo..hi (optional), then moved by off
+function partFaces(pr, off, lo, hi) {
+  if (lo) { pr = clipPrism(pr, lo, hi); if (!pr) return []; }
+  return prismFaces(pr, (p) => [p[0] + off[0], p[1] + off[1], p[2] + off[2]]);
+}
+// does the ray p + t d (t > eps) pass through the solid prism moved by off?
+const POLY_CACHE = new WeakMap();
+function pointInLoop(q, pts) {
+  let c = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const a = pts[i], b = pts[j]; if ((a[1] > q[1]) !== (b[1] > q[1]) && q[0] < (b[0] - a[0]) * (q[1] - a[1]) / (b[1] - a[1]) + a[0]) c = !c; }
+  return c;
+}
+function rayHitsPrism(p, d, pr, off, eps) {
+  const q = [p[0] - off[0] - pr.o[0], p[1] - off[1] - pr.o[1], p[2] - off[2] - pr.o[2]];
+  const a0 = vdot(q, pr.u), b0 = vdot(q, pr.v), w0 = vdot(q, pr.n), da = vdot(d, pr.u), db = vdot(d, pr.v), dw = vdot(d, pr.n);
+  let t0 = eps || 0.5, t1 = 1e6;
+  if (Math.abs(dw) < 1e-12) { if (w0 < 0 || w0 > pr.len) return false; }
+  else { let ta = -w0 / dw, tb = (pr.len - w0) / dw; if (ta > tb) [ta, tb] = [tb, ta]; t0 = Math.max(t0, ta); t1 = Math.min(t1, tb); if (t1 <= t0) return false; }
+  let loops = POLY_CACHE.get(pr);
+  if (!loops) { loops = pr.loops.map(l => C.loopPolyline(l, 12)); POLY_CACHE.set(pr, loops); }
+  const P = [a0 + da * t0, b0 + db * t0], Q = [a0 + da * t1, b0 + db * t1];
+  const inside = (r) => pointInLoop(r, loops[0]) && !loops.slice(1).some(h => pointInLoop(r, h));
+  if (inside(P) || inside(Q)) return true;
+  const cr = (u, v, w) => (v[0] - u[0]) * (w[1] - u[1]) - (v[1] - u[1]) * (w[0] - u[0]);
+  for (const lp of loops) for (let i = 0; i < lp.length; i++) {
+    const A = lp[i], B = lp[(i + 1) % lp.length];
+    if ((cr(A, B, P) > 0) !== (cr(A, B, Q) > 0) && (cr(P, Q, A) > 0) !== (cr(P, Q, B) > 0)) return true;
+  }
+  return false;
+}
+// view basis: up follows `upHint` (z unless given), or right follows `rightHint`
+function viewBasis(d, o) {
+  o = o || {};
+  if (o.rightHint) { const R = o.rightHint, k = vdot(R, d), right = vnorm([R[0] - k * d[0], R[1] - k * d[1], R[2] - k * d[2]]); return { right, up: vcross(d, right) }; }
+  const U = o.upHint || [0, 0, 1], k = vdot(U, d), up = vnorm([U[0] - k * d[0], U[1] - k * d[1], U[2] - k * d[2]]);
+  return { right: vcross(up, d), up };
+}
+function renderItems(items, d, pxPerUnit, basis) {
+  d = vnorm(d);
+  const { right, up } = viewBasis(d, basis);
+  const keyD = vnorm([d[0] * 4000 - 1500, d[1] * 4000 + 1200, d[2] * 4000 + 3000]), fillD = vnorm([2500, 1500, 800]);
+  const sky = [0.965, 0.953, 0.933], ground = [0.275, 0.259, 0.235], lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  const polys = [];
+  for (const it of items) {
+    const base = it.fill.map(lin);
+    for (const fc of it.faces) {
+      const n = newellN(fc.pts);
+      if (!n || vdot(n, d) <= 1e-7) continue;
+      const t = 0.5 + 0.5 * n[2], k = 0.72 * Math.max(0, vdot(n, keyD)), f = 0.22 * Math.max(0, vdot(n, fillD));
+      fc.n = n;
+      fc.fill = it.flat ? it.fill.slice() : [0, 1, 2].map(i => Math.round(255 * LIN2SRGB(base[i] * ((ground[i] + (sky[i] - ground[i]) * t) * 0.62 + k + f))));
+      fc.edges = it.edges !== false; fc.ink = it.ink; fc.lw = it.lw; fc.tag = it.tag;
+      polys.push(fc);
+    }
+  }
+  const order = bspOrder(polys, d), proj = (p) => [vdot(p, right), vdot(p, up)];
+  let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
+  for (const pg of order) { pg.s2 = pg.pts.map(proj); for (const q of pg.s2) { if (q[0] < u0) u0 = q[0]; if (q[0] > u1) u1 = q[0]; if (q[1] < v0) v0 = q[1]; if (q[1] > v1) v1 = q[1]; } }
+  if (!order.length) return { polys: [], proj, box: [0, 0, 1, 1] };
+  const W = Math.max(8, Math.min(4000, Math.ceil((u1 - u0) * pxPerUnit) + 2)), H = Math.max(8, Math.min(4000, Math.ceil((v1 - v0) * pxPerUnit) + 2));
+  const kx = (W - 2) / Math.max(1e-6, u1 - u0), ky = (H - 2) / Math.max(1e-6, v1 - v0);
+  for (const pg of order) pg.s = pg.s2.map(q => [1 + (q[0] - u0) * kx, H - 1 - (q[1] - v0) * ky]);
+  const vis = visibleIds(order, W, H), out = [];
+  order.forEach((pg, i) => {
+    if (!vis[i]) return;
+    const p = pg.s2, e = [];
+    if (pg.edges) pg.hard.forEach((h, j) => { if (h) { const a = p[j], b = p[(j + 1) % p.length]; e.push([a[0], a[1], b[0], b[1]]); } });
+    out.push({ p, f: pg.fill, e, ink: pg.ink, lw: pg.lw, tag: pg.tag });
+  });
+  return { polys: out, proj, box: [u0, v0, u1, v1], right, up };
+}
+
+root.MurphyViewer = { Viewer, PrintRenderer, VectorRenderer, MurphyScene, T_COL, renderItems, frustumFaces, cylFaces, diskFace, boxFaces, clipPrism, partFaces, rayHitsPrism, viewBasis };
 })(typeof window !== 'undefined' ? window : globalThis);

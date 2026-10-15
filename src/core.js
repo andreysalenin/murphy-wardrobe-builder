@@ -1025,7 +1025,7 @@ function reviewNotes(model, S) {
     ['Bed frame where the kit puts it', `The plan puts the pivot 9 in from the rail's head end and 11-3/4 in off the floor, so the kit's frame sits 2-3/4 in (70) up. Here the face panel still starts at ${f0(P.gapBelow)} in line with the drawers, but the frame starts ${f0(P.faceBelowFrame)} higher, behind it, and the mattress end gaps are ${P.gapMy} mm, not 7. The pivot lands at ${f0(G.pivot[1])}, the legs reach the floor as supplied, and the side rails come out at ${f0(G.frameL)} (kit: 81-1/2 in = 2070).`],
     ['Pivot packers', `The TikZ leaves ${f0(P.gapHydr)} mm between the side rail and the cabinet side; the kit is built for 7/16 in (11 mm). ${P.packer ? f0(P.Tpacker) + ' mm packers under the pivot plates, upper ball studs and stops bring it to ' + f0(G.effGap) + ' mm. Use machine screws ' + f0(P.Tpacker) + ' mm longer than the kit\'s through the packers' : 'Without packers the pivot bars may not reach'}.`],
     ['Plinths and kick boards', `Each tower sits on a ${f0(G.zPl)} high ladder plinth so it can be levelled; the bed-cabinet sides go to the floor like the kit's verticals. ${G.kickC ? `One kick board runs right across, ${f0(G.kickC)} high because the face panel's bottom edge sweeps down to ${f0(G.clear.minZ)} mm off the floor as the bed turns; the drawers and tower plinths sit ${f0(G.drawerDrop)} lower to match, and the header filler is one piece too.` : 'There is no kick board under the bed, so each tower has its own.'}`],
-    ['Headboard', G.head && !G.head.skipped ? `The bed's swing bulges furthest back at pivot height (${f0(G.clear.minY)} from the wall), so the ledge stays below mattress height at ${f0(G.ledge.y)}. Above the mattress nothing swings back, so a ${f0(P.headH)} backrest steps out to ${P.headGap} mm behind the open mattress and leans back ${P.headAngle} deg, on three tapered ribs, with a ${f0(G.head.capY - G.yB1)} deep bedside shelf on top at ${f0(G.head.top + P.Thead)}.` : G.ledge && !G.ledge.skipped ? `A ${f0(G.ledge.y - G.yB1)} deep ledge at mattress height fills the gap behind the open mattress.` : 'Turned off: pillows can fall behind the head of the open bed.'],
+    ['Headboard', G.head && !G.head.skipped ? `The bed's swing bulges furthest back at pivot height (${f0(G.clear.minY)} from the wall)${G.ledge && !G.ledge.skipped ? `, so the ledge stays below mattress height at ${f0(G.ledge.y)}` : ', so nothing stands below mattress height'}. Above the mattress nothing swings back, so a ${f0(P.headH)} backrest steps out to ${P.headGap} mm behind the open mattress and leans back ${P.headAngle} deg, on three tapered ribs, with a ${f0(G.head.capY - G.yB1)} deep bedside shelf on top at ${f0(G.head.top + P.Thead)}.` : G.ledge && !G.ledge.skipped ? `A ${f0(G.ledge.y - G.yB1)} deep ledge at mattress height fills the gap behind the open mattress.` : 'Turned off: pillows can fall behind the head of the open bed.'],
     ['Shelf above the bed', `It spans ${f0(2 * G.xB)} only ${f0(P.gapHolder)} mm above the closed bed. The centre divider carries it: glued and screwed to the shelf and the top, it turns the shelf into two ${f0(G.xB + P.T / 2)} mm bays held on three sides. ${P.edgeSteel ? `A ${f0(P.steelH)} x ${f0(P.steelT)} steel flat let into the front edge, ${f0(P.steelH - P.T)} mm proud underneath and hidden by the flaps, stiffens the free edge and takes the push latches.` : ''} ${P.upstand > 0 ? `A ${f0(P.upstand)} mm lip runs along the front edge.` : 'The top is flat to the front edge, so boxes slide straight in.'} Worst case, one bay holding 100 kg a square metre: about ${G.shelfSag.toFixed(1)} mm over time.`],
     ['Shelf fixings', 'The divider only works if it cannot rack: glue it with Dominos or biscuits and screws along each edge (no deep housing). Make the shelf, upper sides, divider, top, wall rails and the 6 mm back up as one box on the floor, slide it in onto the bed-cabinet sides, screw it down and through the tower sides, and screw the rails into the studs; the build sequence sheets have the steps and screws.'],
     ['Safety lock', P.lockType === 'twin' ? `A twin pin straddles the centre divider behind the flap joint: two 10 mm pins ${f0(P.twinSpacing)} apart, nutted through one steel bar, run through a hardwood block in the divider's front notch and go ${P.lockDepth} mm into the foot rail. One pull through either flap lifts both 30 mm; a spring ball plunger holds them up while the bed is down.${P.lockTab ? ' A 2 mm tab on the bar pokes out through the flap joint, so it can be lifted without opening a flap, and shows whether it is locked.' : ''}`
@@ -1130,6 +1130,362 @@ function hardwareList(model) {
    Usual cabinetmaking practice for 18 mm plywood: glue every permanent joint (PVA), pre-drill every screw, keep
    screws 50 from the ends of a joint and no more than 200 apart, centred in the 18 mm edge; dowels for alignment
    in the butt joints; anchor to the studs. Quantities are counted from the model; studs assumed 450 apart. */
+/* ------------------------------------------------------------------ joinery
+   Every screw, dowel, Domino and brad in the plywood joints, placed, so the assembly drawings, the step cards and the
+   fixings schedule all count the same things. Rules: screws 50 from the ends of a joint and no more than 200 apart
+   (150 on the 6 mm backs, 250 to 300 on the bed deck), centred in the edge they go into; dowels midway between the
+   screws; all of them moved clear of hardware and of anything that would stop the driver. Each step is a list of
+   operations in working order; each operation adds parts and drives one set of fixings. */
+// drawn sizes: length, shank, head (mm); a Domino is length x thickness x width
+const FAST = {
+  s50: [50, 4, 8], s40: [40, 4, 8], s30: [30, 4, 8], s35: [35, 4, 8], s25: [25, 4, 8.5], b30: [30, 3.5, 7], b25: [25, 3.5, 7],
+  b20: [20, 3.5, 7], b16: [16, 3.5, 7], r10: [10, 3.5, 7], brad: [40, 1.6, 2.6], br30: [30, 1.6, 2.6], w75: [75, 6, 12], d8: [30, 8, 8], dom: [40, 8, 22],
+};
+// short names for the fixings, used on the drawings and the schedule
+const TAGS = { s50: 'A', s40: 'B', s30: 'C', s35: 'D', s25: 'E', b30: 'F', b25: 'G', b20: 'H', b16: 'J', r14: 'P', r10: 'Q',
+  h15: 'U', h17: 'V', brad: 'N', br30: 'W', d8: 'DW', dom: 'DM', w75: 'K', kit: 'KM', m4: 'M4', pin: 'SP' };
+function joinery(model) {
+  const { P, G, parts } = model, T = P.T;
+  const byName = new Map();
+  for (const p of parts) { if (!byName.has(p.name)) byName.set(p.name, []); byName.get(p.name).push(p); }
+  const one = (n) => (byName.get(n) || [])[0] || null;
+  const all = (n) => byName.get(n) || [];
+  const mk = (m) => parts.filter(p => p.mark === m);
+  const bb = (p) => p.solids.map(prismBox).reduce((a, q) => [Math.min(a[0], q[0]), Math.min(a[1], q[1]), Math.min(a[2], q[2]), Math.max(a[3], q[3]), Math.max(a[4], q[4]), Math.max(a[5], q[5])]);
+  const r05 = (v) => Math.round(v * 2) / 2;
+  const mid = (xs) => xs.slice(1).map((v, i) => r05((v + xs[i]) / 2));
+  // positions along [a, b]: e from the ends, at most `pitch` apart, then moved off the `avoid` intervals
+  const spread = (a, b, e, pitch, avoid, gap) => {
+    if (b < a) [a, b] = [b, a];
+    const L = b - a;
+    let xs;
+    if (L <= 2 * e + 1) xs = [(a + b) / 2];
+    else { const n = Math.max(2, Math.ceil((L - 2 * e) / pitch) + 1); xs = Array.from({ length: n }, (_, i) => a + e + (L - 2 * e) * i / (n - 1)); }
+    const lo = a + Math.min(e, L / 2) * 0.5, hi = b - Math.min(e, L / 2) * 0.5, out = [];
+    for (let x of xs) {
+      for (const [p, q] of avoid || []) if (x > p && x < q) {
+        const c = [p, q].filter(v => v >= lo && v <= hi).sort((u, v) => Math.abs(u - x) - Math.abs(v - x));
+        x = c.length ? c[0] : NaN;
+      }
+      if (isNaN(x) || (avoid || []).some(([p, q]) => x > p + 0.01 && x < q - 0.01)) continue;
+      if (out.some(o => Math.abs(o - x) < (gap || 25))) continue;
+      out.push(r05(x));
+    }
+    return out.sort((u, v) => u - v);
+  };
+  // a set of fixings: `through` is the part the fixing passes through (or the face side of a dowel), `into` the part
+  // it holds in; pts are where it crosses from one to the other; dir points from the head to the tip
+  const F = (key, through, into, dir, thru, pts, o) => Object.assign({ key, through, into, dir, thru, pts: pts.map(p => p.map(r05)) }, o || {});
+  const dowels = (through, into, dir, pts) => F('d8', through, into, dir, 12, pts);
+  const sides = [['R', -1], ['L', 1]];
+  const steps = {};
+  const inst = (key, i) => { (steps[key] = steps[key] || []).push(i); return i; };
+  const cD = [G.yB1, G.yC], ys = spread(G.yB1, G.yC, 50, 200), yd = mid(ys);
+  const E = 1; // explode distances are set by the drawing; offsets here are unit directions
+
+  for (const [S, s] of sides) {
+    // ---------- plinth ladder
+    const pf = one(`Plinth front (${S})`), pb = one(`Plinth back (${S})`), eo = one(`Plinth end, outer (${S})`), ei = one(`Plinth end, inner (${S})`);
+    if (pf && pb && eo && ei) {
+      const Tp = P.Tplinth, h = G.zPl, zs = spread(0, h, Math.min(13, h / 4), 60);
+      const xo = s * (G.xOo - Tp / 2), xi = s * (G.xJ + Tp / 2);
+      inst('plinth', { show: S === 'R', side: S, bench: true, base: [eo, ei], ops: [{
+        title: 'Front and back onto the ends', add: [[pf, [0, E, 0]], [pb, [0, -E, 0]]],
+        fast: [F('s40', pf, eo, [0, -1, 0], Tp, zs.map(z => [xo, G.yC - Tp, z])), F('s40', pf, ei, [0, -1, 0], Tp, zs.map(z => [xi, G.yC - Tp, z])),
+          F('s40', pb, eo, [0, 1, 0], Tp, zs.map(z => [xo, G.yB1 + Tp, z])), F('s40', pb, ei, [0, 1, 0], Tp, zs.map(z => [xi, G.yB1 + Tp, z]))],
+        setout: `two a corner, ${zs.map(r05).join(' and ')} up, centred on the ends` }] });
+    }
+    // ---------- tower carcass
+    const T1 = one(`Tower outer side (${S})`), T2 = one(`Tower inner side (${S})`), Tb = one(`Tower bottom (${S})`), Tt = one(`Tower top (${S})`);
+    const sh = [one(`Fixed shelf over drawers (${S})`), one(`Fixed shelf over hanging (${S})`)], bk = one(`Tower back (${S})`);
+    if (T1 && T2 && Tb && Tt && sh[0] && sh[1]) {
+      const zsh = [(G.zS1b + G.zS1t) / 2, (G.zS2b + G.zS2t) / 2], xo = s * (G.xOo - T / 2), xi = s * (G.xJ + T / 2);
+      const ops = [];
+      const frontFirst = { seq: ys.map((_, i) => i === ys.length - 1 ? 1 : 2) }; // the front screw of a joint first keeps the front edges flush
+      ops.push({ title: 'Shelves to the outer side', add: [[T1, [s * E, 0, 0]]],
+        fast: sh.flatMap((p, k) => [dowels(T1, p, [-s, 0, 0], yd.map(y => [s * G.xOi, y, zsh[k]])), F('s50', T1, p, [-s, 0, 0], T, ys.map(y => [s * G.xOi, y, zsh[k]]), frontFirst)]),
+        setout: 'dowels glued into the shelf ends first; then the front screw of each joint (1) with the front edges flush, then the rest (2)' });
+      ops.push({ title: 'Inner side, heads sunk flush', add: [[T2, [-s * E, 0, 0]]],
+        fast: sh.flatMap((p, k) => [dowels(T2, p, [s, 0, 0], yd.map(y => [s * G.xT2, y, zsh[k]])), F('s50', T2, p, [s, 0, 0], T, ys.map(y => [s * G.xT2, y, zsh[k]]), frontFirst)]),
+        setout: 'front screw first (1), then the rest (2); this face goes against the bed-cabinet side, so sink every head just below the surface' });
+      ops.push({ title: 'Bottom under the sides', add: [[Tb, [0, 0, -E]]],
+        fast: [T1, T2].flatMap((p, k) => { const x = k ? xi : xo; return [dowels(Tb, p, [0, 0, 1], yd.map(y => [x, y, G.zPl + T])), F('s50', Tb, p, [0, 0, 1], T, ys.map(y => [x, y, G.zPl + T]), frontFirst)]; }),
+        setout: 'the bottom fits under the sides, flush at the front: front screws first (1), then the rest (2)' });
+      ops.push({ title: 'Top over the sides', add: [[Tt, [0, 0, E]]],
+        fast: [T1, T2].flatMap((p, k) => { const x = k ? xi : xo; return [dowels(Tt, p, [0, 0, -1], yd.map(y => [x, y, G.zTopB])), F('s50', Tt, p, [0, 0, -1], T, ys.map(y => [x, y, G.zTopB]), frontFirst)]; }),
+        setout: 'the same at the top: front screws first (1), then the rest (2)' });
+      if (bk) {
+        const b = bb(bk), z0 = Math.max(G.zPl + T, b[2]), z1 = Math.min(G.zTopB, b[5]);
+        const zsS = spread(z0, z1, 25, 150), xsS = spread(s * G.xOi, s * G.xT2, 25, 150);
+        const f = [F('b20', bk, T1, [0, 1, 0], P.Tback, zsS.map(z => [xo, G.yB1, z])), F('b20', bk, T2, [0, 1, 0], P.Tback, zsS.map(z => [xi, G.yB1, z])),
+          ...sh.map((p, k) => F('b20', bk, p, [0, 1, 0], P.Tback, xsS.map(x => [x, G.yB1, zsh[k]])))];
+        f[0].seq = f[0].pts.map((_, i, a) => i === 0 || i === a.length - 1 ? 1 : 2); f[1].seq = f[0].seq.slice();
+        ops.push({ title: 'Back on, square', add: [[bk, [0, -E, 0]]], fast: f, setout: 'the four corner screws first (1), check the diagonals, then the rest (2)' });
+      }
+      inst('carcass', { show: S === 'R', side: S, bench: true, base: sh, ops });
+      // ---------- tower onto its plinth: from inside the tower, between the sides
+      const tower = [T1, T2, Tb, Tt, ...sh, bk, one(`Adjustable shelf, top compartment (${S})`)].filter(Boolean);
+      if (pf && pb) {
+        const xs = spread(s * G.xOi, s * G.xT2, 40, 200), Tp = P.Tplinth;
+        inst('towerPlinth', { show: S === 'R', side: S, base: [pf, pb, eo, ei].filter(Boolean), ops: [{
+          title: 'Tower onto its plinth', add: tower.map(p => [p, [0, 0, E]]), clip: [-1, 620],
+          fast: [F('s40', Tb, pf, [0, 0, -1], T, xs.map(x => [x, G.yC - Tp / 2, G.zPl])), F('s40', Tb, pb, [0, 0, -1], T, xs.map(x => [x, G.yB1 + Tp / 2, G.zPl]))],
+          setout: 'down through the bottom, over the plinth front and back, between the sides' }] });
+      }
+      // ---------- bed-cabinet side, packers, onto the tower
+      const B1 = one(`Bed-cabinet side (${S})`), pk = one(`Pivot packer (${S})`), ps = one(`Bed-stop packer (${S})`);
+      if (B1) {
+        const ops2 = [];
+        const plates = parts.filter(p => !p.bed && ['PV', 'BS', 'ST'].includes(p.mark) && p.name.indexOf(`(${S})`) >= 0).map(bb);
+        const clear2 = (pts) => pts.map(([y, z]) => {
+          for (const q of plates) if (y > q[1] - 14 && y < q[4] + 14 && z > q[2] - 14 && z < q[5] + 14) z = (z - (q[2] - 14) < (q[5] + 14) - z) ? q[2] - 14 : q[5] + 14;
+          return [y, z];
+        });
+        const pkPts = [];
+        if (pk || ps) {
+          const f = [];
+          if (pk) {
+            const b = bb(pk), yy = [b[4] - 40, b[1] + 40], zs = spread(b[2], b[5], 40, 250);
+            const pts = clear2(yy.flatMap(y => zs.map(z => [y, z]))).filter(([y, z]) => z > b[2] + 20 && z < b[5] - 20);
+            f.push(F('s30', pk, B1, [s, 0, 0], P.Tpacker, pts.map(([y, z]) => [s * G.xB, y, z]))); pkPts.push(...pts);
+          }
+          if (ps) {
+            const b = bb(ps), pts = clear2([[b[1] + 20, b[2] + 20], [b[4] - 20, b[2] + 20], [b[1] + 20, b[5] - 20], [b[4] - 20, b[5] - 20]]);
+            f.push(F('s30', ps, B1, [s, 0, 0], P.Tpacker, pts.map(([y, z]) => [s * G.xB, y, z]))); pkPts.push(...pts);
+          }
+          ops2.push({ title: 'Packers onto the bed-cabinet side', bench: true, add: [pk, ps].filter(Boolean).map(p => [p, [-s * E, 0, 0]]), fast: f,
+            setout: 'glued; screws clear of the kit plates, which bolt through packer and side' });
+        }
+        const avoidZ = [[G.zPl, G.zPl + T + 28], [G.zS1b - 16, G.zS1t + 16], [G.zS2b - 16, G.zS2t + 16], ...(G.runnerZ || []).map(z => [z - 31, z + 31])];
+        const rows = [G.yB1 + 35, G.yC - 35]; // off the lines of the carcass screws in the side's ends
+        const hingeAvoid = P.doorHinge === 'inner' ? parts.filter(p => p.hinges && p.name.indexOf(`(${S})`) >= 0).flatMap(p => p.hinges.map(z => [z - 40, z + 40])) : [];
+        // each row also steps around the packer screws that meet it inside the side
+        const pts = rows.flatMap(y => spread(G.zPl + T + 30, G.zBm0 - 40, 0, 300,
+          avoidZ.concat(y > G.yC - 80 ? hingeAvoid : [], pkPts.filter(([py]) => Math.abs(py - y) < 14).map(([, pz]) => [pz - 13, pz + 13])), 60).map(z => [s * G.xJ, y, z]));
+        ops2.push({ title: 'Bed-cabinet side against the tower', add: [B1, pk, ps].filter(Boolean).map(p => [p, [-s * E, 0, 0]]),
+          fast: [F('s30', T2, B1, [-s, 0, 0], T, pts)], ctx: true,
+          setout: `from inside the tower, two rows 35 in from the front and back edges, clear of the runners and shelves` });
+        inst('bedSide', { show: S === 'R', side: S, base: [], context: [...tower, pf, pb, eo, ei].filter(Boolean), ops: ops2 });
+      }
+    }
+  }
+
+  // ---------- the shelf box over the bed
+  const B2 = mk('B2')[0], B3 = mk('B3')[0], B4 = mk('B4')[0], U = sides.map(([S]) => one(`Bed-cabinet side, upper (${S})`)), B6 = mk('B6')[0];
+  const B7 = sides.map(([S]) => one(`Wall rail under the top (${S})`)), B11 = mk('B11')[0], SF = mk('SF')[0], B5 = mk('B5');
+  if (B2 && B3 && B4 && U[0] && U[1]) {
+    const ops = [], zShelf = (G.zBm0 + G.zBm1) / 2;
+    if (SF) {
+      const tw = G.twin ? P.twinSpacing / 2 : P.lockType === 'pins' ? P.lockPinX : null;
+      const avoid = [[G.flapHw.latch - 16, G.flapHw.latch + 16], [-G.flapHw.latch - 16, -G.flapHw.latch + 16], ...(tw !== null ? [[tw - 14, tw + 14], [-tw - 14, -tw + 14]] : [])];
+      const xs = spread(-G.xB, G.xB, 50, 150, avoid);
+      const order = xs.map((x, i) => i).sort((a, b) => Math.abs(xs[a]) - Math.abs(xs[b]) || xs[a] - xs[b]), seq = xs.map(() => 0);
+      order.forEach((i, k) => { seq[i] = k + 1; });
+      ops.push({ title: 'Steel flat into the shelf', add: [[SF, [0, E, 0]]], fast: [F('s35', SF, B2, [0, -1, 0], P.steelT, xs.map(x => [x, G.yC - P.steelT, zShelf]), { seq })],
+        setout: 'bedded in epoxy; drive them in the numbered order, from the middle out, so the flat pulls straight' });
+    }
+    const xBack = spread(-G.xJ, G.xJ, 25, 150); // the back's screws in the shelf's rear edge
+    if (B6) ops.push({ title: 'Wall rail under the shelf', add: [[B6, [0, 0, -E]]],
+      fast: [F('s50', B2, B6, [0, 0, -1], T, spread(-G.xB, G.xB, 50, 200, xBack.map(x => [x - 9, x + 9])).map(x => [x, G.yB1 + T / 2, G.zBm0]))] });
+    const xu = [-(G.xJ - T / 2), G.xJ - T / 2], nd = G.twin ? G.twin.notchD : 0;
+    const ys4 = spread(G.yB1, G.yC - nd, 50, 200);
+    // the divider's top edge runs the full depth unless its front notch is as tall as the space
+    const ysTop = G.twin && G.zBm1 + G.twin.notchH >= G.zTopB - 30 ? ys4 : ys;
+    const f3 = [...U.flatMap((p, k) => [dowels(B2, p, [0, 0, 1], yd.map(y => [xu[k], y, G.zBm1])), F('s50', B2, p, [0, 0, 1], T, ys.map(y => [xu[k], y, G.zBm1]))]),
+      F('dom', B2, B4, [0, 0, 1], 20, mid(ys4).map(y => [0, y, G.zBm1]), { along: [0, 1, 0] }), F('s50', B2, B4, [0, 0, 1], T, ys4.map(y => [0, y, G.zBm1]))];
+    for (const p of B5) { const b = bb(p); f3.push(F('s50', B2, p, [0, 0, 1], T, spread(b[0], b[3], 50, 200).map(x => [x, (b[1] + b[4]) / 2, G.zBm1]))); }
+    ops.push({ title: 'Upper sides and divider onto the shelf', add: [...U, B4, ...B5].map(p => [p, [0, 0, E]]), fast: f3, view: 'below',
+      setout: 'seen from below; on the bench the box lies on its back' });
+    const f4 = [...U.flatMap((p, k) => [dowels(B3, p, [0, 0, -1], yd.map(y => [xu[k], y, G.zTopB])), F('s50', B3, p, [0, 0, -1], T, ys.map(y => [xu[k], y, G.zTopB]))]),
+      F('dom', B3, B4, [0, 0, -1], 20, mid(ysTop).map(y => [0, y, G.zTopB]), { along: [0, 1, 0] }), F('s50', B3, B4, [0, 0, -1], T, ysTop.map(y => [0, y, G.zTopB])),
+      ...B7.filter(Boolean).map(p => { const b = bb(p); return F('s50', B3, p, [0, 0, -1], T, spread(b[0], b[3], 50, 200).map(x => [x, G.yB1 + T / 2, G.zTopB])); })];
+    ops.push({ title: 'Top on, with its wall rails', add: [[B3, [0, 0, E]], ...B7.filter(Boolean).map(p => [p, [0, 0, 0]])], fast: f4 });
+    if (B11) {
+      const b = bb(B11), xL = xBack, zU = spread(G.zBm1, G.zTopB, 25, 150);
+      const f = [F('b20', B11, B2, [0, 1, 0], P.Tback, xL.map(x => [x, G.yB1, (Math.max(G.zBm0, b[2]) + G.zBm1) / 2])),
+        F('b20', B11, B3, [0, 1, 0], P.Tback, xL.map(x => [x, G.yB1, (G.zTopB + Math.min(G.zTop, b[5])) / 2])),
+        ...U.map((p, k) => F('b20', B11, p, [0, 1, 0], P.Tback, zU.map(z => [xu[k], G.yB1, z]))), F('b20', B11, B4, [0, 1, 0], P.Tback, zU.map(z => [0, G.yB1, z])),
+        ...B7.filter(Boolean).map(p => { const q = bb(p); return F('b20', B11, p, [0, 1, 0], P.Tback, spread(q[0], q[3], 25, 150, [[-30, 30]]).map(x => [x, G.yB1, (q[2] + q[5]) / 2])); })];
+      f[0].seq = f[0].pts.map((_, i, a) => i === 0 || i === a.length - 1 ? 1 : 2); f[1].seq = f[0].seq.slice();
+      ops.push({ title: 'Back on, square', add: [[B11, [0, -E, 0]]], fast: f, setout: 'the four corner screws first (1), check the diagonals, then the rest (2)' });
+    }
+    inst('shelfBox', { show: true, bench: true, base: [B2], ops });
+    // ---------- the box between the towers
+    const box = [B2, B3, B4, ...U, B6, ...B7, B11, SF, ...B5].filter(Boolean), f = [];
+    for (const [S, s] of sides) {
+      const T2 = one(`Tower inner side (${S})`), u = one(`Bed-cabinet side, upper (${S})`);
+      const hingeAvoid = P.doorHinge === 'inner' ? parts.filter(p => p.hinges && p.name.indexOf(`(${S})`) >= 0).flatMap(p => p.hinges.map(z => [z - 40, z + 40])) : [];
+      const zs = spread(G.zBm1, G.zTopB, 50, 200, hingeAvoid);
+      f.push(F('s30', T2, u, [-s, 0, 0], T, [G.yB1 + 35, G.yC - 35].flatMap(y => zs.map(z => [s * G.xJ, y, z]))));
+      // into the shelf's end, between the screws and dowels that come up through it into the upper side
+      f.push(F('s50', T2, B2, [-s, 0, 0], T, spread(G.yB1, G.yC, 50, 200, ys.concat(yd).map(y => [y - 10, y + 10])).map(y => [s * G.xJ, y, zShelf])));
+    }
+    const ctx = parts.filter(p => !p.hw && !p.bed && /^(T[1-6]|B1|B8|B9)$/.test(p.mark));
+    inst('fitBox', { show: true, base: [], context: ctx, ops: [{ title: 'Slide the box in, fix it from inside the towers', add: box.map(p => [p, [0, 0, 0]]), fast: f, front: true, ctx: true, clip: [G.zS2b - 60, P.H],
+      arrow: [[0, G.yC + 700, (G.zBm1 + G.zTopB) / 2], [0, G.yC + 120, (G.zBm1 + G.zTopB) / 2]],
+      setout: 'through the tower sides from inside the top compartments: into the upper sides (C) and the shelf ends (A)' }] });
+  }
+
+  // ---------- bed frame (closed geometry; the frame is built face down)
+  const F1 = sides.map(([S]) => one(`Bed face panel (${S})`)), F2 = sides.map(([S]) => one(`Side rail (${S})`)), F3 = one('Head rail'), F4 = one('Foot rail');
+  const F5 = sides.map(([S]) => one(`Deck long strut (${S})`)), F6 = mk('F6'), F7 = sides.map(([S]) => one(`Mattress support (${S})`));
+  if (F1[0] && F1[1] && F2[0] && F2[1] && F3 && F4) {
+    const b3 = bb(F3), b4 = bb(F4), ops = [];
+    const corner = F2.flatMap((r, k) => {
+      const b = bb(r), s = k ? 1 : -1, x = s > 0 ? b3[3] : b3[0], dir = [s > 0 ? -1 : 1, 0, 0];
+      return [F('s50', r, F3, dir, T, spread(Math.max(b[1], b3[1]), Math.min(b[4], b3[4]), 25, 60).map(y => [x, y, (b3[2] + b3[5]) / 2])),
+        F('s50', r, F4, dir, T, spread(Math.max(b[1], b4[1]), Math.min(b[4], b4[4]), 20, 60).map(y => [x, y, (b4[2] + b4[5]) / 2]))];
+    });
+    ops.push({ title: 'Side rails to the head and foot rails', add: F2.map((p, k) => [p, [k ? E : -E, 0, 0]]), fast: corner });
+    const strike = parts.filter(p => p.bed && p.mark === 'LP').map(bb);
+    const avoidX = strike.map(q => [q[0] - 14, q[3] + 14]);
+    // each half square first: a screw at each of its four corners (1), then the rest (2)
+    const ends = (xs) => xs.map((_, i, a) => i === 0 || i === a.length - 1 ? 1 : 2), nearMid = (xs) => { const m = xs.reduce((b, x, i) => Math.abs(x) < Math.abs(xs[b]) ? i : b, 0); return xs.map((_, i) => i === m ? 1 : 2); };
+    const face = F1.flatMap((fp, k) => {
+      const s = k ? 1 : -1, r = bb(F2[k]), xr = (r[0] + r[3]) / 2, half = s > 0 ? [0, b3[3]] : [b3[0], 0];
+      const zs = spread(r[2], r[5], 50, 200), x3 = spread(half[0], half[1], 50, 200), x4 = spread(half[0], half[1], 50, 200, avoidX);
+      return [F('s40', fp, F2[k], [0, -1, 0], T, zs.map(z => [xr, G.yFb, z]), { seq: ends(zs) }),
+        F('s40', fp, F3, [0, -1, 0], T, x3.map(x => [x, G.yFb, (b3[2] + b3[5]) / 2]), { seq: nearMid(x3) }),
+        F('s40', fp, F4, [0, -1, 0], T, x4.map(x => [x, G.yFb, (b4[2] + b4[5]) / 2]), { seq: nearMid(x4) })];
+    });
+    ops.push({ title: 'Face panel onto the rails', add: F1.map(p => [p, [0, E, 0]]), fast: face,
+      setout: 'each half: its four corner screws first (1), check the diagonals, then the rest (2); sink the heads 2 below the face and fill before finishing' });
+    const strutPts = new Map();
+    if (F5[0] && F6.length) {
+      const f = [];
+      F5.forEach((p, k) => { const b = bb(p), zs = spread(b[2], b[5], 50, 300); strutPts.set(p, zs); f.push(F('b25', p, F1[k], [0, 1, 0], P.Tladder, zs.map(z => [(b[0] + b[3]) / 2, G.yFb, z]))); });
+      for (const p of F6) {
+        const b = bb(p), zc = (b[2] + b[5]) / 2;
+        F1.forEach((fp, k) => { const xs = k ? spread(0, b[3], 40, 250) : spread(b[0], 0, 40, 250); strutPts.set(p.name + k, xs); f.push(F('b25', p, fp, [0, 1, 0], P.Tladder, xs.map(x => [x, G.yFb, zc]))); });
+      }
+      ops.push({ title: 'Deck struts onto the face panel', add: [...F5, ...F6].map(p => [p, [0, -E, 0]]), fast: f, setout: 'glued; the cross struts bridge the joint between the face halves, a screw 40 each side of it' });
+    }
+    if (F7[0] && F5[0] && F6.length) {
+      const f = [];
+      F7.forEach((sp, k) => {
+        const zs = strutPts.get(F5[k]), b5 = bb(F5[k]);
+        f.push(F('b16', sp, F5[k], [0, 1, 0], P.Tsup, mid(zs).map(z => [(b5[0] + b5[3]) / 2, G.ySup1, z])));
+        for (const p of F6) { const b = bb(p); f.push(F('b16', sp, p, [0, 1, 0], P.Tsup, mid(strutPts.get(p.name + k)).map(x => [x, G.ySup1, (b[2] + b[5]) / 2]))); }
+      });
+      ops.push({ title: 'Mattress support onto the struts', add: F7.map(p => [p, [0, -E, 0]]), fast: f, setout: 'between the strut screws' });
+    }
+    inst('frame', { show: true, bench: true, base: [F3, F4], ops });
+  }
+
+  // ---------- headboard ledge and backrest
+  const H1 = mk('H1')[0], H2 = mk('H2')[0], H3 = mk('H3')[0], H4 = mk('H4')[0], H6 = mk('H6')[0], ribs = mk('H5');
+  if (H1 && H2 && H3) {
+    const ops = [], b1 = bb(H1), Tg = P.Tledge;
+    const ribX = ribs.map(p => { const b = bb(p); return (b[0] + b[3]) / 2; }), ribAvoid = ribX.map(x => [x - 22, x + 22]);
+    if (ribs.length) ops.push({ title: 'Ribs onto the ledge top, from below', bench: true, add: ribs.map(p => [p, [0, 0, E]]), view: 'below',
+      fast: ribs.map((p, k) => F('b30', H1, p, [0, 0, 1], Tg, spread(b1[1], Math.min(b1[4], bb(p)[4]), 40, 120).map(y => [ribX[k], y, b1[5]]))),
+      setout: 'with the ledge top upside down on the bench' });
+    const b2 = bb(H2), b3 = bb(H3);
+    ops.push({ title: 'Ledge top onto its front and wall cleat', add: [H1, ...ribs].map(p => [p, [0, 0, E]]),
+      fast: [F('s50', H1, H2, [0, 0, -1], Tg, spread(-G.xB, G.xB, 50, 200, ribAvoid).map(x => [x, (b2[1] + b2[4]) / 2, b2[5]])),
+        F('s50', H1, H3, [0, 0, -1], Tg, spread(-G.xB, G.xB, 50, 200, ribAvoid).map(x => [x, (b3[1] + b3[4]) / 2, b3[5]]))],
+      setout: 'the wall cleat is screwed into the studs first (K, two at each stud)' });
+    if (H4 && ribs.length && G.head) {
+      const a = G.head.a * Math.PI / 180, B0 = G.head.B0, B1p = G.head.B1, Th = P.Thead;
+      const L = Math.hypot(B1p[0] - B0[0], B1p[1] - B0[1]), ss = spread(0, L, 50, 200), nrm = [0, Math.cos(a), Math.sin(a)];
+      ops.push({ title: 'Backrest onto the ribs', add: [[H4, nrm.map(v => v * E)]],
+        fast: ribs.map((p, k) => F('b30', H4, p, nrm.map(v => -v), Th, ss.map(t => [ribX[k], B0[0] + (B1p[0] - B0[0]) * t / L, B0[1] + (B1p[1] - B0[1]) * t / L]))) });
+      if (H6) {
+        const zt = G.head.top, yE = (G.head.B1[0] + G.head.F1[0]) / 2;
+        ops.push({ title: 'Bedside shelf on top', add: [[H6, [0, 0, E]]],
+          fast: [...ribs.map((p, k) => F('b30', H6, p, [0, 0, -1], Th, spread(G.yB1, G.head.B1[0], 35, 200).map(y => [ribX[k], y, zt]))),
+            F('b30', H6, H4, [0, 0, -1], Th, spread(-G.xB, G.xB, 50, 200, ribAvoid).map(x => [x, yE, zt]))] });
+      }
+    }
+    inst('ledge', { show: true, base: [H2, H3], ops });
+  }
+
+  // ---------- drawer boxes and fronts
+  for (const [S, s] of sides) G.fronts.forEach((fr, i) => {
+    const sd = all(`Drawer ${i + 1} side (${S})`).slice().sort((p, q) => Math.abs(bb(q)[0] + bb(q)[3]) - Math.abs(bb(p)[0] + bb(p)[3]));
+    const fb = all(`Drawer ${i + 1} front/back (${S})`).slice().sort((p, q) => bb(q)[1] - bb(p)[1]);
+    const bot = one(`Drawer ${i + 1} bottom (${S})`), D3 = one(`Drawer front ${i + 1} (${S})`);
+    if (sd.length < 2 || fb.length < 2 || !bot) return;
+    const [so, si] = sd, [bf, bkk] = fb, b = bb(so), bt = bb(bot), zc = (b[2] + b[5]) / 2, Tb = P.Tb;
+    // two zones clear of the bottom groove and of the runner's drawer member: one screw (or two) in each
+    const free = [], cut = [[b[2], bt[5] + 8], [zc - 16.5, zc + 16.5], [b[5] - 12, b[5]]].sort((p, q) => p[0] - q[0]);
+    let z0 = b[2];
+    for (const [p, q] of cut) { if (p - z0 >= 16) free.push([z0, p]); z0 = Math.max(z0, q); }
+    if (b[5] - z0 >= 16) free.push([z0, b[5]]);
+    const zs = free.flatMap(([p, q]) => q - p >= 70 ? [p + (q - p) / 3, p + 2 * (q - p) / 3] : [(p + q) / 2]);
+    const yf = (bb(bf)[1] + bb(bf)[4]) / 2, yb = (bb(bkk)[1] + bb(bkk)[4]) / 2, xo = s > 0 ? bb(so)[0] : bb(so)[3], xi2 = s > 0 ? bb(si)[3] : bb(si)[0];
+    const members = parts.filter(p => p.mark === 'RN' && p.anim && !p.anim.k && p.name.startsWith(`Drawer ${i + 1} runner`) && p.name.endsWith(`(${S})`));
+    const ops = [
+      { title: 'Front and back into the first side', add: [[so, [s * E, 0, 0]]],
+        fast: [bf, bkk].map((p, k) => F('b30', so, p, [-s, 0, 0], Tb, zs.map(z => [xo, k ? yb : yf, z]))), setout: 'glued; clear of the bottom groove and of the runner' },
+      { title: 'Slide the bottom into the grooves', add: [[bot, [-s * E, 0, 0]]], fast: [], arrow: 'add' },
+      { title: 'Close with the second side', add: [[si, [-s * E, 0, 0]]],
+        fast: [bf, bkk].map((p, k) => F('b30', si, p, [s, 0, 0], Tb, zs.map(z => [xi2, k ? yb : yf, z]))), setout: 'check the diagonals before the glue grabs' }];
+    if (members.length) {
+      const cx = (p) => { const q = bb(p); return (q[0] + q[3]) / 2; };
+      const att = members.map(p => { const side = Math.abs(cx(p) - cx(so)) < Math.abs(cx(p) - cx(si)) ? so : si, out = Math.sign(cx(p) - cx(side)); return { p, side, out }; });
+      ops.push({ title: "Runners' drawer members onto the sides", add: att.map(a => [a.p, [a.out * E, 0, 0]]),
+        fast: att.map(({ p, side, out }) => { const q = bb(p), xf = out > 0 ? bb(side)[3] : bb(side)[0]; return F('r10', p, side, [-out, 0, 0], 1.2, spread(q[1] + 30, q[4] - 30, 0, 250).map(y => [xf, y, zc])); }),
+        setout: 'short screws: the box sides are only 12 thick' });
+    }
+    inst('drawers', { show: S === 'R' && i === 0, side: S, bench: true, base: [bf, bkk], ops });
+    if (D3) {
+      const fbx = bb(bf), xs = [fbx[0] + 50, fbx[3] - 50], zz = [bt[5] + 20, b[5] - 25];
+      const pts = [[xs[0], zz[1]], [xs[1], zz[0]], [xs[0], zz[0]], [xs[1], zz[1]]];
+      inst('fronts', { show: S === 'R' && i === 0, side: S, base: [so, si, bf, bkk, bot], ops: [{ title: 'Front onto the box, from inside', add: [[D3, [0, E, 0]]],
+        fast: [F('s25', bf, D3, [0, 1, 0], Tb + P.frontGap, pts.map(([x, z]) => [x, G.yFb, z]), { seq: [1, 1, 2, 2] })],
+        setout: `${P.gap} spacers and double-sided tape hold it; 6 holes in the box front; the diagonal pair (1) first, check, then the others (2)` }] });
+    }
+  });
+
+  // ---------- kick board and header
+  const K3 = mk('K3')[0], bat = mk('B12'), K1s = mk('K1');
+  const ops = [];
+  if (K3 && bat.length) {
+    const bradX = new Map(bat.map(p => { const q = bb(p); return [p, spread(q[0], q[3], 30, 200)]; }));
+    const offBrads = (p) => (bradX.get(p) || []).map(x => [x - 9, x + 9]);
+    ops.push({ title: 'Battens onto the back of the header', bench: true, add: bat.map(p => [p, [0, -E, 0]]),
+      fast: bat.map(p => { const q = bb(p); return F('brad', p, K3, [0, 1, 0], q[4] - q[1], bradX.get(p).map(x => [x, G.yFb, (q[2] + q[5]) / 2])); }),
+      setout: 'glued and pinned' });
+    const f = [];
+    for (const [S, s] of sides) {
+      const top = one(`Tower top (${S})`), bt2 = bat.find(p => { const q = bb(p); return Math.sign(q[0] + q[3]) === s && Math.abs(q[0] + q[3]) > 10; });
+      if (top && bt2) {
+        const q = bb(bt2), lo = Math.max(Math.min(s * G.xOi, s * G.xT2), q[0] + 15), hi = Math.min(Math.max(s * G.xOi, s * G.xT2), q[3] - 15);
+        if (hi > lo) f.push(F('s30', top, bt2, [0, 0, 1], T, spread(lo, hi, 15, 150, offBrads(bt2)).map(x => [x, G.yFb - 15, G.zTop])));
+      }
+    }
+    const cb = bat.find(p => { const q = bb(p); return Math.abs(q[0] + q[3]) < 10; });
+    if (cb && B3) {
+      const hz = G.flapHw.hinges.flatMap(h => [[h - 38, h + 38], [-h - 38, -h + 38]]).concat([[-24, 24]]);
+      f.push(F('s30', B3, cb, [0, 0, 1], T, spread(-G.xB, G.xB, 50, 250, hz.concat(offBrads(cb))).map(x => [x, G.yFb - 15, G.zTop])));
+    }
+    ops.push({ title: 'Header onto the tops, scribed to the ceiling', add: [K3, ...bat].map(p => [p, [0, 0, E]]), fast: f, view: 'below', ctx: true, clip: [G.zS2b + 200, P.H + 400],
+      setout: 'up through the tops from inside the top compartments and through the flaps' });
+  }
+  if (K1s.length) {
+    const f = [];
+    for (const k1 of K1s) {
+      const q = bb(k1), zk = (q[2] + q[5]) / 2;
+      for (const [S, s] of sides) {
+        const pf = one(`Plinth front (${S})`), B1 = one(`Bed-cabinet side (${S})`);
+        if (pf) { const b = bb(pf); const xs = [b[0] + 50, b[3] - 50].filter(x => x > q[0] + 20 && x < q[3] - 20); if (xs.length) f.push(F('br30', k1, pf, [0, -1, 0], T + P.frontGap, xs.map(x => [x, G.yC, Math.min(zk, b[5] / 2)]))); }
+        if (B1 && q[0] < s * G.xB && q[3] > s * G.xB) f.push(F('br30', k1, B1, [0, -1, 0], T + P.frontGap, [12, q[5] - 12].map(z => [s * (G.xB + T / 2), G.yC, z])));
+      }
+    }
+    ops.push({ title: 'Kick board', add: K1s.map(p => [p, [0, E, 0]]), fast: f, ctx: true, clip: [-1, 420], setout: 'construction adhesive on the plinth fronts and side edges; punch the brads and fill' });
+  }
+  if (ops.length) inst('kickHeader', { show: true, base: K3 && bat.length ? [K3] : [], context: parts.filter(p => !p.hw && !p.bed && /^(T[1-6]|P[12]|B[1-4]|B1[01])$/.test(p.mark)), ops });
+
+  // counts per fixing over every copy (both towers, every drawer)
+  const count = (key) => {
+    const c = {};
+    for (const i of steps[key] || []) for (const op of i.ops) for (const f of op.fast) c[f.key] = (c[f.key] || 0) + f.pts.length;
+    return c;
+  };
+  return { steps, count, FAST, TAGS };
+}
+
 const STUDS = 450;
 function assembly(model, sheets) {
   const { P, G, parts } = model, T = P.T, f0 = (v) => String(Math.round(v));
@@ -1144,8 +1500,11 @@ function assembly(model, sheets) {
     s35: ['Countersunk screw 8g x 35, through the steel flat', '4.5 + countersink in the steel (HSS bit); pilot 3 in the shelf edge'],
     s25: ['Pan-head screw 8g x 25 (4.0 x 25), drawer fronts', '6 through the box front (room to adjust); pilot 2.5 x 10 in the front'],
     b30: ['Countersunk screw 6g x 30 (3.5 x 30), drawer boxes', 'pilot 2 in the 12 mm edge; 3.5 clearance + countersink'],
+    b25: ['Countersunk screw 6g x 25 (3.5 x 25), deck struts', 'pilot 2 in the face panel, 10 deep; 3.5 clearance + countersink'],
     b20: ['Countersunk screw 6g x 20 (3.5 x 20), backs, brackets', 'pilot 2'],
-    r14: ['Pan-head chipboard screw 4 x 14, runners', 'pilot 2.5 x 8 (or a Vix bit) through the runner holes'],
+    b16: ['Countersunk screw 6g x 16 (3.5 x 16), mattress support', 'pilot 2 in the struts; 3.5 clearance + countersink'],
+    r14: ['Pan-head chipboard screw 4 x 14, runners\' cabinet members', 'pilot 2.5 x 8 (or a Vix bit) through the runner holes'],
+    r10: ['Pan-head chipboard screw 3.5 x 10, runners\' drawer members', 'pilot 2 x 6: the box sides are only 12 thick'],
     h15: ['Chipboard screw 3.5 x 15, hinge cups and stays', 'pilot 2 x 8; cups bored 35 x 13 deep'],
     h17: ['Chipboard screw 3.5 x 17, hinge plates', 'pilot 2 x 10 on the 37 / 32 holes (or 6.3 system screws in 5 mm holes)'],
     d8: ['Fluted beech dowel 8 x 30, glued', '8 mm: 12 deep in the face (depth stop), 19 deep in the edge'],
@@ -1154,7 +1513,8 @@ function assembly(model, sheets) {
     kit: [`Machine screw for the kit plates, ${P.packer ? f0(P.Tpacker) + ' longer than supplied' : 'as supplied'}`, 'through the side' + (P.packer ? ' and its packer' : '') + ', as the kit plates'],
     m4: ['Handle bolt M4 x 25 (18 mm fronts)', '5 through the front'],
     pin: ['Shelf pin 5 mm', '5 x 10 deep holes, 32 apart, 37 in from front and back'],
-    brad: ['Brad 40 mm, 16 gauge, with construction adhesive', 'punch and fill'],
+    brad: ['Brad 40 mm, 16 gauge, glued: header battens', 'no pilot'],
+    br30: ['Brad 30 mm, 16 gauge, with construction adhesive: kick board', 'punch and fill'],
   };
   const qty = {}, steps = [];
   const step = (o) => { o.fix = []; steps.push(o); return o; };
@@ -1167,6 +1527,8 @@ function assembly(model, sheets) {
   const usedSheets = (sheets || []).reduce((a, q) => a + (q.used || 0), 0);
   const band = parts.filter(p => !p.hw).reduce((a, p) => a + (p.band || 0), 0) / 1000;
   const isPlate = (p) => /arm and \d+ mm plate$/.test(p.name);
+  const J = joinery(model);
+  const addJ = (st, key) => { st.joinery = key; const c = J.count(key); for (const k of Object.keys(c)) add(st, k, c[k]); };
 
   let st = step({ title: 'Measure and mark out', h: 1.5, parts: () => false,
     text: `Check the width, height and depth at three heights against the ${f0(P.W)} x ${f0(P.H)} x ${f0(P.D)} drawn. Find the studs on the back and side walls with a detector (usually ${STUDS} or 600 apart) and mark their centres, and any cables or pipes. Find the floor's high point: the plinths and bed-cabinet sides are levelled from it.` });
@@ -1175,35 +1537,30 @@ function assembly(model, sheets) {
   st = step({ title: 'Edge band, sand, pre-finish', h: Math.round((2 + band * 0.08) * 2) / 2, overnight: true, parts: () => false,
     text: `${band.toFixed(0)} m of banding on the edges the cut list marks. Sand to 180 and put two coats on the insides of the towers, the drawer boxes and the backs of the fronts while they lie flat. Leave it overnight.` });
   st = step({ title: 'Drill everything on the flat', h: 3, parts: () => false,
-    text: `Runner holes on the tower sides (${holes.join(', ')} from the front edge, on the centre lines on sheet 5); hinge-plate holes 37 back and 32 apart at the cup heights; 35 x 13 cups ${G.hingeDoor.cup} in from the door edges and ${G.hingeFlap.cup} below the flaps' top edges; shelf-pin holes; dowel holes with a jig; the kit plates on the bed-cabinet sides from sheet 5.` });
+    text: `Runner holes on the tower sides (${holes.join(', ')} from the front edge, on the centre lines on sheet 5); hinge-plate holes 37 back and 32 apart at the cup heights; 35 x 13 cups ${G.hingeDoor.cup} in from the door edges and ${G.hingeFlap.cup} below the flaps' top edges; shelf-pin holes; the dowel holes with a jig and the screw clearance holes, from the set-out strips in the assembly details; the kit plates on the bed-cabinet sides from sheet 5.` });
 
   st = step({ title: 'Build the plinths', h: 1, parts: (p) => p.mark === 'P1' || p.mark === 'P2',
     text: `Glue and screw each ladder (two screws a corner), check the diagonals, then set it ${f0(P.sideClear)} off the side wall and ${f0(P.backGap)} off the back and level it from the floor's high point with packers under its members.` });
-  add(st, 's40', nTow * 8);
+  addJ(st, 'plinth');
   st = step({ title: 'Assemble the tower carcasses', h: 3, parts: (p) => ['T1', 'T2', 'T3', 'T4', 'T6'].includes(p.mark),
     text: `Each tower on its back: glue, dowel and screw the two fixed shelves between the sides (through the sides) and the top and bottom over them (through the top and bottom into the sides). Sink the heads on the inner side flush: it goes against the bed-cabinet side. Square it up and glue and screw the back on, every 150.` });
-  add(st, 'd8', nTow * 8 * nD(G.cD)); add(st, 's50', nTow * 8 * nS(G.cD));
-  add(st, 'b20', nTow * (2 * nS(backL, 25, 150) + 2 * nS(G.towerW, 25, 150) + 2 * nS(G.towerIn, 25, 150)));
+  addJ(st, 'carcass');
   st = step({ title: 'Fit out the towers', h: 1.5, parts: (p) => p.mark === 'HR' || (p.mark === 'RN' && p.pick) || (p.mark === 'HG' && isPlate(p)) || p.mark === 'T5',
     text: `While they lie on their backs: the runners' cabinet members flush with the front edge on their centre lines, the hinge plates (${G.hingeDoor.H} mm, ${G.hingeDoor.code}), the hanging-rail brackets${P.topShelf ? ' and the shelf pins' : ''}.` });
   add(st, 'r14', nDr * 2 * useR); add(st, 'h17', doorHinges * 2); add(st, 'b20', nTow * 2 * 3); if (P.topShelf) add(st, 'pin', nTow * 4);
   st = step({ title: 'Stand the towers in place', h: 1.5, people: 2, parts: () => false, hl: (p) => /^(T[1-6]|P[12])$/.test(p.mark),
     text: `Stand each tower up on the floor (its diagonal is ${f0(Math.hypot(G.zTop - G.zPl, G.cD + P.Tback))}), lift it onto its plinth and screw down through the bottom into the plinth from inside. Plumb it, pack the outer side off the wall and screw through the packers into the side-wall studs.` });
-  add(st, 's40', nTow * (2 * nS(G.towerW, 40, 200) + 2 * nS(G.cD - 2 * P.Tplinth, 40, 200))); add(st, 'w75', nTow * 3);
+  addJ(st, 'towerPlinth'); add(st, 'w75', nTow * 3);
   st = step({ title: 'Bed-cabinet sides and kit plates', h: 2, parts: (p) => ['B1', 'B8', 'B9'].includes(p.mark) || (!p.bed && ['PV', 'BS', 'ST'].includes(p.mark)),
     text: `${P.packer ? 'Glue and screw the packers to the bed-cabinet sides, then' : 'First'} fit the kit's cabinet plates (pivots, upper ball studs, bed stops) from sheet 5 while the sides are loose. Stand each side against its tower, plumb, and screw through the tower side into it from inside the tower, two rows every 300.` });
-  if (P.packer) add(st, 's30', 2 * (2 * nS(P.packerH, 50, 250) + 4));
-  add(st, 's30', 2 * 2 * nS(G.zBm0, 80, 300)); add(st, 'kit', 8);
+  addJ(st, 'bedSide'); add(st, 'kit', 8);
   const boxParts = ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B10', 'B11', 'SF'];
   st = step({ title: 'Make up the shelf box', h: 3, people: 2, parts: (p) => boxParts.includes(p.mark),
     text: `On the floor: ${P.edgeSteel ? `bed the steel flat in epoxy or PU adhesive in the shelf's front notch and screw it every 150; ` : ''}screw the wall rail under the shelf through the shelf. Glue, dowel and screw the two upper sides between the shelf and the top (through the shelf and the top into their edges), the divider in the middle with Dominos, and the top's wall rails. Square it, then glue and screw the 6 mm back onto the back edges every 150: it ties the two sides together.` });
-  if (P.edgeSteel) add(st, 's35', nS(2 * G.xB, 50, 150));
-  add(st, 's50', nS(2 * G.xB)); add(st, 'd8', 2 * 2 * nD(G.cD)); add(st, 's50', 2 * 2 * nS(G.cD));
-  add(st, 'dom', 2 * nD(G.cD)); add(st, 's50', nS(G.cD) + nS(G.cD - (G.twin ? G.twin.notchD : 0)) + 2 * nS(B7L));
-  add(st, 'b20', 2 * nS(2 * G.xJ, 25, 150) + 2 * nS(backH, 25, 150) + nS(backH, 25, 150));
+  addJ(st, 'shelfBox');
   st = step({ title: 'Fit the shelf box', h: 1.5, people: 2, parts: () => false, hl: (p) => boxParts.includes(p.mark),
     text: `Slide the box in from the front onto the bed-cabinet sides, so the upper sides stand on the lower ones with the shelf between. Screw down through the shelf into the lower sides and, from inside the towers, through the tower sides into the upper sides, two rows. Screw the three wall rails through the back into the studs.` });
-  add(st, 's50', 2 * nS(G.cD)); add(st, 's30', 2 * 2 * nS(G.antClear, 50, 200));
+  addJ(st, 'fitBox');
   add(st, 'w75', 2 * studs(2 * G.xB) + 2 * 2 * studs(B7L));
   st = step({ title: 'Flaps, stays, latches' + (G.twin ? ' and twin pin' : ''), h: 2, parts: (p) => ['D4', 'FH', 'FS', 'PL'].includes(p.mark) || (p.mark === 'LP' && !p.bed),
     text: `Hinge plates under the top (${G.hingeFlap.H} mm, ${G.hingeFlap.code}), hinges in the flaps, then hang them and set the reveals. Gas stays on the upper sides and the divider, push latches drilled 10 into the shelf edge.${G.twin ? ' Glue and screw the twin-pin block into the divider\'s notch, press the bushes in and try the pins.' : ''}` });
@@ -1211,27 +1568,25 @@ function assembly(model, sheets) {
   const nStrut = parts.filter(p => p.mark === 'F6').length;
   st = step({ title: 'Bed frame and gas springs', h: 4, people: 2, parts: (p) => (p.bed && !p.mattress && p.mark !== 'HD' && p.mark !== 'SP') || p.mark === 'GS', bed: 70,
     text: `Build the frame to the Create-A-Bed plan: rails, deck struts, mattress support and the face panel in two halves, glued and screwed. Fit the frame plates, legs and lower ball studs, hang the frame on the pivots, and fit the gas springs last with the bed down, as the kit says. Swing it slowly and check the clearances on sheet 3.` });
-  add(st, 's50', 12); add(st, 's30', 2 * nS(G.frameL) + 2 * nS(G.frameW)); add(st, 's40', 2 * nStrut + 4);
-  add(st, 'b20', 2 * (nS(P.mL, 25, 200) * 2 + nS(P.mW / 2, 25, 200) * 2));
+  addJ(st, 'frame');
   if (has('H1') || has('H4')) {
     st = step({ title: 'Headboard ledge and backrest', h: 1.5, parts: (p) => /^H[1-6]$/.test(p.mark), bed: 70,
       text: `With the bed down: the ledge's wall cleat into the studs, then its front and top, glued and screwed.${has('H4') ? ' The backrest on its ribs, leaning back over the swing, and the bedside shelf on top.' : ''}` });
-    if (has('H1')) { add(st, 's50', 2 * nS(2 * G.xB)); add(st, 'w75', 2 * studs(2 * G.xB)); }
-    if (has('H4')) add(st, 's30', 3 * 2 * nS(600) + nS(2 * G.xB));
+    addJ(st, 'ledge');
+    if (has('H1')) add(st, 'w75', 2 * studs(2 * G.xB));
   }
   st = step({ title: 'Drawer boxes', h: Math.round(nDr * 0.4 * 2) / 2, parts: (p) => ['X1', 'X2', 'X3'].includes(p.mark) || (p.mark === 'RN' && !p.pick), open: 1,
     text: `Glue and screw the fronts and backs between the sides with the bottoms slid into their grooves, and check the diagonals. Screw the runners' drawer members to the box sides, flush with the box fronts.` });
-  for (const f of G.fronts) { const bh = f.h - P.boxLess; add(st, 'b30', nTow * 4 * (bh > 100 ? 3 : 2)); }
-  add(st, 'r14', nDr * 2 * 3);
+  addJ(st, 'drawers');
   st = step({ title: 'Hang the drawers, fit the fronts', h: Math.round(nDr * 0.25 * 2) / 2, parts: (p) => p.mark === 'D3', open: 1,
     text: `Clip the boxes onto the runners. Hold each front in place with double-sided tape and ${f0(P.gap)} spacers, then drill 6 through the box front from inside and screw the front on from inside.` });
-  add(st, 's25', nDr * (G.doorW > 600 ? 6 : 4));
+  addJ(st, 'fronts');
   st = step({ title: 'Hang the doors', h: Math.round(parts.filter(p => p.mark === 'D1' || p.mark === 'D2').length * 0.4 * 2) / 2, parts: (p) => p.mark === 'D1' || p.mark === 'D2' || (p.mark === 'HG' && !isPlate(p)),
     text: `Screw the hinges into the cups, clip them onto the plates and adjust: side ±2, depth +3/-2, height ±2 for even ${f0(P.gap)} reveals.` });
   add(st, 'h15', doorHinges * 2);
   st = step({ title: 'Kick board and header', h: 1.5, parts: (p) => /^K[1-4]$/.test(p.mark) || p.mark === 'B12',
     text: `Glue and pin the battens to the back of the header at its bottom edge, scribe the header to the ceiling, then screw up through the tops into the battens from inside the top compartments and through the flaps. Kick board: construction adhesive on the plinth fronts and the bed-cabinet sides' front edges, and two brads at each.` });
-  add(st, 's30', nTow * nS(G.towerW, 40, 150) + nS(2 * G.xJ, 50, 250)); add(st, 'brad', 2 * 4 + 3 * 4);
+  addJ(st, 'kickHeader');
   st = step({ title: 'Handles, adjust, final checks', h: 1.5, parts: () => true, bed: 0,
     text: `Handles on the drawers, doors and the bed face. Check the reveals, the runners' stops, the flap stays and the twin pin, re-tighten every wall screw, and swing the bed down once more, slowly, with the mattress on.` });
   add(st, 'm4', 2 * (nDr + parts.filter(p => p.mark === 'D1' || p.mark === 'D2').length + 2));
@@ -1250,7 +1605,8 @@ function assembly(model, sheets) {
   const where = {};
   steps.forEach((s, i) => s.fix.forEach(([k, n]) => { (where[k] = where[k] || []).push(`${n} step ${i + 1}`); }));
   fixings.forEach(f => { f.where = where[f.key].join(', '); });
-  return { steps, fixings, FX, stepOf, days: day, hours: steps.reduce((a, s) => a + s.h, 0), studs: STUDS };
+  fixings.forEach(f => { f.tag = TAGS[f.key] || ''; });
+  return { steps, fixings, FX, stepOf, days: day, hours: steps.reduce((a, s) => a + s.h, 0), studs: STUDS, joinery: J };
 }
 
 /* ------------------------------------------------------------------ sheet nesting (guillotine, cuttable with a track saw) */
@@ -1562,7 +1918,7 @@ function makeZip(files) { // files: [{name, data: Uint8Array}]
   return out;
 }
 
-const api = { DEFAULTS, COLORS, SOURCES, HW_ASSUMPTIONS, reviewNotes, assembly, cyl, box, RUNNER_STD, RUNNER_HW, HINGE_HW, runnerHoles, hingeFit, PLY_DENSITY, normParams, derived, build, cutList, nest, summary, writeSTEP, makeZip, crc32,
+const api = { DEFAULTS, COLORS, SOURCES, HW_ASSUMPTIONS, reviewNotes, assembly, joinery, FAST, TAGS, cyl, box, RUNNER_STD, RUNNER_HW, HINGE_HW, runnerHoles, hingeFit, PLY_DENSITY, normParams, derived, build, cutList, nest, summary, writeSTEP, makeZip, crc32,
   prismBox, prismCorners, prismVolume, loopPolyline, to3, rot2, rotYZ, rotatePrism, legGeom, legPsi, bedProfile, clearances, hingeZs, springEnds, stayEnds, springSolids, staySolids, linkEnds, linkSolids, rectLoopR01 };
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
 else root.MurphyCore = api;

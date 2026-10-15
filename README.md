@@ -4,7 +4,8 @@
 
 A one-page tool for designing a built-in plywood wardrobe around a Create-A-Bed vertical queen Murphy bed: a fold-down bed in the middle, a tower of drawers and hanging space either side, and lift-up flaps over a storage shelf above the bed. Change a size and the 3D model, the bed's swing clearances, the cut list and the sheet nesting update straight away. Then save:
 
-- **Drawings**: an A3 PDF set of 12 sheets: overview, elevations and plans, sections with the bed's swing, the bed frame with the kit's numbers, hardware positions, cut list and hardware, cutting plans, a build sequence (a day-by-day timeline and 19 steps, each with a picture and its fixings), a fixings schedule (screws, dowels, drill sizes, glue, wall fixings, parts by step) and a design review. Everything is vector, the 3D views included: they are drawn as shaded faces in exact depth order, so they stay sharp at any zoom and print cleanly.
+- **Drawings**: an A3 PDF set of 18 sheets: overview, elevations and plans, sections with the bed's swing, the bed frame with the kit's numbers, hardware positions, cut list and hardware, cutting plans, a build sequence (a day-by-day timeline and 19 steps, each with a picture and its fixings), assembly details, a fixings schedule (screws, dowels, drill sizes, glue, wall fixings, parts by step) and a design review. Everything is vector, the 3D views included: they are drawn as shaded faces in exact depth order, so they stay sharp at any zoom and print cleanly.
+- **Assembly details**: a half page for every step that joins plywood. Each operation is an exploded view at one scale, with the part going on pulled back along its joint, each screw floating off its head side, and a dashed line from its tip through the clearance hole to where it lands. Dowels and Dominos float in the gap. Tags name the fixings (A is an 8g x 50, DW an 8 x 30 dowel, and so on), and numbered, coloured circles give the driving order where it matters: the front screw of a carcass joint first, a back's four corners first, the steel flat from the middle out. Close-ups at 1:5 or larger show a typical joint, and set-out strips give every line of holes with its distance from a named edge, to 0.5 mm. The first half page draws every fixing full size as a key. The hole positions come from one joinery model, which the tests check for each fixing: inside the parts it joins, clear of their faces, room to drive it, and no clashes with another fixing.
 - **3D model**: a STEP (AP214) assembly for CAD, one solid per part, with the hardware and mattress if you want them, and the bed closed or at the slider's angle.
 - **Cut list**: a CSV of every part, with the sheet each piece is nested on.
 
@@ -45,7 +46,7 @@ three.js r128 and jsPDF 2.5.1 (both MIT licensed) are inlined by `build.js`.
 
 ## Tests
 
-- `npm run check`: builds three designs in Node and checks cut sizes against the solids, part clashes, the nesting and the design checks.
+- `npm run check`: builds three designs in Node and checks cut sizes against the solids, part clashes, the nesting and the design checks, then every screw, dowel and Domino in the joinery model.
 - `node test/export.js [params.json]`: opens `index.html` in headless Chromium and saves the PDF, STEP, CSV and two screenshots to `out/` (set `CHROMIUM_PATH` to a Chromium or headless-shell binary).
 - `python3 test/check_step.py out/default.step`: loads the STEP file with OpenCASCADE (needs Python with cadquery-ocp) and reports solids, validity, volume and bounds.
 

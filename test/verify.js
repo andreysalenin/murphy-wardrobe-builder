@@ -49,3 +49,74 @@ for (const h of hw) for (const sol of h.solids) {
     if (ox > 0.5 && oy > 0.5 && oz > 0.5) { const k = h.mark + ' x ' + q.mark; seen.set(k, (seen.get(k) || 0) + 1); } }
 }
 console.log('hardware overlaps (bounding boxes):', [...seen.entries()].map(([k, v]) => k + ' ' + v).join(' | '));
+
+// ---------- joinery: every fastener inside what it joins, clear of the faces, reachable, not clashing
+function checkJoinery(params, label) {
+  const m = C.build(params), S = C.summary(m), B = S.build, J = B.joinery;
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const addv = (a, b, k) => [a[0] + b[0] * k, a[1] + b[1] * k, a[2] + b[2] * k];
+  const inLoop = (pt, lp) => { let c = false; for (let i = 0, j = lp.length - 1; i < lp.length; j = i++) { const a = lp[i], b = lp[j]; if ((a[1] > pt[1]) !== (b[1] > pt[1]) && pt[0] < (b[0] - a[0]) * (pt[1] - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
+  const inPrism = (pr, p, tol) => { const d = sub(p, pr.o), w = dot(d, pr.n); if (w < -tol || w > pr.len + tol) return false; return inLoop([dot(d, pr.u), dot(d, pr.v)], C.loopPolyline(pr.loops[0], 12)); };
+  const inPart = (part, p, tol) => part.solids.some(pr => inPrism(pr, p, tol || 0));
+  const perp = (dir) => { const a = Math.abs(dir[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0]; const u = [dir[1] * a[2] - dir[2] * a[1], dir[2] * a[0] - dir[0] * a[2], dir[0] * a[1] - dir[1] * a[0]]; const l = Math.hypot(...u); const u1 = u.map(x => x / l); const v = [dir[1] * u1[2] - dir[2] * u1[1], dir[2] * u1[0] - dir[0] * u1[2], dir[0] * u1[1] - dir[1] * u1[0]]; return [u1, v]; };
+  const stepIdx = (p) => B.stepOf(p);
+  const problems = [], segs = [];
+  let n = 0;
+  for (const key of Object.keys(J.steps)) {
+    const si = B.steps.findIndex(s => s.joinery === key);
+    for (const inst of J.steps[key]) {
+      const present = new Set(inst.base);
+      for (const op of inst.ops) {
+        for (const g of op.fast) {
+          const [len, dia] = C.FAST[g.key], dir = g.dir, [u, v] = perp(dir);
+          const into = g.into, thr = g.through;
+          g.pts.forEach((pt) => {
+            n++;
+            const dowel = g.key === 'd8' || g.key === 'dom';
+            const a = dowel ? addv(pt, dir, -12) : addv(pt, dir, -g.thru), tip = dowel ? addv(pt, dir, 18) : addv(a, dir, len);
+            const r = g.key === 'dom' ? 3.5 : dia / 2 - 0.6;
+            // shank in the part it holds into, with its radius clear of the faces
+            for (let t = 0.6; t <= 0.98; t += 0.05) {
+              const q = addv(pt, sub(tip, pt), t);
+              for (const off of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]]) {
+                const qq = addv(addv(q, u, off[0]), v, off[1]);
+                if (!inPart(into, qq, 0.01)) { problems.push(`${label} ${key} "${op.title}" ${g.key} at ${pt.map(Math.round)}: leaves ${into.name}`); return; }
+              }
+            }
+            // through part along the clearance hole
+            if (!dowel && g.thru > 2) for (let t = 0.2; t <= 0.8; t += 0.3) { const q = addv(a, dir, g.thru * t); if (!inPart(thr, q, 0.01)) { problems.push(`${label} ${key} "${op.title}" ${g.key} at ${pt.map(Math.round)}: misses ${thr.name}`); return; } }
+            // nothing else in the way of the fixing or of the driver (parts fitted by then)
+            const bench = inst.bench || op.bench;
+            const others = m.parts.filter(p => p !== into && p !== thr && !p.mattress && (present.has(p) || (!bench && stepIdx(p) < si)) && !(op.add || []).some(x => x[0] === p) && (p.hw ? !/links|^Gas|stay/i.test(p.name) : true));
+            const probe = [];
+            for (let t = 0.05; t <= 0.98; t += 0.08) probe.push(addv(a, sub(tip, a), t));
+            if (!dowel) for (let k = 1; k <= 25; k += 4) probe.push(addv(a, dir, -k));
+            for (const q of probe) { const hit = others.find(p => inPart(p, q, -0.01)); if (hit) { problems.push(`${label} ${key} "${op.title}" ${g.key} at ${pt.map(Math.round)}: runs into ${hit.name}`); return; } }
+            segs.push({ a: dowel ? addv(pt, dir, -12) : a, b: tip, r: g.key === 'dom' ? 4 : dia / 2, where: `${key} ${g.key} ${pt.map(Math.round)}` });
+          });
+        }
+        for (const [p] of op.add || []) present.add(p);
+      }
+    }
+  }
+  // fixings clashing with each other
+  const segDist = (p1, q1, p2, q2) => { // closest distance between segments
+    const d1 = sub(q1, p1), d2 = sub(q2, p2), r = sub(p1, p2), a = dot(d1, d1), e = dot(d2, d2), f = dot(d2, r);
+    let s, t; const c = dot(d1, r), b = dot(d1, d2), den = a * e - b * b;
+    s = den > 1e-9 ? Math.min(1, Math.max(0, (b * f - c * e) / den)) : 0;
+    t = (b * s + f) / e; if (t < 0) { t = 0; s = Math.min(1, Math.max(0, -c / a)); } else if (t > 1) { t = 1; s = Math.min(1, Math.max(0, (b - c) / a)); }
+    return Math.hypot(...sub(addv(p1, d1, s), addv(p2, d2, t)));
+  };
+  for (let i = 0; i < segs.length; i++) for (let j = i + 1; j < segs.length; j++) {
+    const A = segs[i], Bq = segs[j];
+    if (Math.min(A.a[0], A.b[0]) - 60 > Math.max(Bq.a[0], Bq.b[0]) || Math.min(Bq.a[0], Bq.b[0]) - 60 > Math.max(A.a[0], A.b[0])) continue;
+    if (segDist(A.a, A.b, Bq.a, Bq.b) < A.r + Bq.r + 1.5) problems.push(`${label} clash: ${A.where} and ${Bq.where}`);
+  }
+  console.log(`${label}: ${n} fixings checked, ${problems.length} problems`);
+  for (const p of problems.slice(0, 40)) console.log('   ' + p);
+  return problems.length;
+}
+let jp = checkJoinery({}, 'joinery default');
+jp += checkJoinery({ W: 2600, H: 2400, D: 560, drawers: [150, 150, 200, 250, 250], hangClear: 900, sideClear: 0, doorHinge: 'inner' }, 'joinery variant');
+jp += checkJoinery({ mT: 305, gapHydr: 25, kickCentre: 'none', topShelf: false, ledge: false, packer: false, edgeSteel: false, lockType: 'pins', upstand: 40, drawers: [150, 200, 250] }, 'joinery edge');
+if (jp) process.exitCode = 1;

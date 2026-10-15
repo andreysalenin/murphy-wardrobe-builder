@@ -380,7 +380,7 @@ function pageOverview(doc, M, S, I, info) {
   s.text(x0, yy, 'IN THIS SET', { size: 7.5, weight: 'bold' });
   yy = s.para(x0, yy - 5, [`1 Overview   2 Elevations and plans   3 Sections and the bed swing   4 Bed frame`,
     `5 Hardware positions   6 Cut list   ${info.plansFrom}-${info.plansTo} Cutting plans   ${info.seqFrom}-${info.seqFrom + 1} Build sequence`,
-    `${info.fixAt} Fixings schedule   ${info.total} Design review`], { size: 6.2 });
+    `${info.detFrom}-${info.detFrom + info.nDet - 1} Assembly details and fixings key   ${info.fixAt} Fixings schedule   ${info.total} Design review`], { size: 6.2 });
   s.text(x0, yy - 3, 'READ FIRST', { size: 7.5, weight: 'bold', color: ACC });
   const bads = M.checks.filter(c => c.level !== 'info');
   const rf = ['Measure the cavity at the studs before cutting: width, height and depth drive every part.',
@@ -889,6 +889,7 @@ function seqCard(s, B, I, i, x, yTop, cw, ch, tw) {
   s.text(x + 10.5, yTop - 4.9, st.title.toUpperCase(), { size: 6.8, weight: 'bold' });
   const when = st.day0 === st.day1 ? `day ${st.day0}` : `days ${st.day0}-${st.day1}`;
   s.text(x + 10.5, yTop - 8.4, `${when}, ${st.h} h${st.people === 2 ? ', two people' : ''}${st.overnight ? ', then overnight' : ''}`, { size: 5.3, color: GREY });
+  if (st.joinery && B.detSheet && B.detSheet[st.joinery]) s.text(x + cw - 2.4, yTop - 4.9, `DETAILS: SHEET ${B.detSheet[st.joinery]}`, { size: 5.2, weight: 'bold', color: ACC, ha: 'right' });
   const img = I.steps && I.steps[i];
   tw = tw || 43;
   const tTop = yTop - 11;
@@ -912,14 +913,15 @@ function seqCard(s, B, I, i, x, yTop, cw, ch, tw) {
     y = Math.min(y, yPic - 1.4);
     for (const ln of s.wrap(lines.slice(k).join(' '), cw - 4.8, size)) { s.text(x + 2.4, y, ln, { size }); y -= lead; }
   }
-  if (y < fTop + 1) console.warn('card text overlaps the fixings', i + 1);
+  if (fx.length && y < fTop + 1) console.warn('card text overlaps the fixings', i + 1);
 }
 function pageSequence(doc, M, S, I, info, part) {
   const { P, G } = M, B = S.build, s = Sheet(doc, info.seqFrom + part, info.total, part ? 'BUILD SEQUENCE, CONTINUED' : 'BUILD SEQUENCE', part ? '1:1, 1:5' : 'NTS', info);
+  B.detSheet = info.detSheet;
   const cw = 96.6, gx = 2.7, X = (k) => 14 + (k % 4) * (cw + gx);
   if (!part) {
     s.text(14, 276, 'Build sequence', { size: 16, weight: 'bold' });
-    s.text(14, 269.5, `About ${Math.round(B.hours)} hours over ${B.days} working days of six hours, for one person with a second pair of hands where marked. Each step lists its fixings; totals, drill sizes and glue are on sheet ${info.fixAt}.`, { size: 7.4, color: GREY });
+    s.text(14, 269.5, `About ${Math.round(B.hours)} hours over ${B.days} working days of six hours, for one person with a second pair of hands where marked. Each step lists its fixings; the steps that join plywood are drawn joint by joint on sheets ${info.detFrom}-${info.detFrom + info.nDet - 1}, and totals, drill sizes and glue are on sheet ${info.fixAt}.`, { size: 7.4, color: GREY });
     // timeline
     const x0 = 14, lw = 56, w = 392, rh = 2.75, gTop = 262, dw = (w - lw) / B.days, n = B.steps.length;
     for (let d = 0; d < B.days; d++) {
@@ -1008,9 +1010,9 @@ function pageFixings(doc, M, S, info) {
   const { P, G } = M, B = S.build;
   const s = Sheet(doc, info.fixAt, info.total, 'FIXINGS SCHEDULE', '-', info);
   s.text(14, 276, 'Fixings schedule', { size: 16, weight: 'bold' });
-  s.text(14, 269.5, `Counted from this design for the steps on sheets ${info.seqFrom} and ${info.seqFrom + 1}. BUY adds 10 % and two spare. Australian gauges with the metric size in brackets: any cabinet or chipboard screw with a sharp (Type 17) point suits plywood. Wall counts assume studs ${B.studs} apart.`, { size: 7.4, color: GREY });
-  const rows = B.fixings.map(f => [String(f.qty), String(f.buy), f.item, f.bore, f.where]);
-  const yb = s.table(14, 262, [['QTY', 12, 'right'], ['BUY', 12, 'right'], ['FIXING', 86, 'left'], ['DRILLING', 128, 'left'], ['WHERE (STEP)', 154, 'left']], rows, { rowH: 4.6, size: 5.9, hsize: 5.4 });
+  s.text(14, 269.5, `Counted from this design for the steps on sheets ${info.seqFrom} and ${info.seqFrom + 1}; KEY is the tag in the assembly details (sheets ${info.detFrom}-${info.detFrom + info.nDet - 1}). BUY adds 10 % and two spare. Australian gauges with the metric size in brackets: any cabinet or chipboard screw with a sharp (Type 17) point suits plywood. Wall counts assume studs ${B.studs} apart.`, { size: 7.4, color: GREY });
+  const rows = B.fixings.map(f => [f.tag || '', String(f.qty), String(f.buy), f.item, f.bore, f.where]);
+  const yb = s.table(14, 262, [['KEY', 10, 'center'], ['QTY', 12, 'right'], ['BUY', 12, 'right'], ['FIXING', 84, 'left'], ['DRILLING', 124, 'left'], ['WHERE (STEP)', 150, 'left']], rows, { rowH: 4.6, size: 5.9, hsize: 5.4, boldCol: 0 });
 
   // notes
   const nx = 14, ny = yb - 12, wN = 124;
@@ -1056,6 +1058,879 @@ function pageFixings(doc, M, S, info) {
   s.finish();
 }
 
+/* ------------------------------------------------------------------ assembly details
+   A half page for every step that joins plywood. Each operation gets an exploded view, all at one standard scale:
+   the parts going on are pulled back along their joint, each screw floats off its head side with a dashed line from
+   its tip through its clearance hole to where it lands, and dowels and Dominos float in the gap. Under the views,
+   set-out strips give every line of holes with its distances from a named edge. Tags name the fixings (the key is
+   drawn full size on the first half page); numbered circles give the driving order. */
+const STD_SCALES = [2, 2.5, 5, 7.5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 100];
+const SEQ_RGB = [null, [214, 110, 12], [35, 99, 172], [46, 125, 50], [123, 63, 160], [0, 128, 128]];
+const FXD = { // [length, shank, head, kind, pilot, clearance]
+  s50: [50, 4, 8.2, 'csk', 3, 4.5], s40: [40, 4, 8.2, 'csk', 3, 4.5], s30: [30, 4, 8.2, 'csk', 2.5, 4.5], s35: [35, 4, 8.2, 'csk', 3, 4.5], s25: [25, 4, 8.5, 'pan', 2.5, 6],
+  b30: [30, 3.5, 7, 'csk', 2, 3.5], b25: [25, 3.5, 7, 'csk', 2, 3.5], b20: [20, 3.5, 7, 'csk', 2, 3.5], b16: [16, 3.5, 7, 'csk', 2, 3.5],
+  r10: [10, 3.5, 7, 'pan', 2, 3.5], r14: [14, 4, 8, 'pan', 2.5, 4], h15: [15, 3.5, 7, 'csk', 2, 3.5], h17: [17, 3.5, 7, 'csk', 2, 3.5], m4: [25, 4, 7, 'pan', 5, 5],
+  brad: [40, 1.6, 2.6, 'brad', 0, 0], br30: [30, 1.6, 2.6, 'brad', 0, 0], w75: [75, 6, 12, 'csk', 4, 6.5],
+  d8: [30, 8, 8, 'dowel', 8, 8], dom: [40, 8, 22, 'dom', 8, 8],
+};
+const FX_SIZE = { s50: '8g × 50', s40: '8g × 40', s30: '8g × 30', s35: '8g × 35', s25: '8g × 25 pan', b30: '6g × 30', b25: '6g × 25', b20: '6g × 20', b16: '6g × 16',
+  r10: '3.5 × 10 pan', r14: '4 × 14 pan', h15: '3.5 × 15', h17: '3.5 × 17', m4: 'M4 × 25', brad: '40 brad', br30: '30 brad', w75: '14g × 75', d8: 'dowel 8 × 30', dom: 'Domino 8 × 40' };
+const PART_NEW = [242, 196, 140], PART_OLD = [233, 228, 219], PART_CTX = [246, 246, 244], STEEL = [84, 89, 98], WOOD_FX = [184, 128, 64], HOLE = [58, 52, 46];
+const D2R = Math.PI / 180;
+const v3 = {
+  add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]], sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], mul: (a, k) => [a[0] * k, a[1] * k, a[2] * k],
+  dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], len: (a) => Math.hypot(a[0], a[1], a[2]),
+  norm: (a) => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; },
+  cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+};
+const fxD = (key) => FXD[key] || [30, 4, 8, 'csk', 3, 4.5];
+const isWood = (key) => ['dowel', 'dom'].includes(fxD(key)[3]);
+const BOXES = new WeakMap();
+function partBox(p) {
+  let b = BOXES.get(p);
+  if (!b) { b = p.solids.map(C.prismBox).reduce((a, q) => [Math.min(a[0], q[0]), Math.min(a[1], q[1]), Math.min(a[2], q[2]), Math.max(a[3], q[3]), Math.max(a[4], q[4]), Math.max(a[5], q[5])]); BOXES.set(p, b); }
+  return b;
+}
+const partName = (p) => { const n = p.name.replace(/ \((R|L)\)$/, '').split(',')[0]; return n.charAt(0).toLowerCase() + n.slice(1); };
+
+// a solid of revolution along `dir` from `p0`: profile [[t, r], ...]
+function latheFaces(p0, dir, prof, n) {
+  n = n || 10;
+  const ax = v3.norm(dir), t = Math.abs(ax[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0], u = v3.norm(v3.cross(ax, t)), v = v3.cross(ax, u);
+  const rings = prof.map(([tt, r]) => Array.from({ length: n }, (_, i) => { const th = 2 * Math.PI * i / n; return [0, 1, 2].map(k => p0[k] + ax[k] * tt + (u[k] * Math.cos(th) + v[k] * Math.sin(th)) * r); }));
+  const bend = prof.map((q, i) => {
+    if (i === 0 || i === prof.length - 1) return true;
+    const a = [q[0] - prof[i - 1][0], q[1] - prof[i - 1][1]], b = [prof[i + 1][0] - q[0], prof[i + 1][1] - q[1]];
+    return (a[0] * b[0] + a[1] * b[1]) / ((Math.hypot(...a) * Math.hypot(...b)) || 1) < Math.cos(28 * D2R);
+  });
+  const faces = [], L = prof.length - 1;
+  if (prof[0][1] > 1e-6) faces.push({ pts: rings[0].slice().reverse(), hard: rings[0].map(() => true) });
+  if (prof[L][1] > 1e-6) faces.push({ pts: rings[L].slice(), hard: rings[L].map(() => true) });
+  for (let i = 0; i < L; i++) {
+    const A = rings[i], B = rings[i + 1], ra = prof[i][1] > 1e-6, rb = prof[i + 1][1] > 1e-6;
+    if (Math.abs(prof[i + 1][0] - prof[i][0]) < 1e-9 && Math.abs(prof[i + 1][1] - prof[i][1]) < 1e-9) continue;
+    for (let jj = 0; jj < n; jj++) {
+      const k = (jj + 1) % n;
+      if (ra && rb) faces.push({ pts: [A[jj], A[k], B[k], B[jj]], hard: [bend[i], false, bend[i + 1], false] });
+      else if (ra) faces.push({ pts: [A[jj], A[k], B[0]], hard: [bend[i], false, false] });
+      else if (rb) faces.push({ pts: [A[0], B[k], B[jj]], hard: [false, bend[i + 1], false] });
+    }
+  }
+  return faces;
+}
+// a fixing in 3D. Screws: `ref` is where the shank meets the face (the top of a countersunk head); k thickens it
+function fixFaces(key, ref, dir, k, c, along) {
+  const [len, ds, dh, kind] = fxD(key), rs = ds / 2 * k, rh = dh / 2 * k;
+  if (kind === 'csk') { const hc = Math.max(0.5, rh - rs), tp = Math.min(len * 0.3, 2.2 * rs); return latheFaces(ref, dir, [[0, rh], [hc, rs], [len - tp, rs], [len, rs * 0.12]], 10); }
+  if (kind === 'pan') { const hh = Math.max(1.2, dh * 0.38 * k), tp = Math.min(len * 0.35, 2.2 * rs); return latheFaces(ref, dir, [[-hh, rh * 0.8], [-hh * 0.6, rh], [0, rh], [0, rs], [len - tp, rs], [len, rs * 0.12]], 10); }
+  if (kind === 'brad') return latheFaces(ref, dir, [[-0.8 * k, rh], [0, rh], [0, rs], [len - 3 * rs, rs], [len, 0]], 6);
+  if (kind === 'dowel') { const r = 4 * k, ch = Math.min(1, r * 0.25); return latheFaces(v3.add(c, v3.mul(dir, -15)), dir, [[0, r - ch], [ch, r], [30 - ch, r], [30, r - ch]], 12); }
+  if (kind === 'dom') { const e1 = v3.norm(dir), e2 = v3.norm(along || [0, 1, 0]), e3 = v3.cross(e1, e2); return V.boxFaces(c, e1, e2, e3, [20, 11, 4 * k]); }
+  return [];
+}
+
+// paper occupancy, for placing labels and order marks clear of the drawing
+function Occ(x0, y0, x1, y1, res) {
+  this.x0 = x0; this.y0 = y0; this.r = res || 0.5;
+  this.w = Math.max(1, Math.ceil((x1 - x0) / this.r)); this.h = Math.max(1, Math.ceil((y1 - y0) / this.r));
+  this.a = new Uint8Array(this.w * this.h);
+}
+Occ.prototype.poly = function (pts) {
+  const r = this.r, ys = pts.map(p => (p[1] - this.y0) / r), xs = pts.map(p => (p[0] - this.x0) / r);
+  const j0 = Math.max(0, Math.floor(Math.min(...ys))), j1 = Math.min(this.h - 1, Math.ceil(Math.max(...ys)));
+  for (let j = j0; j <= j1; j++) {
+    const yc = j + 0.5;
+    let xl = Infinity, xr = -Infinity;
+    for (let i = 0; i < pts.length; i++) {
+      const k = (i + 1) % pts.length, ya = ys[i], yb = ys[k];
+      if ((ya <= yc && yb > yc) || (yb <= yc && ya > yc)) { const x = xs[i] + (yc - ya) / (yb - ya) * (xs[k] - xs[i]); if (x < xl) xl = x; if (x > xr) xr = x; }
+    }
+    if (xl > xr) {
+      const near = xs.filter((x, i) => Math.abs(ys[i] - yc) < 0.75);
+      if (!near.length) continue;
+      xl = Math.min(...near); xr = Math.max(...near);
+    }
+    for (let i = Math.max(0, Math.floor(xl)); i <= Math.min(this.w - 1, Math.floor(xr)); i++) this.a[j * this.w + i] = 1;
+  }
+};
+Occ.prototype.rect = function (x0, y0, x1, y1) {
+  const r = this.r, i0 = Math.max(0, Math.floor((x0 - this.x0) / r)), i1 = Math.min(this.w - 1, Math.floor((x1 - this.x0) / r));
+  const j0 = Math.max(0, Math.floor((y0 - this.y0) / r)), j1 = Math.min(this.h - 1, Math.floor((y1 - this.y0) / r));
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) this.a[j * this.w + i] = 1;
+};
+Occ.prototype.seg = function (a, b, rad) {
+  const L = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.ceil(L / (this.r * 0.7)));
+  for (let i = 0; i <= n; i++) { const x = a[0] + (b[0] - a[0]) * i / n, y = a[1] + (b[1] - a[1]) * i / n; this.rect(x - rad, y - rad, x + rad, y + rad); }
+};
+Occ.prototype.cost = function (x0, y0, x1, y1) {
+  const r = this.r, i0 = Math.floor((x0 - this.x0) / r), i1 = Math.floor((x1 - this.x0) / r), j0 = Math.floor((y0 - this.y0) / r), j1 = Math.floor((y1 - this.y0) / r);
+  let c = 0;
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) c += (i < 0 || j < 0 || i >= this.w || j >= this.h) ? 4 : this.a[j * this.w + i];
+  return c;
+};
+
+// prefix sums of the occupancy, for finding room for a box of a given size
+Occ.prototype.clone = function () { const o = Object.create(Occ.prototype); Object.assign(o, this); o.a = this.a.slice(); o.S = null; return o; };
+Occ.prototype.sums = function () {
+  const W = this.w + 1, S = new Int32Array(W * (this.h + 1));
+  for (let j = 0; j < this.h; j++) { let row = 0; for (let i = 0; i < this.w; i++) { row += this.a[j * this.w + i]; S[(j + 1) * W + i + 1] = S[j * W + i + 1] + row; } }
+  this.S = S;
+};
+Occ.prototype.used = function (x0, y0, x1, y1) {
+  const r = this.r, W = this.w + 1, cl = (v, n) => Math.max(0, Math.min(n, v));
+  const i0 = cl(Math.floor((x0 - this.x0) / r), this.w), i1 = cl(Math.ceil((x1 - this.x0) / r), this.w), j0 = cl(Math.floor((y0 - this.y0) / r), this.h), j1 = cl(Math.ceil((y1 - this.y0) / r), this.h);
+  const S = this.S;
+  return S[j1 * W + i1] - S[j0 * W + i1] - S[j1 * W + i0] + S[j0 * W + i0];
+};
+// a free spot for a w x h box inside the region, kept `pad` clear of what is drawn; nearest to `near` first
+function findRoom(occ, region, w, h, pad, near) {
+  const [x0, y0, x1, y1] = region;
+  let best = null;
+  for (let y = y1 - h; y >= y0; y -= 1) for (let x = x0; x + w <= x1; x += 1) {
+    if (occ.used(x - pad, y - pad, x + w + pad, y + h + pad)) continue;
+    const d = near ? Math.hypot(x + w / 2 - near[0], y + h / 2 - near[1]) : (y1 - y - h) * 3 + (x - x0);
+    if (!best || d < best.d) best = { x, y, d };
+  }
+  return best;
+}
+
+// the parts in an operation's view. On the bench only what is being joined; in place, the earlier parts and, where
+// the step asks for it, the neighbours for reference
+function opParts(inst, oi) {
+  const op = inst.ops[oi], addP = op.add.map(([p]) => p), refs = op.fast.flatMap(f => [f.through, f.into]);
+  const uniq = (a) => a.filter((p, i) => p && a.indexOf(p) === i);
+  let present;
+  if (op.bench && !inst.bench) present = uniq(refs).filter(p => addP.indexOf(p) < 0);
+  else present = uniq([...inst.base, ...inst.ops.slice(0, oi).flatMap(o => o.add.map(([p]) => p)), ...refs]).filter(p => addP.indexOf(p) < 0);
+  const ctx = op.ctx && !op.bench ? (inst.context || []).filter(p => addP.indexOf(p) < 0 && present.indexOf(p) < 0) : [];
+  return { present, addP, ctx, refs: new Set(refs) };
+}
+// everything one operation needs, in model space, for a given drawing scale
+function opScene(inst, oi, scale) {
+  const op = inst.ops[oi], Z0 = [0, 0, 0], { present, addP, ctx, refs } = opParts(inst, oi);
+  const hasD = op.fast.some(f => f.key === 'd8'), hasM = op.fast.some(f => f.key === 'dom');
+  // a face screwed to a face (a side to a side, a back, a front) is pulled further back, so the gap shows
+  let face = false;
+  if (op.fast.length) {
+    const dir = v3.norm(op.fast[0].dir), pts = op.fast.flatMap(f => f.pts), kd = [0, 1, 2].reduce((b, a) => Math.abs(dir[a]) > Math.abs(dir[b]) ? a : b, 0);
+    face = [0, 1, 2].filter(a => a !== kd).every(a => Math.max(...pts.map(p => p[a])) - Math.min(...pts.map(p => p[a])) > 100);
+  }
+  const E = Math.min(450, Math.max(25, hasM ? 40 + 6 * scale : hasD ? 30 + 6 * scale : 5 * scale, face ? Math.min(200, 6 * scale) : 0));
+  const g = Math.max(8, 3 * scale), kMin = 0.15 * scale; // fixings at least 0.3 mm thick on paper
+  const off = new Map();
+  for (const [p, o] of op.add) off.set(p, v3.mul(o, E));
+  const offOf = (p) => off.get(p) || Z0;
+  const lo = op.clip ? [-Infinity, -Infinity, op.clip[0]] : null, hi = op.clip ? [Infinity, Infinity, op.clip[1]] : null;
+  const parts = [...present.map(p => ({ p, kind: 'old' })), ...addP.map(p => ({ p, kind: 'new' })), ...ctx.map(p => ({ p, kind: 'ctx' }))]
+    .map(it => Object.assign(it, { off: offOf(it.p), ref: refs.has(it.p), solids: it.p.solids.map(pr => lo ? V.clipPrism(pr, lo, hi) : pr).filter(Boolean) }))
+    .filter(it => it.solids.length);
+  const fx = [];
+  for (const f of op.fast) {
+    const D = fxD(f.key), Dt = offOf(f.through), Di = offOf(f.into), dir = v3.norm(f.dir), at = (p, t) => v3.add(p, v3.mul(dir, t));
+    f.pts.forEach((pt, i) => {
+      const o = { f, i, key: f.key, kind: D[3], dir, seq: f.seq ? f.seq[i] : 0 };
+      if (isWood(f.key)) {
+        const moved = v3.len(v3.sub(Dt, Di)) > 1;
+        o.c = moved ? v3.add(pt, v3.mul(v3.add(Dt, Di), 0.5)) : at(v3.add(pt, Dt), D[3] === 'dowel' ? 3 : 0);
+        o.a = at(o.c, -D[0] / 2); o.b = at(o.c, D[0] / 2);
+        o.holeT = v3.add(pt, Dt); o.holeI = v3.add(pt, Di); o.land = o.holeI;
+        o.paths = moved ? [[o.holeT, o.a], [o.b, o.holeI]] : [];
+        o.along = f.along;
+      } else {
+        o.entry = at(v3.add(pt, Dt), -f.thru);
+        o.tip = at(o.entry, -g); o.ref = at(o.tip, -D[0]);
+        o.land = v3.add(pt, Di);
+        o.paths = [[o.tip, v3.add(pt, Dt), o.land]];
+      }
+      fx.push(o);
+    });
+  }
+  return { inst, op, oi, scale, E, g, kMin, parts, fx, offOf };
+}
+// parts between a floating fixing and the viewer that are not being joined here: left out of the view
+function blockers(sc, d) {
+  const hit = new Set();
+  for (const o of sc.fx) {
+    const probes = o.ref ? [o.ref, v3.mul(v3.add(o.ref, o.tip), 0.5), o.tip] : [o.c];
+    for (const it of sc.parts) {
+      if (it.ref || it.kind === 'new' || hit.has(it.p)) continue;
+      if (probes.some(q => it.solids.some(pr => V.rayHitsPrism(q, d, pr, it.off, 0.5)))) hit.add(it.p);
+    }
+  }
+  return hit;
+}
+// share of the landing points (and floating dowels) the viewer can see
+function landVisible(sc, d, omit) {
+  if (!sc.fx.length) return 1;
+  let n = 0;
+  const parts = sc.parts.filter(it => !omit.has(it.p));
+  for (const o of sc.fx) {
+    const q = o.ref ? v3.add(o.land, v3.mul(o.dir, -0.6)) : o.c;
+    if (!parts.some(it => it.solids.some(pr => V.rayHitsPrism(q, d, pr, it.off, 0.5)))) n++;
+  }
+  return n / sc.fx.length;
+}
+function viewBasisFor(d) { return Math.abs(d[2]) > 0.93 ? { upHint: [0, -1, 0] } : {}; }
+// the view: from the side the screws go in, where the landing points can be seen, near the preferred direction
+function chooseView(inst, oi, pref, prevD) { return chooseViewScene(opScene(inst, oi, 15), pref, prevD); }
+function chooseViewScene(sc, pref, prevD) {
+  const op = sc.op, groupsIn = new Map();
+  for (const o of sc.fx) groupsIn.set(o.f, (groupsIn.get(o.f) || 0) + 1);
+  const offs = op.add.map(([, o]) => o).filter(o => v3.len(o) > 0.1);
+  // a long thin assembly reads best square to the page
+  let lb = null;
+  for (const it of sc.parts) { const b = partBox(it.p); lb = lb ? [0, 1, 2].map(i => Math.min(lb[i], b[i])).concat([3, 4, 5].map(i => Math.max(lb[i], b[i]))) : b.slice(); }
+  const ext = lb ? [lb[3] - lb[0], lb[4] - lb[1], lb[5] - lb[2]] : [1, 1, 1], ord = [0, 1, 2].sort((a, b) => ext[b] - ext[a]);
+  const longAx = ext[ord[0]] > 2.5 * ext[ord[1]] ? [0, 1, 2].map(i => i === ord[0] ? 1 : 0) : null;
+  const cands = [];
+  for (let el = -70; el <= 75; el += 5) for (let az = -180; az < 180; az += 7.5) {
+    const ce = Math.cos(el * D2R), d = [ce * Math.sin(az * D2R), ce * Math.cos(az * D2R), Math.sin(el * D2R)];
+    let sum = 0, n = 0;
+    for (const [f, cnt] of groupsIn) {
+      const c = v3.dot(d, v3.norm(f.dir)), b = Math.sqrt(Math.max(0, 1 - c * c)), a = -c;
+      const v = isWood(f.key) ? Math.min(1, b / 0.6) : (a >= 0.3 ? 1 : a >= 0 ? a / 0.3 : 2.5 * a / 0.3) * Math.min(1, b / 0.55);
+      sum += v * cnt; n += cnt;
+    }
+    let s = n ? sum / n : 0;
+    for (const o of offs) { const c = v3.dot(d, v3.norm(o)); s += 0.3 * Math.min(1, Math.sqrt(Math.max(0, 1 - c * c)) / 0.6); }
+    s += 0.45 * v3.dot(d, pref) + (prevD ? 0.15 * v3.dot(d, prevD) : 0);
+    if (op.view === 'below' && d[2] > -0.15) s -= 0.6;
+    if (op.front && (d[1] < 0.55 || d[2] < 0.25)) s -= 0.6;
+    if (longAx) {
+      const { right, up } = V.viewBasis(d, viewBasisFor(d)), pu = v3.dot(longAx, right), pv = v3.dot(longAx, up), l2 = pu * pu + pv * pv;
+      if (l2 > 1e-6) s -= 0.2 * Math.abs(2 * pu * pv / l2);
+    }
+    cands.push({ s, d });
+  }
+  cands.sort((a, b) => b.s - a.s);
+  // panels going on should show a face, not an edge, unless that face is hidden anyway
+  const panels = sc.parts.filter(it => it.kind === 'new').map(it => {
+    const b = partBox(it.p), e = [b[3] - b[0], b[4] - b[1], b[5] - b[2]], o = [0, 1, 2].sort((x, y) => e[x] - e[y]);
+    return e[o[0]] < 0.3 * e[o[1]] ? { it, a: o[0], c: [(b[0] + b[3]) / 2, (b[1] + b[4]) / 2, (b[2] + b[5]) / 2], t: e[o[0]] } : null;
+  }).filter(Boolean);
+  let best = null;
+  for (const c of cands.slice(0, 48)) {
+    const omit = blockers(sc, c.d), vis = landVisible(sc, c.d, omit), live = sc.parts.filter(it => !omit.has(it.p));
+    let pf = 0;
+    for (const q of panels) {
+      const sg = Math.sign(c.d[q.a]) || 1, ctr = v3.add(v3.add(q.c, q.it.off), [0, 1, 2].map(i => i === q.a ? sg * (q.t / 2 + 0.5) : 0));
+      const seen = !live.some(it => it.solids.some(pr => V.rayHitsPrism(ctr, c.d, pr, it.off, 0.5)));
+      pf += seen ? Math.min(1, Math.abs(c.d[q.a]) / 0.3) : 0.5;
+    }
+    const s = c.s + 0.3 * vis + (panels.length ? 0.35 * pf / panels.length : 0) - 0.04 * omit.size;
+    if (!best || s > best.s) best = { s, d: c.d };
+  }
+  return best ? best.d : [-0.5, 0.75, 0.43];
+}
+// a close-up of one joint: the end of the operation's main line of screws, with what lies round it, cut out of the
+// exploded scene at a larger scale
+function closeupScene(inst, oi, scale, pick) {
+  const sc = opScene(inst, oi, scale), groups = sc.op.fast.filter(f => !isWood(f.key));
+  if (!groups.length) return null;
+  const f = pick || groups.reduce((a, b) => b.pts.length > a.pts.length ? b : a), dir = v3.norm(f.dir);
+  const kd = [0, 1, 2].reduce((b, a) => Math.abs(dir[a]) > Math.abs(dir[b]) ? a : b, 0), inPl = [0, 1, 2].filter(a => a !== kd);
+  const spr = (a) => { const v = f.pts.map(p => p[a]); return Math.max(...v) - Math.min(...v); };
+  const k = spr(inPl[0]) >= spr(inPl[1]) ? inPl[0] : inPl[1];
+  const mine = sc.fx.filter(o => o.f === f).sort((a, b) => a.f.pts[a.i][k] - b.f.pts[b.i][k]);
+  const tb = partBox(f.through), Dt = sc.offOf(f.through);
+  // start at the end of the line where the first screw of a numbered order goes, else the end nearer an edge
+  const ends = [mine[0], mine[mine.length - 1]], dEnd = ends.map((o, q) => q ? tb[k + 3] - o.f.pts[o.i][k] : o.f.pts[o.i][k] - tb[k]);
+  const near = (o0) => mine.filter(o => Math.abs(o.f.pts[o.i][k] - o0.f.pts[o0.i][k]) <= 200);
+  const firstSeq = (l) => Math.min(...l.map(o => o.seq || 99));
+  const subs = ends.map(near), from = firstSeq(subs[1]) < firstSeq(subs[0]) ? 1 : firstSeq(subs[0]) < firstSeq(subs[1]) ? 0 : dEnd[1] < dEnd[0] ? 1 : 0;
+  const sub = subs[from];
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  const grow = (p) => { for (let a = 0; a < 3; a++) { lo[a] = Math.min(lo[a], p[a]); hi[a] = Math.max(hi[a], p[a]); } };
+  for (const o of sub) { grow(o.ref); grow(o.tip); grow(o.land); grow(o.entry); }
+  const m = 30;
+  for (let a = 0; a < 3; a++) { lo[a] -= m; hi[a] += m; }
+  if (from === 0) lo[k] = Math.min(lo[k], tb[k] + Dt[k] - 12); else hi[k] = Math.max(hi[k], tb[k + 3] + Dt[k] + 12);
+  const inside = (p) => p.every((v, a) => v >= lo[a] - 0.5 && v <= hi[a] + 0.5);
+  const parts = sc.parts.map(it => {
+    const solids = it.solids.map(pr => {
+      const moved = Object.assign({}, pr, { o: v3.add(pr.o, it.off) }), c = V.clipPrism(moved, lo, hi);
+      if (!c) return null;
+      const b = C.prismBox(c);
+      return b[0] < lo[0] - m || b[1] < lo[1] - m || b[2] < lo[2] - m || b[3] > hi[0] + m || b[4] > hi[1] + m || b[5] > hi[2] + m ? null : c;
+    }).filter(Boolean);
+    return Object.assign({}, it, { solids, off: [0, 0, 0] });
+  }).filter(it => it.solids.length);
+  const fx = sc.fx.filter(o => o.ref ? inside(o.entry) && inside(o.land) : inside(o.c));
+  return Object.assign({}, sc, { parts, fx, focus: sub, lo, hi, main: f });
+}
+// projected extent (model mm) of an operation's view
+function opExtent(sc, d, omit) {
+  const { right, up } = V.viewBasis(d, viewBasisFor(d));
+  let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
+  const grow = (p) => { const u = v3.dot(p, right), v = v3.dot(p, up); if (u < u0) u0 = u; if (u > u1) u1 = u; if (v < v0) v0 = v; if (v > v1) v1 = v; };
+  for (const it of sc.parts) { if (omit.has(it.p)) continue; for (const pr of it.solids) for (const c of C.prismCorners(pr)) grow(v3.add(c, it.off)); }
+  for (const o of sc.fx) { if (o.ref) { grow(o.ref); grow(o.tip); } else { grow(o.a); grow(o.b); } }
+  return [u0, v0, u1, v1];
+}
+// the operation views of an instance at a scale (directions chosen once, in `dirs`)
+function stepViews(inst, scale, dirs) {
+  return inst.ops.map((op, oi) => {
+    const sc = opScene(inst, oi, scale), d = dirs[oi], omit = blockers(sc, d), box = opExtent(sc, d, omit);
+    return { sc, d, omit, box, w: (box[2] - box[0]) / scale, h: (box[3] - box[1]) / scale };
+  });
+}
+
+function drawLabelChip(s, x, y, tag, size) {
+  const w = s.tw(tag, size, 'bold') + 1.4, h = size * 0.42;
+  s.rect(x, y - h / 2, w, h, { fill: INK, lw: 0 });
+  s.text(x + w / 2, y - 0.05, tag, { size, weight: 'bold', color: WHITE, ha: 'center', va: 'middle' });
+  return w;
+}
+function seqDot(s, x, y, q, col) {
+  s.circle(x, y, 1.0, { fill: col || SEQ_RGB[q] || ACC, lw: 0 });
+  s.text(x, y - 0.05, String(q), { size: q > 9 ? 4.3 : 5, weight: 'bold', color: WHITE, ha: 'center', va: 'middle' });
+}
+
+// one operation's view, centred in the box (x0, y0, w, h): faces, edges, fixing paths and arrows. Labels go on in a
+// second pass, once every view on the half page is in the occupancy map.
+function drawOpView(s, V0, scale, x0, y0, w, h, occ) {
+  const { sc, d, omit } = V0, doc = s.doc, YP = (y) => PH - y;
+  const items = [];
+  for (const it of sc.parts) {
+    if (omit.has(it.p)) continue;
+    const faces = [];
+    for (const pr of it.solids) faces.push(...V.partFaces(pr, it.off));
+    if (!faces.length) continue;
+    items.push({ faces, fill: it.kind === 'new' ? PART_NEW : it.kind === 'ctx' ? PART_CTX : PART_OLD, ink: it.kind === 'ctx' ? [158, 156, 150] : [74, 68, 60], lw: it.kind === 'ctx' ? 0.06 : 0.1 });
+  }
+  const maxSeq = Math.max(0, ...sc.fx.map(o => o.seq || 0));
+  for (const o of sc.fx) {
+    const D = fxD(o.key), k = Math.max(1, sc.kMin / (D[1] / 2));
+    if (o.ref) {
+      items.push({ faces: fixFaces(o.key, o.ref, o.dir, k), fill: o.seq && maxSeq <= 5 ? SEQ_RGB[o.seq] : STEEL, edges: false });
+      const rH = Math.max(D[2] / 2, 0.2 * scale), rP = Math.max((D[4] || 1.6) / 2, 0.14 * scale);
+      items.push({ faces: [V.diskFace(v3.add(o.entry, v3.mul(o.dir, -0.3)), v3.mul(o.dir, -1), rH, 12)], fill: HOLE, flat: true, edges: false });
+      items.push({ faces: [V.diskFace(v3.add(o.land, v3.mul(o.dir, -0.3)), v3.mul(o.dir, -1), rP, 10)], fill: HOLE, flat: true, edges: false });
+    } else {
+      items.push({ faces: fixFaces(o.key, null, o.dir, Math.max(1, sc.kMin / 4), o.c, o.along), fill: WOOD_FX, edges: scale <= 7.5, ink: [110, 70, 30], lw: 0.06 });
+      const r = Math.max(4, 0.14 * scale), ext = o.kind === 'dom' ? 7 : 0;
+      items.push({ faces: [V.diskFace(v3.add(o.holeI, v3.mul(o.dir, -0.3)), v3.mul(o.dir, -1), r, 12, ext ? o.along : null, ext)], fill: HOLE, flat: true, edges: false });
+      items.push({ faces: [V.diskFace(v3.add(o.holeT, v3.mul(o.dir, 0.3)), o.dir, r, 12, ext ? o.along : null, ext)], fill: HOLE, flat: true, edges: false });
+    }
+  }
+  const R = V.renderItems(items, d, 12 / scale, viewBasisFor(d));
+  const bw = (R.box[2] - R.box[0]) / scale, bh = (R.box[3] - R.box[1]) / scale;
+  const ox = x0 + (w - bw) / 2, oy = y0 + (h - bh) / 2;
+  const P = (q) => [ox + (q[0] - R.box[0]) / scale, oy + (q[1] - R.box[1]) / scale], P3 = (p) => P(R.proj(p));
+  for (const pg of R.polys) {
+    const pts = pg.p.map(P), segs = [];
+    for (let i = 1; i < pts.length; i++) segs.push([pts[i][0] - pts[i - 1][0], -(pts[i][1] - pts[i - 1][1])]);
+    doc.setFillColor(pg.f[0], pg.f[1], pg.f[2]); doc.setDrawColor(pg.f[0], pg.f[1], pg.f[2]); doc.setLineWidth(0.03);
+    doc.lines(segs, pts[0][0], YP(pts[0][1]), [1, 1], 'FD', true);
+    if (pg.e.length) {
+      const ink = pg.ink || [74, 68, 60];
+      doc.setDrawColor(ink[0], ink[1], ink[2]); doc.setLineWidth(pg.lw || 0.1);
+      for (const e of pg.e) { const a = P([e[0], e[1]]), b = P([e[2], e[3]]); doc.line(a[0], YP(a[1]), b[0], YP(b[1])); }
+    }
+    occ.poly(pts);
+  }
+  // the paths of the fixings, and a ring where a landing point is hidden
+  const parts = sc.parts.filter(it => !omit.has(it.p));
+  s.color([60, 60, 62]); doc.setLineWidth(0.1); s.dash([0.75, 0.5]);
+  for (const o of sc.fx) for (const path of o.paths) {
+    const q = path.map(P3);
+    for (let i = 0; i < q.length - 1; i++) { if (Math.hypot(q[i + 1][0] - q[i][0], q[i + 1][1] - q[i][1]) < 0.05) continue; doc.line(q[i][0], YP(q[i][1]), q[i + 1][0], YP(q[i + 1][1])); occ.seg(q[i], q[i + 1], 0.25); }
+  }
+  s.dash(null);
+  for (const o of sc.fx) {
+    if (!o.ref) continue;
+    const q = v3.add(o.land, v3.mul(o.dir, -0.6));
+    if (parts.some(it => it.solids.some(pr => V.rayHitsPrism(q, d, pr, it.off, 0.5)))) { const c = P3(o.land); s.circle(c[0], c[1], 0.42, { lw: 0.1, color: [60, 60, 62] }); }
+  }
+  // arrows for parts that slide in (not in close-ups: their ends lie outside the cut-out)
+  if (sc.op.arrow && !V0.close) {
+    let a, b;
+    if (Array.isArray(sc.op.arrow)) { a = P3(sc.op.arrow[0]); b = P3(sc.op.arrow[1]); }
+    else {
+      const [p, o] = sc.op.add[0], bb = partBox(p), c = [(bb[0] + bb[3]) / 2, (bb[1] + bb[4]) / 2, (bb[2] + bb[5]) / 2], u = v3.norm(o);
+      const half = Math.abs(u[0]) * (bb[3] - bb[0]) / 2 + Math.abs(u[1]) * (bb[4] - bb[1]) / 2 + Math.abs(u[2]) * (bb[5] - bb[2]) / 2;
+      a = P3(v3.add(c, v3.mul(u, sc.E + half + Math.max(60, 1.2 * sc.E)))); b = P3(v3.add(c, v3.mul(u, sc.E + half + 8)));
+    }
+    const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const d3 = Array.isArray(sc.op.arrow) ? v3.norm(v3.sub(sc.op.arrow[1], sc.op.arrow[0])) : [0, 0, 1];
+    const misleading = Math.abs(d3[2]) < 0.3 && Math.abs(b[0] - a[0]) < 0.5 * L;
+    if (L > 6 && !misleading) {
+      s.line([a[0], b[0] - (b[0] - a[0]) / L * 2], [a[1], b[1] - (b[1] - a[1]) / L * 2], { lw: 0.6, color: ACC });
+      s.arrow(b, [b[0] - a[0], b[1] - a[1]], { color: ACC, L: 3, W: 1.2 });
+      occ.seg(a, b, 1);
+    }
+  }
+  return { sc, P3, scale, maxSeq, cell: [x0, y0, w, h], bbox: [ox, oy, ox + bw, oy + bh] };
+}
+// order marks beside the heads, and a tag for each kind of fixing with leaders to (up to three of) its groups
+function annotateOpView(s, A, occ) {
+  const { sc, P3, scale, maxSeq } = A, [x0, y0, w, h] = A.cell;
+  const marks = [];
+  for (const o of sc.fx) {
+    if (!o.seq || !o.ref) continue;
+    const hd = P3(o.ref), tp = P3(o.tip), ax = [tp[0] - hd[0], tp[1] - hd[1]], L = Math.hypot(ax[0], ax[1]) || 1, n = [-ax[1] / L, ax[0] / L];
+    const D = fxD(o.key), rh = Math.max(D[2] / 2, sc.kMin * D[2] / D[1]) / scale, dd = rh + 1.25;
+    const base = [hd[0] + ax[0] / L * Math.min(L * 0.3, 1.2), hd[1] + ax[1] / L * Math.min(L * 0.3, 1.2)];
+    const cands = [[base[0] + n[0] * dd, base[1] + n[1] * dd], [base[0] - n[0] * dd, base[1] - n[1] * dd], [hd[0] - ax[0] / L * dd, hd[1] - ax[1] / L * dd]];
+    let bestC = cands[0], bc = Infinity;
+    for (const c of cands) { const cost = occ.cost(c[0] - 1, c[1] - 1, c[0] + 1, c[1] + 1) + marks.filter(m => Math.hypot(m[0] - c[0], m[1] - c[1]) < 2.1).length * 10; if (cost < bc) { bc = cost; bestC = c; } }
+    marks.push(bestC);
+    seqDot(s, bestC[0], bestC[1], o.seq, maxSeq <= 5 ? null : ACC);
+    occ.rect(bestC[0] - 1.1, bestC[1] - 1.1, bestC[0] + 1.1, bestC[1] + 1.1);
+  }
+  const byKey = new Map();
+  for (const o of sc.fx) { if (!byKey.has(o.key)) byKey.set(o.key, []); byKey.get(o.key).push(o); }
+  for (const [key, list] of byKey) {
+    const tag = C.TAGS[key] || key, txt = `×${list.length}`, size = 6;
+    const wChip = s.tw(tag, size, 'bold') + 1.4, wl = wChip + 0.8 + s.tw(txt, size), hl = 2.9;
+    const groups = [...new Set(list.map(o => o.f))].sort((a, b) => b.pts.length - a.pts.length);
+    const reps = [];
+    for (const f of groups) {
+      const os = list.filter(o => o.f === f), o = os[Math.floor((os.length - 1) / 2)];
+      const pt = o.ref ? P3(o.ref) : P3(o.c);
+      if (reps.every(r => Math.hypot(r.pt[0] - pt[0], r.pt[1] - pt[1]) > 12)) reps.push({ o, pt });
+      if (reps.length >= 3) break;
+    }
+    const r0 = reps[0], o0 = r0.o;
+    let pdir;
+    if (o0.ref) { const a = P3(o0.tip), b = P3(o0.ref); pdir = [b[0] - a[0], b[1] - a[1]]; }
+    else { const a = P3(o0.a), b = P3(o0.b); pdir = [-(b[1] - a[1]), b[0] - a[0]]; }
+    const pl = Math.hypot(pdir[0], pdir[1]); pdir = pl > 0.2 ? [pdir[0] / pl, pdir[1] / pl] : [1, 0];
+    let best = null;
+    for (const r of [3, 4.5, 6, 8, 10.5, 13, 16, 20, 25, 31]) for (const da of [0, 25, -25, 50, -50, 75, -75, 100, -100, 130, -130, 180]) {
+      const c = Math.cos(da * D2R), sn = Math.sin(da * D2R), dv = [pdir[0] * c - pdir[1] * sn, pdir[0] * sn + pdir[1] * c];
+      const cx = r0.pt[0] + dv[0] * r, cy = r0.pt[1] + dv[1] * r;
+      const bx = dv[0] >= 0 ? cx : cx - wl, by = cy - hl / 2;
+      let cost = occ.cost(bx - 0.6, by - 0.5, bx + wl + 0.6, by + hl + 0.5) * 3 + r * 0.6 + Math.abs(da) * 0.01;
+      cost += occ.cost(Math.min(cx, r0.pt[0]), Math.min(cy, r0.pt[1]), Math.max(cx, r0.pt[0]), Math.max(cy, r0.pt[1])) * 0.02;
+      if (bx < x0 || bx + wl > x0 + w || by < y0 - 1 || by + hl > y0 + h + 1) cost += 400;
+      if (!best || cost < best.cost) best = { cost, bx, by };
+    }
+    const { bx, by } = best, ym = by + hl / 2;
+    for (const r of reps) {
+      const inX = r.pt[0] >= bx && r.pt[0] <= bx + wl;
+      const ex = inX ? r.pt[0] : r.pt[0] < bx ? bx - 0.3 : bx + wl + 0.3, ey = inX ? (r.pt[1] < by ? by - 0.3 : by + hl + 0.3) : ym;
+      s.line([ex, r.pt[0]], [ey, r.pt[1]], { lw: 0.1, color: INK });
+      s.circle(r.pt[0], r.pt[1], 0.32, { fill: INK, lw: 0 });
+      occ.seg([ex, ey], r.pt, 0.2);
+    }
+    drawLabelChip(s, bx, ym, tag, size);
+    s.text(bx + wChip + 0.8, ym - 0.05, txt, { size, va: 'middle' });
+    occ.rect(bx - 0.5, by - 0.4, bx + wl + 0.5, by + hl + 0.4);
+  }
+}
+
+/* set-out strips: every straight line of holes on a part's face, as drilled, with the distance of each hole from a
+   named edge. Lines that repeat (both shelves, both halves) are drawn once and counted. */
+const EDGE = [['right-hand end', 'left-hand end'], ['back edge', 'front edge'], ['bottom edge', 'top edge']];
+function setoutPatterns(inst) {
+  const lines = [];
+  inst.ops.forEach((op, oi) => {
+    for (const f of op.fast) {
+      const dir = v3.norm(f.dir), kd = [0, 1, 2].reduce((b, a) => Math.abs(dir[a]) > Math.abs(dir[b]) ? a : b, 0);
+      if (Math.abs(dir[kd]) < 0.999) continue; // a slanted joint (the backrest) is set out from its own drawing
+      const tb = partBox(f.through), inPl = [0, 1, 2].filter(a => a !== kd);
+      const spr = (a) => { const v = f.pts.map(p => p[a]); return Math.max(...v) - Math.min(...v); };
+      let k = spr(inPl[0]) >= spr(inPl[1]) ? inPl[0] : inPl[1];
+      if (spr(k) < 0.5) k = (tb[inPl[0] + 3] - tb[inPl[0]]) >= (tb[inPl[1] + 3] - tb[inPl[1]]) ? inPl[0] : inPl[1];
+      const j = inPl[0] === k ? inPl[1] : inPl[0];
+      const byJ = [];
+      f.pts.forEach((p, i) => { let L = byJ.find(q => Math.abs(q.jv - p[j]) < 1); if (!L) { L = { jv: p[j], idx: [] }; byJ.push(L); } L.idx.push(i); });
+      for (const L of byJ) {
+        const holes = L.idx.map(i => ({ pos: f.pts[i][k], key: f.key, seq: f.seq ? f.seq[i] : 0 }));
+        let m = lines.find(q => q.through === f.through && q.k === k && q.kd === kd && Math.abs(q.jv - L.jv) < 1);
+        if (m) { m.holes.push(...holes); if (m.into.indexOf(f.into) < 0) m.into.push(f.into); if (m.ops.indexOf(oi) < 0) m.ops.push(oi); }
+        else lines.push({ through: f.through, into: [f.into], kd, k, j, jv: L.jv, holes, ops: [oi], dir });
+      }
+    }
+  });
+  const pats = [];
+  const same = (A, rel, B) => A.k === B.k && A.kd === B.kd && Math.abs(A.len - B.len) < 1 && rel.length === B.rel.length && rel.every((h, i) => h.key === B.rel[i].key && Math.abs(h.r - B.rel[i].r) <= 1);
+  for (const L of lines) {
+    const tb = partBox(L.through);
+    L.len = tb[L.k + 3] - tb[L.k];
+    L.rel = L.holes.map(h => Object.assign({}, h, { r: Math.round((h.pos - tb[L.k]) * 2) / 2 })).sort((a, b) => a.r - b.r || (isWood(a.key) ? 1 : -1));
+    const mir = L.rel.map(h => Object.assign({}, h, { r: L.len - h.r })).sort((a, b) => a.r - b.r || (isWood(a.key) ? 1 : -1));
+    let p = pats.find(q => same(L, L.rel, q.lines[0]));
+    if (!p) { p = pats.find(q => same(L, mir, q.lines[0])); if (p) L.mirror = true; }
+    if (p) { p.lines.push(L); for (const o of L.ops) if (p.ops.indexOf(o) < 0) p.ops.push(o); }
+    else pats.push({ lines: [L], ops: L.ops.slice() });
+  }
+  pats.forEach(p => p.ops.sort((a, b) => a - b));
+  return pats.sort((a, b) => a.ops[0] - b.ops[0]);
+}
+function setoutScale(len, wMax) { for (const sc of [2.5, 5, 7.5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 100]) if (len / sc <= wMax) return sc; return 100; }
+// where the lines sit across their parts, in words
+function lineWhere(pat) {
+  const centred = pat.lines.every(L => {
+    const ib = partBox(L.into[0]), c = (ib[L.j] + ib[L.j + 3]) / 2;
+    return L.into.length === 1 && Math.abs(L.jv - c) < 0.6 && ib[L.j + 3] - ib[L.j] < 60;
+  });
+  if (centred) { const ns = [...new Set(pat.lines.map(L => partName(L.into[0])))]; return ns.length === 1 ? `centred on the ${ns[0]}` : 'centred on each joint'; }
+  const L = pat.lines[0], tb = partBox(L.through), j = L.j;
+  if (pat.lines.every(l => { const t = partBox(l.through); return Math.abs(l.jv - (t[j] + t[j + 3]) / 2) < 0.6; })) return 'on its centre line';
+  const near0 = L.jv - tb[j] <= tb[j + 3] - L.jv;
+  const ds = [...new Set(pat.lines.map(l => { const t = partBox(l.through); return fh(near0 ? l.jv - t[j] : t[j + 3] - l.jv); }))];
+  const list = ds.length <= 4 ? (ds.length > 1 ? ds.slice(0, -1).join(', ') + ' and ' + ds[ds.length - 1] : ds[0]) : `${ds.length} lines`;
+  return `${list} from the ${EDGE[j][near0 ? 0 : 1]}`;
+}
+function setoutHead(pat) {
+  const names = [...new Set(pat.lines.map(l => `${l.through.mark} ${partName(l.through).replace(/ \d+$/, '')}`))];
+  const n = pat.lines.length, nm = pat.lines.filter(l => l.mirror).length;
+  return `${names.join(' and ')}${n > 1 ? ` (×${n}${nm ? `, ${nm} mirrored` : ''})` : ''}, ${lineWhere(pat)}`;
+}
+const SO = { lab: 5.1, ord: 4.4, edge: 4.4 };
+function setoutGeom(s, pat, wMax) {
+  const L = pat.lines[0], tb = partBox(L.through), k = L.k, j = L.j, sc = setoutScale(L.len, wMax - 4);
+  const D0 = Math.max(...L.rel.map(h => fxD(h.key)[2])), hb = Math.max(D0 / 2 + 4, 1.6 * sc);
+  const j0 = Math.max(tb[j], L.jv - hb), j1 = Math.min(tb[j + 3], L.jv + hb);
+  const bandH = Math.max(0.6, (j1 - j0) / sc);
+  const txtW = Math.max(s.tw('0', SO.ord), ...L.rel.map(h => s.tw(fh(h.r), SO.ord)));
+  const hasSeq = L.rel.some(h => h.seq);
+  const head = setoutHead(pat), headW = pat.ops.length * 2.8 + 0.8 + s.tw(head, SO.lab, 'bold') + 1 + s.tw(`1:${sc}`, 4.7);
+  const wBand = L.len / sc + 4;
+  return { L, tb, k, j, sc, j0, j1, bandH, txtW, hasSeq, head, wBand, w: Math.max(wBand, Math.min(headW, wMax)), h: 2.9 + (hasSeq ? 2.4 : 0) + 0.7 + txtW + 0.9 + bandH + 2.6 };
+}
+function drawSetout(s, G, pat, x, yTop) {
+  const { L, tb, k, j, sc, j0, j1, bandH, txtW } = G;
+  const X = (v) => x + 2 + (v - tb[k]) / sc, yb = yTop - G.h + 2.6, Yj = (v) => yb + (v - j0) / sc;
+  // heading: the operations, the part, where the line runs, the scale
+  let hx = x;
+  pat.ops.forEach(oi => { s.circle(hx + 1.15, yTop - 1.2, 1.15, { fill: INK, lw: 0 }); s.text(hx + 1.15, yTop - 1.25, String(oi + 1), { size: 4.5, weight: 'bold', color: WHITE, ha: 'center', va: 'middle' }); hx += 2.8; });
+  hx += 0.8;
+  let ht = G.head;
+  const room = G.w - (hx - x) - s.tw(`1:${sc}`, 4.7) - 1;
+  if (s.tw(ht, SO.lab, 'bold') > room) { while (ht.length > 8 && s.tw(ht + '…', SO.lab, 'bold') > room) ht = ht.slice(0, -1); ht = ht.replace(/[ ,(]*$/, '') + '…'; }
+  s.text(hx, yTop - 1.25, ht, { size: SO.lab, weight: 'bold', va: 'middle' });
+  s.text(hx + s.tw(ht, SO.lab, 'bold') + 1, yTop - 1.25, `1:${sc}`, { size: 4.7, color: GREY, va: 'middle' });
+  // the band of the part along the line, broken where the part goes on beyond it
+  const xa = X(tb[k]), xb = X(tb[k + 3]), ya = Yj(j0), yt = Yj(j1);
+  s.rect(xa, ya, xb - xa, yt - ya, { fill: PART_OLD, lw: 0 });
+  s.line([xa, xa], [ya, yt], { lw: 0.2 }); s.line([xb, xb], [ya, yt], { lw: 0.2 });
+  const edgeLine = (yy, real) => {
+    if (real) { s.line([xa, xb], [yy, yy], { lw: 0.2 }); return; }
+    const pts = [];
+    for (let xx = xa, i = 0; xx < xb + 0.8; xx += 0.8, i++) pts.push([Math.min(xx, xb), yy + (i % 2 ? 0.3 : -0.3) * (xx > xa + 0.1 && xx < xb - 0.1 ? 1 : 0)]);
+    s.poly(pts, { lw: 0.1, color: GREY });
+  };
+  edgeLine(ya, Math.abs(j0 - tb[j]) < 0.5); edgeLine(yt, Math.abs(j1 - tb[j + 3]) < 0.5);
+  // the parts behind, where the fixings land, dashed
+  for (const ip of L.into) {
+    const ib = partBox(ip), ka = Math.max(ib[k], tb[k]), kb = Math.min(ib[k + 3], tb[k + 3]), ja = Math.max(ib[j], j0), jb = Math.min(ib[j + 3], j1);
+    if (kb - ka > 0.5 && jb - ja > 0.2) s.rect(X(ka), Yj(ja), (kb - ka) / sc, (jb - ja) / sc, { lw: 0.1, color: GREY, dash: [0.6, 0.4] });
+  }
+  // holes from the head side: clearance and countersink for screws; dowel and Domino holes, in the far face, dashed
+  const yL = Yj(L.jv), maxSeq = Math.max(0, ...L.rel.map(h => h.seq || 0));
+  for (const h of L.rel) {
+    const D = fxD(h.key), cx = X(tb[k] + h.r);
+    if (D[3] === 'dowel') s.circle(cx, yL, Math.max(0.35, 4 / sc), { lw: 0.12, color: [130, 84, 36], dash: [0.4, 0.3] });
+    else if (D[3] === 'dom') { const hw = 11 / sc, hh = Math.max(0.3, 4 / sc); s.rect(cx - hw, yL - hh, 2 * hw, 2 * hh, { lw: 0.12, color: [130, 84, 36], dash: [0.4, 0.3] }); }
+    else {
+      if (D[2] / 2 / sc > 0.45) s.circle(cx, yL, D[2] / 2 / sc, { lw: 0.08, color: INK });
+      s.circle(cx, yL, Math.max(0.3, (D[5] || D[1]) / 2 / sc), { fill: HOLE, lw: 0 });
+    }
+  }
+  // ordinates from the named edge, above the band
+  const yT0 = Math.max(yt, yL) + 0.9;
+  if (!L.rel.length || X(tb[k] + L.rel[0].r) - xa > 2.2) s.text(xa + 0.75, yT0 + 0.2, '0', { size: SO.ord, angle: 90 }); // the edge itself; left off where the first hole crowds it
+  const done = [];
+  for (const h of L.rel) {
+    if (done.some(r => Math.abs(r - h.r) < 0.25)) continue;
+    done.push(h.r);
+    const cx = X(tb[k] + h.r), wood = isWood(h.key);
+    s.line([cx, cx], [yL + 0.45, yT0], { lw: 0.06, color: wood ? [150, 106, 60] : GREY });
+    s.text(cx + 0.75, yT0 + 0.2, fh(h.r), { size: SO.ord, angle: 90, color: wood ? [130, 84, 36] : INK, weight: wood ? null : 'bold' });
+    if (h.seq) seqDot(s, cx, yT0 + txtW + 1.6, h.seq, maxSeq <= 5 ? null : ACC);
+  }
+  s.text(xa, yb - 2.1, EDGE[k][0], { size: SO.edge, color: GREY });
+  s.text(xb, yb - 2.1, EDGE[k][1], { size: SO.edge, color: GREY, ha: 'right' });
+  if (xb - xa > 34) s.text((xa + xb) / 2, yb - 2.1, `${fh(L.len)} long`, { size: SO.edge, color: GREY, ha: 'center' });
+}
+function setoutFlow(s, pats, W) {
+  const items = pats.map(p => { const third = setoutGeom(s, p, (W - 8) / 3), half = setoutGeom(s, p, (W - 4) / 2), full = setoutGeom(s, p, W); return third.sc <= 40 ? third : half.sc <= 40 ? half : full; });
+  const rows = [];
+  let cur = null;
+  for (const it of items) {
+    if (cur && cur.w + 4 + it.w <= W) { cur.items.push(it); cur.w += 4 + it.w; cur.h = Math.max(cur.h, it.h); }
+    else { cur = { items: [it], w: it.w, h: it.h }; rows.push(cur); }
+  }
+  return { items, rows, h: rows.reduce((a, r) => a + r.h + 1.8, 0) };
+}
+
+// the steps that join plywood, in build order, with their half pages
+function detailHalves(M, S) {
+  const B = S.build, J = B.joinery, out = [{ kind: 'key' }];
+  B.steps.forEach((st, i) => { if (st.joinery && (J.steps[st.joinery] || []).length) out.push({ kind: 'step', key: st.joinery, no: i + 1, st }); });
+  return out;
+}
+const HALVES = [[14, 12, 205, 283], [215, 42, 406, 283]];
+function halfHeader(s, x0, yTop, w, no, title, sub) {
+  s.circle(x0 + 3.6, yTop - 3.6, 3.6, { fill: ACC, lw: 0 });
+  s.text(x0 + 3.6, yTop - 3.7, String(no), { size: no > 9 ? 9 : 10, weight: 'bold', color: WHITE, ha: 'center', va: 'middle' });
+  s.text(x0 + 9.5, yTop - 2.9, title.toUpperCase(), { size: 9, weight: 'bold' });
+  let y = yTop - 6.6;
+  for (const ln of s.wrap(sub, w - 10, 5.9)) { s.text(x0 + 9.5, y, ln, { size: 5.9, color: GREY }); y -= 2.6; }
+  return y - 1.2;
+}
+function halfStep(s, M, S, hv, region) {
+  const [X0, Y0, X1, Y1] = region, W = X1 - X0, B = S.build, J = B.joinery, FX = B.FX;
+  const insts = J.steps[hv.key], inst = insts.find(i => i.show) || insts[0];
+  const sideSg = inst.side === 'L' ? 1 : -1, pref = v3.norm([0.5 * sideSg, 0.78, 0.42]), nI = insts.length;
+  const what = { plinth: 'plinth', carcass: 'tower', towerPlinth: 'tower', bedSide: 'bed-cabinet side', drawers: 'drawer box', fronts: 'drawer front' }[hv.key];
+  let copies = '';
+  if (hv.key === 'drawers' || hv.key === 'fronts') copies = `The right tower's top drawer is shown; ${nI} in all, built the same way, with the screws at the same distances from the box edges.`;
+  else if (inst.side) copies = `The right-hand ${what} is shown; the left-hand one is its mirror image.`;
+  const keys = [], cnt = {}, all = J.count(hv.key);
+  for (const op of inst.ops) for (const f of op.fast) { if (!cnt[f.key]) { cnt[f.key] = 0; keys.push(f.key); } cnt[f.key] += f.pts.length; }
+  const hasSeq = inst.ops.some(op => op.fast.some(f => f.seq));
+  const legH = keys.length ? 4.4 + keys.length * 3.3 + (hasSeq ? 3.4 : 0) + 2.5 : 0;
+  // directions once per operation, then the largest standard scale at which the views and set-out strips fit
+  const dirs = [];
+  inst.ops.forEach((op, oi) => dirs.push(chooseView(inst, oi, pref, oi ? dirs[oi - 1] : null)));
+  const nOp = inst.ops.length, textLines = (op, cw, om) => 1 + Math.min(4, s.wrap((op.setout || '') + (om && om.size ? ' Not shown: ' + [...om].map(partName).join(', ') : ''), cw - 2, 5.1).length);
+  const pats = setoutPatterns(inst), flow = pats.length ? setoutFlow(s, pats, W) : null;
+  const sub = (scale, strips) => `${copies ? copies + ' ' : ''}Views at 1:${scale}, in the order of work: the parts going on are orange, pulled back along their joint, and a dashed line runs from each fixing to where it lands.${strips ? ' Below them, every line of holes with its distances.' : ''}`;
+  const headH = 3 + s.wrap(sub(25, true), W - 10, 5.9).length * 2.6 + 6.6, H = Y1 - Y0;
+  const fit = (views, room) => {
+    let bestC = null;
+    for (let cols = 1; cols <= Math.min(nOp, 5); cols++) {
+      const rows = Math.ceil(nOp / cols), gapX = 4, cw = (W - (cols - 1) * gapX) / cols;
+      let ok = true, tot = 0;
+      for (let r = 0; r < rows && ok; r++) {
+        let rh = 0, th = 0;
+        for (let c = 0; c < cols; c++) {
+          const i = r * cols + c; if (i >= nOp) break;
+          if (views[i].w + 8 > cw) ok = false;
+          rh = Math.max(rh, views[i].h + 5); th = Math.max(th, textLines(inst.ops[i], cw, views[i].omit) * 2.35 + 3.4);
+        }
+        tot += rh + th + 3;
+      }
+      if (ok && tot <= room && (!bestC || tot < bestC.tot)) bestC = { cols, rows, cw, gapX, tot };
+    }
+    return bestC;
+  };
+  // the views first, as large as they go; then the strips, if they fit at that scale or one step smaller
+  let plan = null;
+  for (const sc of STD_SCALES) { const views = stepViews(inst, sc, dirs), c = fit(views, H - headH - legH); if (c) { plan = Object.assign(c, { scale: sc, views, strips: false }); break; } }
+  if (!plan) { const sc = 100, views = stepViews(inst, sc, dirs), cols = Math.min(nOp, 3); plan = { cols, rows: Math.ceil(nOp / cols), cw: (W - (cols - 1) * 4) / cols, gapX: 4, scale: sc, views, strips: false, tot: 0 }; }
+  if (flow) {
+    const i0 = STD_SCALES.indexOf(plan.scale);
+    for (const sc of STD_SCALES.slice(Math.max(0, i0), i0 + 3).filter(v => v <= Math.max(50, plan.scale))) {
+      const views = sc === plan.scale ? plan.views : stepViews(inst, sc, dirs), c = fit(views, H - headH - legH - flow.h - 5);
+      if (c) { plan = Object.assign(c, { scale: sc, views, strips: true }); break; }
+    }
+  }
+  const { scale, views, cols, cw, gapX } = plan;
+  let y = halfHeader(s, X0, Y1, W, hv.no, hv.st.title, sub(scale, plan.strips));
+  const occ = new Occ(X0 - 8, Y0 - 4, X1 + 8, Y1 + 4, 0.5);
+  occ.rect(X0 - 8, y, X1 + 8, Y1 + 4);
+  // spare height goes between the rows
+  const spare = Math.max(0, (y - Y0) - legH - (plan.strips ? flow.h + 5 : 0) - plan.tot);
+  const drawn = [], viewsTop = y;
+  for (let r = 0; r < plan.rows; r++) {
+    const idx = []; for (let c = 0; c < cols; c++) { const i = r * cols + c; if (i < nOp) idx.push(i); }
+    const rh = Math.max(...idx.map(i => views[i].h + 5)) + spare / plan.rows * 0.8;
+    const th = Math.max(...idx.map(i => textLines(inst.ops[i], cw, views[i].omit) * 2.35 + 3.4));
+    idx.forEach((i, c) => {
+      const op = inst.ops[i], x = X0 + c * (cw + gapX);
+      s.circle(x + 1.9, y - 1.9, 1.9, { fill: INK, lw: 0 });
+      s.text(x + 1.9, y - 1.95, String(i + 1), { size: 6.5, weight: 'bold', color: WHITE, ha: 'center', va: 'middle' });
+      const tl = s.wrap(op.title, cw - 6, 6.4, 'bold');
+      tl.forEach((ln, k) => s.text(x + 5, y - 1.95 - k * 2.7, ln, { size: 6.4, weight: 'bold', va: 'middle' }));
+      const ty = y - 1.95 - (tl.length - 1) * 2.7 - 3.3;
+      const om = [...views[i].omit].map(partName).filter((v, k, a) => a.indexOf(v) === k);
+      const note = (op.setout ? op.setout.charAt(0).toUpperCase() + op.setout.slice(1) + '.' : '') + (om.length ? ` Not shown: ${om.join(', ')}.` : '');
+      s.wrap(note.trim(), cw - 2, 5.1).slice(0, 4).forEach((ln, k) => s.text(x + 1, ty - k * 2.35, ln, { size: 5.1, color: GREY }));
+      occ.rect(x, y - th, x + cw, y + 0.5);
+      drawn.push(drawOpView(s, views[i], scale, x, y - th - rh, cw, rh, occ));
+    });
+    y -= th + rh + 3 + spare / plan.rows * 0.2;
+  }
+  // close-ups of a joint from each operation, at a larger scale, in the room the views leave
+  const close = [];
+  if (scale >= 5) {
+    // close-ups go in clear space: not inside another view's outline either
+    const keep = occ.clone();
+    for (const A of drawn) keep.rect(A.bbox[0] - 1, A.bbox[1] - 1, A.bbox[2] + 1, A.bbox[3] + 1);
+    // one joint for each operation first (those with dowels and several kinds of fixing before the others), then a
+    // second joint of a different kind where there is still room
+    const cands = [];
+    inst.ops.forEach((op, oi) => {
+      const seen = new Set(), gs = op.fast.filter(f => !isWood(f.key)).slice().sort((a, b) => b.pts.length - a.pts.length);
+      const wood = op.fast.some(f => isWood(f.key)) ? 1 : 0, kinds = new Set(op.fast.map(f => f.key)).size;
+      let k = 0;
+      for (const f of gs) {
+        const sig = `${f.through.mark}|${f.into.mark}`; // a mirror image of a joint already shown adds nothing
+        if (seen.has(sig)) continue;
+        seen.add(sig);
+        cands.push({ oi, f, rank: k++, wood, kinds });
+        if (k >= 2) break;
+      }
+    });
+    cands.sort((a, b) => (a.rank - b.rank) || (b.wood - a.wood) || (b.kinds - a.kinds) || (a.oi - b.oi));
+    for (const c of cands) {
+      if (close.length >= 5) break;
+      keep.sums();
+      let tries = [2.5, 5, 7.5, 10].filter(v => v <= scale / 2);
+      { const cs5 = closeupScene(inst, c.oi, 5, c.f); if (cs5 && cs5.fx.length) { const b5 = opExtent(cs5, dirs[c.oi], new Set()); if ((b5[2] - b5[0]) / 5 >= 32 || (b5[3] - b5[1]) / 5 >= 26) tries = tries.filter(v => v >= 5); } }
+      for (const csc of tries) {
+        const cs = closeupScene(inst, c.oi, csc, c.f);
+        if (!cs || !cs.fx.length) break;
+        const d = chooseViewScene(cs, v3.norm(v3.add(pref, dirs[c.oi])), dirs[c.oi]), omit = blockers(cs, d), bx = opExtent(cs, d, omit);
+        const w = Math.max(38, (bx[2] - bx[0]) / csc + 14), h = (bx[3] - bx[1]) / csc + 12;
+        const cell = drawn[c.oi].cell, spot = findRoom(keep, [X0, y + 2, X1, viewsTop], w, h, 2.2, [cell[0] + cell[2] / 2, cell[1] + cell[3] / 2]);
+        if (!spot) continue;
+        const letter = String.fromCharCode(97 + close.length);
+        s.circle(spot.x + 1.6, spot.y + h - 1.6, 1.6, { lw: 0.2, color: ACC });
+        s.text(spot.x + 1.6, spot.y + h - 1.7, letter, { size: 6, weight: 'bold', color: ACC, ha: 'center', va: 'middle' });
+        s.text(spot.x + 4.2, spot.y + h - 1.7, `DETAIL OF VIEW ${c.oi + 1}`, { size: 5.4, weight: 'bold', va: 'middle' });
+        s.text(spot.x + 4.9 + s.tw(`DETAIL OF VIEW ${c.oi + 1}`, 5.4, 'bold'), spot.y + h - 1.7, `1:${csc}`, { size: 5, color: GREY, va: 'middle' });
+        occ.rect(spot.x, spot.y + h - 3.4, spot.x + w, spot.y + h);
+        keep.rect(spot.x, spot.y, spot.x + w, spot.y + h);
+        const A = drawOpView(s, { sc: cs, d, omit, close: true }, csc, spot.x, spot.y, w, h - 4, occ);
+        close.push(A);
+        // the same joint ringed in the operation's view
+        const M0 = drawn[c.oi], pts = [];
+        for (const o of cs.focus) { const q = M0.sc.fx.find(x => x.f === o.f && x.i === o.i); if (q) { pts.push(M0.P3(q.ref), M0.P3(q.land)); } }
+        if (pts.length) {
+          const cx = pts.reduce((a, q) => a + q[0], 0) / pts.length, cy = pts.reduce((a, q) => a + q[1], 0) / pts.length;
+          const r = Math.max(2.2, ...pts.map(q => Math.hypot(q[0] - cx, q[1] - cy))) + 1.2;
+          s.circle(cx, cy, r, { lw: 0.2, color: ACC, dash: [1, 0.6] });
+          const bx2 = cx + r * 0.72 + 1.3, by2 = cy + r * 0.72 + 1.3;
+          s.circle(bx2, by2, 1.4, { fill: WHITE, lw: 0.2, color: ACC });
+          s.text(bx2, by2 - 0.1, letter, { size: 5.6, weight: 'bold', color: ACC, ha: 'center', va: 'middle' });
+          occ.rect(bx2 - 1.5, by2 - 1.5, bx2 + 1.5, by2 + 1.5);
+        }
+        break;
+      }
+    }
+  }
+  for (const A of drawn) annotateOpView(s, A, occ);
+  for (const A of close) annotateOpView(s, A, occ);
+  // set-out strips
+  if (plan.strips) {
+    y -= 0.5;
+    s.line([X0, X1], [y + 1.4, y + 1.4], { lw: 0.1, color: LIGHT });
+    s.text(X0, y - 1, 'SET-OUT', { size: 5.2, weight: 'bold', color: GREY });
+    s.text(X0 + 10.5, y - 1, 'Each line of holes as drilled, seen from the head side, with each distance from the edge named at the left, to 0.5 mm.', { size: 4.8, color: GREY });
+    s.text(X0 + 10.5, y - 3.2, 'Dark: screw holes and countersinks. Dashed brown: dowel or Domino holes in the face against the joint. Dashed grey: the part behind.', { size: 4.8, color: GREY });
+    y -= 5.6;
+    for (const row of flow.rows) {
+      let x = X0;
+      for (const it of row.items) { drawSetout(s, it, pats[flow.items.indexOf(it)], x, y); x += it.w + 4; }
+      y -= row.h + 1.8;
+    }
+  }
+  // legend
+  if (keys.length) {
+    let ly = Y0 + legH - 2;
+    s.line([X0, X1], [ly + 1.2, ly + 1.2], { lw: 0.1, color: LIGHT });
+    s.text(X0, ly - 1.3, 'FIXINGS IN THIS STEP', { size: 5.2, weight: 'bold', color: GREY });
+    s.text(X1 - 22, ly - 1.3, 'SHOWN', { size: 5.2, weight: 'bold', color: GREY, ha: 'right' });
+    s.text(X1, ly - 1.3, nI > 1 ? `ALL ${nI}` : 'IN ALL', { size: 5.2, weight: 'bold', color: GREY, ha: 'right' });
+    ly -= 4.4;
+    for (const k of keys) {
+      const fx = FX[k] || [k, ''];
+      drawLabelChip(s, X0, ly, C.TAGS[k] || k, 5.8);
+      let t = `${fx[0]}. ${fx[1].charAt(0).toUpperCase() + fx[1].slice(1)}.`;
+      if (s.tw(t, 5.4) > W - 42) { while (t.length > 10 && s.tw(t + '…', 5.4) > W - 42) t = t.slice(0, -1); t = t.replace(/[ ,;.]*$/, '') + '…'; }
+      s.text(X0 + 7.5, ly - 0.05, t, { size: 5.4, va: 'middle' });
+      s.text(X1 - 22, ly - 0.05, String(cnt[k]), { size: 5.6, va: 'middle', ha: 'right', weight: 'bold' });
+      s.text(X1, ly - 0.05, String(all[k] || cnt[k]), { size: 5.6, va: 'middle', ha: 'right' });
+      ly -= 3.3;
+    }
+    if (hasSeq) {
+      let x = X0;
+      s.text(x, ly - 0.2, 'ORDER', { size: 5.2, weight: 'bold', color: GREY, va: 'middle' }); x += 9;
+      for (let q = 1; q <= 2; q++) { seqDot(s, x + 1, ly - 0.2, q); x += 3; }
+      s.text(x, ly - 0.2, 'Fixings of one kind go in by their numbers: every 1 first, then the 2s. Glue and dowels go in before the screws.', { size: 5.3, va: 'middle' });
+    }
+  }
+  if (hv.key === 'frame') s.text(X1, Y1 - 3, 'Frame joinery: this design, not the kit plan. Kit plates per the kit.', { size: 5, color: GREY, ha: 'right' });
+}
+// the fixings drawn full size
+function drawFixing2D(s, key, x, yTop) { // head at yTop, pointing down
+  const [len, ds, dh, kind] = fxD(key), col = [196, 200, 206], lw = 0.14;
+  const rs = ds / 2, rh = dh / 2;
+  if (kind === 'csk' || kind === 'pan' || kind === 'brad') {
+    let y0 = yTop;
+    if (kind === 'csk') { const hc = rh - rs; s.polyFill([[x - rh, yTop], [x + rh, yTop], [x + rs, yTop - hc], [x - rs, yTop - hc], [x - rh, yTop]], { fill: col, lw }); s.line([x - rh * 0.45, x + rh * 0.45], [yTop - 0.35, yTop - 0.35], { lw: 0.25, color: GREY }); y0 = yTop - hc; }
+    else if (kind === 'pan') { const hh = dh * 0.38; s.polyFill([[x - rh * 0.8, yTop + hh], [x + rh * 0.8, yTop + hh], [x + rh, yTop + hh * 0.4], [x + rh, yTop], [x - rh, yTop], [x - rh, yTop + hh * 0.4], [x - rh * 0.8, yTop + hh]], { fill: col, lw }); }
+    else { s.rect(x - rh, yTop, dh, 0.8, { fill: col, lw }); }
+    const tp = kind === 'brad' ? 3 * rs : Math.min(len * 0.3, 2.2 * rs), yt = yTop - len;
+    s.polyFill([[x - rs, y0], [x + rs, y0], [x + rs, yt + tp], [x, yt], [x - rs, yt + tp], [x - rs, y0]], { fill: col, lw });
+    if (kind !== 'brad') {
+      const pitch = ds * 0.42;
+      for (let yy = y0 - 1.2; yy > yt + tp * 0.4; yy -= pitch) { const ww = yy < yt + tp ? rs * (yy - yt) / tp : rs; s.line([x - ww, x + ww], [yy, yy - pitch * 0.45], { lw: 0.08, color: GREY }); }
+    }
+    return;
+  }
+  if (kind === 'dowel') {
+    const r = 4, ch = 0.8;
+    s.polyFill([[x - r + ch, yTop], [x + r - ch, yTop], [x + r, yTop - ch], [x + r, yTop - 30 + ch], [x + r - ch, yTop - 30], [x - r + ch, yTop - 30], [x - r, yTop - 30 + ch], [x - r, yTop - ch], [x - r + ch, yTop]], { fill: [214, 170, 112], lw });
+    for (const dx of [-2.2, 0, 2.2]) s.line([x + dx, x + dx], [yTop - 1.4, yTop - 28.6], { lw: 0.08, color: [140, 96, 50] });
+    return;
+  }
+  if (kind === 'dom') {
+    s.rect(x - 11, yTop - 40, 22, 40, { fill: [214, 170, 112], lw });
+    for (let yy = yTop - 3; yy > yTop - 39; yy -= 3) s.line([x - 10.2, x + 10.2], [yy, yy], { lw: 0.06, color: [150, 106, 60] });
+  }
+}
+function halfKey(s, M, S, region, hv, info) {
+  const [X0, Y0, X1, Y1] = region, W = X1 - X0, B = S.build, J = B.joinery;
+  const inDet = new Set();
+  for (const k of Object.keys(J.steps)) for (const i of J.steps[k]) for (const op of i.ops) for (const f of op.fast) inDet.add(f.key);
+  const order = ['s50', 's40', 's35', 's30', 's25', 'b30', 'b25', 'b20', 'b16', 'r14', 'r10', 'h17', 'h15', 'w75', 'm4', 'brad', 'br30', 'd8', 'dom'];
+  const used = order.filter(k => B.fixings.some(f => f.key === k));
+  s.text(X0, Y1 - 3.5, 'FIXINGS KEY, FULL SIZE', { size: 9, weight: 'bold' });
+  s.para(X0, Y1 - 8, s.wrap(`Every fixing in this design at 1:1, with the tag used in the assembly details on sheets ${info.detFrom}-${info.detFrom + info.nDet - 1}. Lay a screw on its outline to check it. Counts are for the whole build; the schedule on sheet ${info.fixAt} adds spares.`, W, 6), { size: 6, color: GREY });
+  const rowA = used.filter(k => ['csk', 'pan'].includes(fxD(k)[3])), rowB = used.filter(k => !['csk', 'pan'].includes(fxD(k)[3]));
+  const drawRow = (keys, yTop, maxLen) => {
+    const ws = keys.map(k => Math.max(fxD(k)[3] === 'dom' ? 24 : fxD(k)[2] + 2, s.tw(FX_SIZE[k] || k, 5.4) + 1.5));
+    const tot = ws.reduce((a, b) => a + b, 0), gap = keys.length > 1 ? Math.min(6, (W - tot) / (keys.length - 1)) : 0;
+    let x = X0;
+    keys.forEach((k, i) => {
+      const cx = x + ws[i] / 2, D = fxD(k), headUp = D[3] === 'pan' ? D[2] * 0.38 : D[3] === 'brad' ? 0.8 : 0;
+      drawFixing2D(s, k, cx, yTop - headUp);
+      const yl = yTop - maxLen - 4;
+      drawLabelChip(s, cx - (s.tw(C.TAGS[k] || k, 6.4, 'bold') + 1.4) / 2, yl, C.TAGS[k] || k, 6.4);
+      s.text(cx, yl - 3.6, FX_SIZE[k] || k, { size: 5.4, ha: 'center' });
+      const q = (B.fixings.find(f => f.key === k) || {}).qty;
+      if (q) s.text(cx, yl - 6.1, `${q} in all`, { size: 5, ha: 'center', color: GREY });
+      if (!inDet.has(k)) s.text(cx, yl - 8.4, { w75: 'into the studs', r14: 'runners', h15: 'hinges', h17: 'hinge plates', m4: 'handles' }[k] || 'hardware', { size: 4.6, ha: 'center', color: GREY });
+      x += ws[i] + gap;
+    });
+  };
+  const lenA = Math.max(...rowA.map(k => fxD(k)[0] + (fxD(k)[3] === 'pan' ? fxD(k)[2] * 0.38 : 0)), 10);
+  let y = Y1 - 18;
+  if (rowA.length) { drawRow(rowA, y, lenA); y -= lenA + 16; }
+  const lenB = Math.max(...rowB.map(k => fxD(k)[0]), 10);
+  if (rowB.length) { drawRow(rowB, y, lenB); y -= lenB + 16; }
+  s.text(X0, y, 'READING THE ASSEMBLY DETAILS', { size: 7, weight: 'bold' });
+  y -= 5;
+  const sw = (yy, draw, txt) => { draw(X0 + 6, yy); const ls = s.wrap(txt, W - 16, 5.8); ls.forEach((ln, k) => s.text(X0 + 14, yy - k * 2.6, ln, { size: 5.8, va: 'middle' })); return yy - Math.max(1, ls.length) * 2.6 - 1.6; };
+  y = sw(y, (x, yy) => { s.rect(x - 5, yy - 1.5, 4.5, 3, { fill: PART_NEW, lw: 0.1 }); s.rect(x, yy - 1.5, 4.5, 3, { fill: PART_OLD, lw: 0.1 }); }, 'Orange: the parts going on in that view, pulled back along their joint. Light: parts already fixed. Grey outline: neighbouring parts, for reference. A part that would hide the screws is left out and named under the view.');
+  y = sw(y, (x, yy) => { s.line([x - 5, x + 3.6], [yy, yy], { lw: 0.1, dash: [0.75, 0.5] }); s.circle(x + 4.4, yy, 0.45, { fill: HOLE, lw: 0 }); }, 'Dashed: the line a fixing travels, from its tip through the clearance hole to its pilot hole in the next part. Dark dots: holes, at their true positions; a ring marks one hidden behind a part.');
+  y = sw(y, (x, yy) => { [1, 2, 3].forEach((q, k) => seqDot(s, x - 3.5 + k * 3, yy, q)); }, 'Numbers: the order for fixings of one kind: all the 1s, then the 2s. The screws are coloured to match. A run numbered 1 to 12 goes in in that order.');
+  y = sw(y, (x, yy) => { drawLabelChip(s, x - 4.5, yy, 'A', 6); s.text(x - 0.6, yy - 0.05, '×8', { size: 6, va: 'middle' }); }, 'Tags: the fixing (key above) and how many go in, in that view, on the copy drawn.');
+  y = sw(y, (x, yy) => { s.rect(x - 5, yy - 0.8, 9, 1.6, { fill: PART_OLD, lw: 0.1 }); s.circle(x - 2, yy, 0.4, { fill: HOLE, lw: 0 }); s.circle(x + 1.5, yy, 0.45, { lw: 0.1, color: [130, 84, 36], dash: [0.4, 0.3] }); }, 'Set-out strips: each line of holes in a part, with every distance from the edge named at its left, to 0.5 mm.');
+  sw(y, () => {}, 'Every view is to the scale on its half page and every hole is where the design puts it. Fixings are drawn at their true length; at small scales their thickness is drawn up to 0.3 mm on paper so they stay visible.');
+}
+function pagesDetails(doc, M, S, info) {
+  const halves = info.halves;
+  for (let k = 0; k < info.nDet; k++) {
+    const s = Sheet(doc, info.detFrom + k, info.total, `ASSEMBLY DETAILS ${k + 1}`, 'as noted', info);
+    s.line([210, 210], [12, 285], { lw: 0.15, color: LIGHT });
+    for (let h = 0; h < 2; h++) {
+      const hv = halves[2 * k + h];
+      if (!hv) continue;
+      if (hv.kind === 'key') halfKey(s, M, S, HALVES[h], hv, info);
+      else halfStep(s, M, S, hv, HALVES[h]);
+    }
+    s.finish();
+  }
+}
+
 /* ------------------------------------------------------------------ make */
 async function make(model, summary, progress) {
   progress = progress || (() => {});
@@ -1063,7 +1938,10 @@ async function make(model, summary, progress) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3', compress: true });
   const P = model.P;
   const nPlans = Math.ceil(summary.sheets.reduce((a, q) => a + q.bins.length, 0) / 8) || 0;
-  const info = { project: 'Murphy wardrobe', date: new Date().toISOString().slice(0, 10), total: 10 + nPlans, plansFrom: 7, plansTo: 6 + nPlans, seqFrom: 7 + nPlans, fixAt: 9 + nPlans };
+  const halves = detailHalves(model, summary), nDet = Math.ceil(halves.length / 2);
+  const info = { project: 'Murphy wardrobe', date: new Date().toISOString().slice(0, 10), total: 10 + nPlans + nDet, plansFrom: 7, plansTo: 6 + nPlans, seqFrom: 7 + nPlans,
+    detFrom: 9 + nPlans, nDet, halves, fixAt: 9 + nPlans + nDet, detSheet: {} };
+  halves.forEach((hv, i) => { if (hv.key) info.detSheet[hv.key] = info.detFrom + Math.floor(i / 2); });
   const tick = () => new Promise(r => setTimeout(r, 15));
   progress('Rendering views...', 0.1); await tick();
   const I = {};
@@ -1117,6 +1995,8 @@ async function make(model, summary, progress) {
   progress('Build sequence...', 0.9); await tick();
   pageSequence(doc, model, summary, I, info, 0);
   pageSequence(doc, model, summary, I, info, 1);
+  progress('Assembly details...', 0.92); await tick();
+  pagesDetails(doc, model, summary, info);
   pageFixings(doc, model, summary, info);
   progress('Design review...', 0.95); await tick();
   pageReview(doc, model, summary, info);
