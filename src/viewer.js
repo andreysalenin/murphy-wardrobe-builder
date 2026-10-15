@@ -10,7 +10,7 @@ const KIND_STYLE = {
   deck: { color: 0xd7b98c, rough: 0.85 }, drawer: { color: 0xe2cfa9, rough: 0.82 }, back: { color: 0xcdb48c, rough: 0.85 },
   plinth: { color: 0xbba07a, rough: 0.85 }, packer: { color: 0xb58d5b, rough: 0.85 }, ledge: { color: 0xd9c19a, rough: 0.82 },
   mattress: { color: 0xeeeeea, rough: 0.95, edges: false }, metal: { color: 0x2f3236, rough: 0.45, metal: 0.4 },
-  chrome: { color: 0xc4c7cb, rough: 0.3, metal: 0.8 },
+  chrome: { color: 0xc9ccd0, rough: 0.38, metal: 0.35 },
   block: { color: 0x8c6239, rough: 0.7 }, rubber: { color: 0x1c1c1e, rough: 0.9, edges: false }, strap: { color: 0x3d4c70, rough: 0.9, edges: false },
 };
 const T_COL = { 6: 0x7b5cc4, 12: 0x138a7e, 18: 0xc47a12 };
@@ -108,10 +108,11 @@ class MurphyScene {
     const unitCyl = new THREE.CylinderGeometry(1, 1, 1, 20, 1); // along +y, centred
     for (const p of model.parts) {
       const style = KIND_STYLE[p.kind] || KIND_STYLE.carcass;
-      if (p.dyn && (p.dyn.type === 'spring' || p.dyn.type === 'stay')) {
+      if (p.dyn && (p.dyn.type === 'spring' || p.dyn.type === 'stay' || p.dyn.type === 'link')) {
         // two tubes re-aimed every frame
         const grp = new THREE.Group();
         const body = new THREE.Mesh(unitCyl, this.mat(p.kind, style, false)), rod = new THREE.Mesh(unitCyl, this.mat('chrome', KIND_STYLE.chrome, false));
+        if (p.dyn.type === 'link') { body.material = rod.material; }
         grp.add(body); grp.add(rod);
         this.root.add(grp);
         const rec = { part: p, mesh: body, rod, grp, style, dyn: p.dyn };
@@ -184,6 +185,7 @@ class MurphyScene {
       mesh.scale.set(d / 2, L, d / 2);
     };
     for (const r of this.dyns) {
+      if (r.dyn.type === 'link') { const [l1, l2] = C.linkEnds(r.dyn, t); aim(r.mesh, l1[0], l1[1], 5); aim(r.rod, l2[0], l2[1], 5); continue; }
       const [a, b] = r.dyn.type === 'spring' ? C.springEnds(G, r.dyn, th) : C.stayEnds(r.dyn, t * Math.PI / 2 * 0.92);
       const bodyLen = r.dyn.type === 'spring' ? 390 : 150;
       const d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], L = Math.hypot(...d), k = Math.min(bodyLen, L - 40) / L;

@@ -1217,15 +1217,39 @@ function build(params, opts) {
   const sx = (s, x0, x1) => s < 0 ? [-x1, -x0] : [x0, x1];
   // concealed 35 mm cup hinge on a vertical edge: cup and arm move with the door, the plate stays on the side panel.
   // edge, face: |x| of the door's hinged edge and of the side-panel face; dir: +1 if the door lies toward larger |x|
+  // 35 mm concealed hinge, full overlay. Cup and flange go with the door; the arm sits on a cross-shaped mounting
+  // plate 37 back on the side panel; two short links (re-aimed as the door opens) join the arm's knuckle to the cup.
+  // edge: hinge edge of the door, face: inner face of the side panel, dir: +1 when the cabinet interior is at larger x.
   const cupHinge = (s, edge, face, dir, z, name, anim) => {
-    const cx = edge + dir * 22.5;
-    const [pa, pb] = dir > 0 ? [face, face + 3] : [face - 3, face];
-    const [aa, ab] = dir > 0 ? [face + 3, cx + 7] : [cx - 7, face - 3];
-    const [c0] = sx(s, cx, cx);
-    put({ mark: 'HG', name, grp: 'hardware', kind: 'metal', hw: true, anim,
-      solids: [cyl(35, [c0, G.yFb + 12, z], [c0, G.yFb, z]), box(...sx(s, Math.min(aa, ab), Math.max(aa, ab)), G.yC - 50, G.yFb - 2, z - 12, z + 12)] });
-    put({ mark: 'HG', name: name + ' plate', grp: 'hardware', kind: 'metal', hw: true,
-      solids: [box(...sx(s, pa, pb), G.yC - 37 - 22, G.yC - 37 + 22, z - 20, z + 20)] });
+    const cx = edge + dir * 22.5, mx = (x) => s * x, xr = (a, b) => sx(s, Math.min(a, b), Math.max(a, b));
+    const yp = G.yC - 37;
+    put({ mark: 'HG', name, grp: 'hardware', kind: 'chrome', hw: true, anim,
+      solids: [cyl(35, [mx(cx), G.yFb + 11.5, z], [mx(cx), G.yFb, z]), cyl(40, [mx(cx), G.yFb, z], [mx(cx), G.yFb - 1.5, z]),
+        box(...xr(cx - 7, cx + 7), G.yFb - 1.5, G.yFb, z - 26, z + 26),
+        cyl(8, [mx(cx), G.yFb - 1.5, z - 19], [mx(cx), G.yFb - 2.5, z - 19]), cyl(8, [mx(cx), G.yFb - 1.5, z + 19], [mx(cx), G.yFb - 2.5, z + 19])] });
+    put({ mark: 'HG', name: name + ' arm and plate', grp: 'hardware', kind: 'chrome', hw: true,
+      solids: [box(...xr(face, face + dir * 2), yp - 6, yp + 6, z - 26, z + 26), box(...xr(face, face + dir * 2), yp - 21, yp + 21, z - 7, z + 7),
+        prism([0, 0, z - 7], X, Y, 14, [s * dir > 0
+          ? polyLoop([[mx(face + dir * 2), G.yC - 61], [mx(face + dir * 11), G.yC - 61], [mx(face + dir * 13), G.yC - 50], [mx(face + dir * 13), G.yC - 8], [mx(face + dir * 10), G.yC - 1], [mx(face + dir * 2), G.yC - 1]])
+          : polyLoop([[mx(face + dir * 2), G.yC - 61], [mx(face + dir * 2), G.yC - 1], [mx(face + dir * 10), G.yC - 1], [mx(face + dir * 13), G.yC - 8], [mx(face + dir * 13), G.yC - 50], [mx(face + dir * 11), G.yC - 61]])]),
+        cyl(7, [mx(face + dir * 13), G.yC - 22, z], [mx(face + dir * 14), G.yC - 22, z]), cyl(7, [mx(face + dir * 13), G.yC - 46, z], [mx(face + dir * 14), G.yC - 46, z])] });
+    const kx = mx(face + dir * 8), dyn = { type: 'link', move: 'door', axis: anim.axis, sign: anim.sign,
+      links: [-4.5, 4.5].map(dz => [[kx, G.yC - 3, z + dz], [mx(cx), G.yFb + 3, z + dz]]) };
+    put({ mark: 'HG', name: name + ' links', grp: 'hardware', kind: 'chrome', hw: true, dyn, solids: linkSolids(dyn, 0) });
+  };
+  // the same hinge for a top-hinged flap: arm and plate under the top, cup 22.5 below the flap's top edge
+  const flapHinge = (c, S, k, anim) => {
+    const cz = G.flapZ[1] - 22.5, zf = G.zTopB, yp = G.yC - 37, nm = `Flap hinge (${S}) ${k + 1}`;
+    put({ mark: 'FH', name: nm, grp: 'hardware', kind: 'chrome', hw: true, anim,
+      solids: [cyl(35, [c, G.yFb + 11.5, cz], [c, G.yFb, cz]), cyl(40, [c, G.yFb, cz], [c, G.yFb - 1.5, cz]),
+        box(c - 26, c + 26, G.yFb - 1.5, G.yFb, cz - 7, cz + 7),
+        cyl(8, [c - 19, G.yFb - 1.5, cz], [c - 19, G.yFb - 2.5, cz]), cyl(8, [c + 19, G.yFb - 1.5, cz], [c + 19, G.yFb - 2.5, cz])] });
+    put({ mark: 'FH', name: nm + ' arm and plate', grp: 'hardware', kind: 'chrome', hw: true,
+      solids: [box(c - 26, c + 26, yp - 6, yp + 6, zf - 2, zf), box(c - 7, c + 7, yp - 21, yp + 21, zf - 2, zf),
+        yzPrism(c - 7, c + 7, polyLoop([[G.yC - 61, zf - 11], [G.yC - 50, zf - 13], [G.yC - 8, zf - 13], [G.yC - 1, zf - 10], [G.yC - 1, zf - 2], [G.yC - 61, zf - 2]])),
+        cyl(7, [c, G.yC - 22, zf - 13], [c, G.yC - 22, zf - 14]), cyl(7, [c, G.yC - 46, zf - 13], [c, G.yC - 46, zf - 14])] });
+    const dyn = { type: 'link', move: 'flap', axis: anim.axis, links: [-4.5, 4.5].map(dx => [[c + dx, G.yC - 3, zf - 8], [c + dx, G.yFb + 3, cz]]) };
+    put({ mark: 'FH', name: nm + ' links', grp: 'hardware', kind: 'chrome', hw: true, dyn, solids: linkSolids(dyn, 0) });
   };
 
   // ---------------- towers (left and right are mirror images)
@@ -1363,13 +1387,7 @@ function build(params, opts) {
     const anim = { type: 'flap', axis: flapAxis };
     put({ mark: 'D4', name: `Lift-up flap (${S})`, grp: 'fronts-C', kind: 'front', T, L: G.flapH, W: G.flapW, grain: true, band: 2 * (G.flapH + G.flapW),
       solids: [box(x0, x1, G.yFb, G.yF, G.flapZ[0], G.flapZ[1])], anim });
-    G.flapHw.hinges.forEach((hx, k) => {
-      const [c] = sx(s, hx, hx), cz = G.flapZ[1] - 22.5;
-      put({ mark: 'FH', name: `Flap hinge (${S}) ${k + 1}`, grp: 'hardware', kind: 'metal', hw: true, anim,
-        solids: [cyl(35, [c, G.yFb + 12, cz], [c, G.yFb, cz]), box(c - 12, c + 12, G.yC - 50, G.yFb - 2, cz - 6, G.zTopB - 3)] });
-      put({ mark: 'FH', name: `Flap hinge (${S}) ${k + 1} plate`, grp: 'hardware', kind: 'metal', hw: true,
-        solids: [box(c - 20, c + 20, G.yC - 59, G.yC - 15, G.zTopB - 3, G.zTopB)] });
-    });
+    G.flapHw.hinges.forEach((hx, k) => { const [c] = sx(s, hx, hx); flapHinge(c, S, k, anim); });
     G.flapHw.stays.forEach((hx, k) => {
       const [c] = sx(s, hx, hx);
       const dyn = { type: 'stay', x: c, fixed: [G.yC - 250, G.zBm1 + 50], flap: [G.yFb - 10, G.flapZ[1] - 150], axis: flapAxis };
@@ -1571,6 +1589,18 @@ function stayEnds(dyn, phi) {
   const y = dyn.flap[0] - ay, z = dyn.flap[1] - az;
   return [[dyn.x, dyn.fixed[0], dyn.fixed[1]], [dyn.x, ay + y * c - z * s, az + y * s + z * c]];
 }
+// hinge links: a = fixed knuckle on the arm, b = point on the cup (door or flap closed); t = 0..1 open
+function linkEnds(dyn, t) {
+  return dyn.links.map(([a, b]) => {
+    if (dyn.move === 'door') {
+      const ang = -dyn.sign * t * Math.PI / 2 * 0.95, c = Math.cos(ang), sn = Math.sin(ang), dx = b[0] - dyn.axis[0], dy = b[1] - dyn.axis[1];
+      return [a, [dyn.axis[0] + dx * c - dy * sn, dyn.axis[1] + dx * sn + dy * c, b[2]]];
+    }
+    const ang = t * Math.PI / 2 * 0.92, c = Math.cos(ang), sn = Math.sin(ang), dy = b[1] - dyn.axis[0], dz = b[2] - dyn.axis[1];
+    return [a, [b[0], dyn.axis[0] + dy * c - dz * sn, dyn.axis[1] + dy * sn + dz * c]];
+  });
+}
+function linkSolids(dyn, t) { return linkEnds(dyn, t).map(([a, b]) => cyl(5, a, b)); }
 function staySolids(dyn, phi) { const [a, b] = stayEnds(dyn, phi); return tubeSolids(a, b, 150, 15, 6); }
 
 /* ------------------------------------------------------------------ swing clearances
@@ -2145,7 +2175,7 @@ function makeZip(files) { // files: [{name, data: Uint8Array}]
 }
 
 const api = { DEFAULTS, COLORS, SOURCES, HW_ASSUMPTIONS, reviewNotes, RUNNER_STD, PLY_DENSITY, normParams, derived, build, cutList, nest, summary, writeSTEP, makeZip, crc32,
-  prismBox, prismCorners, prismVolume, loopPolyline, to3, rot2, rotYZ, rotatePrism, legGeom, legPsi, bedProfile, clearances, hingeZs, springEnds, stayEnds, springSolids, staySolids, rectLoopR01 };
+  prismBox, prismCorners, prismVolume, loopPolyline, to3, rot2, rotYZ, rotatePrism, legGeom, legPsi, bedProfile, clearances, hingeZs, springEnds, stayEnds, springSolids, staySolids, linkEnds, linkSolids, rectLoopR01 };
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
 else root.MurphyCore = api;
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -2164,7 +2194,7 @@ const KIND_STYLE = {
   deck: { color: 0xd7b98c, rough: 0.85 }, drawer: { color: 0xe2cfa9, rough: 0.82 }, back: { color: 0xcdb48c, rough: 0.85 },
   plinth: { color: 0xbba07a, rough: 0.85 }, packer: { color: 0xb58d5b, rough: 0.85 }, ledge: { color: 0xd9c19a, rough: 0.82 },
   mattress: { color: 0xeeeeea, rough: 0.95, edges: false }, metal: { color: 0x2f3236, rough: 0.45, metal: 0.4 },
-  chrome: { color: 0xc4c7cb, rough: 0.3, metal: 0.8 },
+  chrome: { color: 0xc9ccd0, rough: 0.38, metal: 0.35 },
   block: { color: 0x8c6239, rough: 0.7 }, rubber: { color: 0x1c1c1e, rough: 0.9, edges: false }, strap: { color: 0x3d4c70, rough: 0.9, edges: false },
 };
 const T_COL = { 6: 0x7b5cc4, 12: 0x138a7e, 18: 0xc47a12 };
@@ -2262,10 +2292,11 @@ class MurphyScene {
     const unitCyl = new THREE.CylinderGeometry(1, 1, 1, 20, 1); // along +y, centred
     for (const p of model.parts) {
       const style = KIND_STYLE[p.kind] || KIND_STYLE.carcass;
-      if (p.dyn && (p.dyn.type === 'spring' || p.dyn.type === 'stay')) {
+      if (p.dyn && (p.dyn.type === 'spring' || p.dyn.type === 'stay' || p.dyn.type === 'link')) {
         // two tubes re-aimed every frame
         const grp = new THREE.Group();
         const body = new THREE.Mesh(unitCyl, this.mat(p.kind, style, false)), rod = new THREE.Mesh(unitCyl, this.mat('chrome', KIND_STYLE.chrome, false));
+        if (p.dyn.type === 'link') { body.material = rod.material; }
         grp.add(body); grp.add(rod);
         this.root.add(grp);
         const rec = { part: p, mesh: body, rod, grp, style, dyn: p.dyn };
@@ -2338,6 +2369,7 @@ class MurphyScene {
       mesh.scale.set(d / 2, L, d / 2);
     };
     for (const r of this.dyns) {
+      if (r.dyn.type === 'link') { const [l1, l2] = C.linkEnds(r.dyn, t); aim(r.mesh, l1[0], l1[1], 5); aim(r.rod, l2[0], l2[1], 5); continue; }
       const [a, b] = r.dyn.type === 'spring' ? C.springEnds(G, r.dyn, th) : C.stayEnds(r.dyn, t * Math.PI / 2 * 0.92);
       const bodyLen = r.dyn.type === 'spring' ? 390 : 150;
       const d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], L = Math.hypot(...d), k = Math.min(bodyLen, L - 40) / L;
