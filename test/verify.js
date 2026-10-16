@@ -72,7 +72,7 @@ function checkJoinery(params, label) {
           const into = g.into, thr = g.through;
           g.pts.forEach((pt) => {
             n++;
-            const dowel = g.key === 'd8' || g.key === 'dom';
+            const dowel = g.key === 'd8';
             const a = dowel ? addv(pt, dir, -12) : addv(pt, dir, -g.thru), tip = dowel ? addv(pt, dir, 18) : addv(a, dir, len);
             const r = g.key === 'dom' ? 3.5 : dia / 2 - 0.6;
             // shank in the part it holds into, with its radius clear of the faces
@@ -84,10 +84,10 @@ function checkJoinery(params, label) {
               }
             }
             // through part along the clearance hole
-            if (!dowel && g.thru > 2) for (let t = 0.2; t <= 0.8; t += 0.3) { const q = addv(a, dir, g.thru * t); if (!inPart(thr, q, 0.01)) { problems.push(`${label} ${key} "${op.title}" ${g.key} at ${pt.map(Math.round)}: misses ${thr.name}`); return; } }
+            if (!dowel && g.thru > 2) for (let t = 0.2; t <= 0.8; t += 0.3) { const q = addv(a, dir, g.thru * t); if (!inPart(thr, q, 0.01) && !(g.via || []).some(vp => inPart(vp, q, 0.01))) { problems.push(`${label} ${key} "${op.title}" ${g.key} at ${pt.map(Math.round)}: misses ${thr.name}`); return; } }
             // nothing else in the way of the fixing or of the driver (parts fitted by then)
             const bench = inst.bench || op.bench;
-            const others = m.parts.filter(p => p !== into && p !== thr && !p.mattress && (present.has(p) || (!bench && stepIdx(p) < si)) && !(op.add || []).some(x => x[0] === p) && (p.hw ? !/links|^Gas|stay/i.test(p.name) : true));
+            const others = m.parts.filter(p => p !== into && p !== thr && !(g.via || []).includes(p) && !p.mattress && (present.has(p) || (!bench && stepIdx(p) < si)) && !(op.add || []).some(x => x[0] === p) && (p.hw ? !/links|^Gas|stay/i.test(p.name) : true));
             const probe = [];
             for (let t = 0.05; t <= 0.98; t += 0.08) probe.push(addv(a, sub(tip, a), t));
             if (!dowel) for (let k = 1; k <= 25; k += 4) probe.push(addv(a, dir, -k));

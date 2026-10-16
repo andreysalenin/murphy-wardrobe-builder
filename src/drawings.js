@@ -1027,10 +1027,9 @@ function pageReview(doc, M, S, info) {
 
 /* ------------------------------------------------------------------ build sequence: timeline and step cards */
 const FIX_SHORT = {
-  s50: '8g x 50 screws', s40: '8g x 40 screws', s30: '8g x 30 screws', s35: '8g x 35 screws, steel flat', s25: '8g x 25 pan heads',
-  b30: '6g x 30 screws', b20: '6g x 20 screws', r14: '4 x 14 pan heads', h15: '3.5 x 15 screws', h17: '3.5 x 17 screws',
-  d8: '8 x 30 dowels', dom: 'Dominos 8 x 40', w75: '14g x 75 into studs', kit: 'kit machine screws', m4: 'M4 x 25 handle bolts',
-  pin: '5 mm shelf pins', brad: '40 mm brads + adhesive',
+  s50: '8g x 50 screws', s30: '8g x 30 screws', s25: '8g x 25 pan heads', b25: '6g x 25 screws', r10: '3.5 x 10 pan heads',
+  h15: '3.5 x 15 hardware screws', d8: '8 x 30 dowels', w75: '14g x 75 into studs', kit: 'kit machine screws', m4: 'M4 x 25 handle bolts',
+  pin: '5 mm shelf pins',
 };
 const PREP = [215, 210, 202];
 function seqCard(s, B, I, i, x, yTop, cw, ch, tw) {
@@ -1170,14 +1169,15 @@ function pageFixings(doc, M, S, info) {
   s.heading(nx, ny, 'DRILL BITS AND TOOLS');
   let y = s.numbered(nx, ny - 6, [
     'Pilots 2, 2.5 and 3; clearance 3.5, 4.5 and 6.5; 5 for shelf pins and handle bolts; 6 through the drawer box fronts; 10 for the push latches; HSS bits for the steel flat.',
-    '8 brad-point with a depth stop and a dowel jig; 35 Forstner for the hinge cups, 13 deep, on a stand or hinge jig; a countersink; a 32 mm shelf-pin jig.',
+    '8 brad-point with a depth stop and a dowel jig (every wooden joint is 8 mm dowels: no Domino or biscuit joiner); 35 Forstner for the hinge cups, 13 deep, on a stand or hinge jig; a countersink; a 32 mm shelf-pin jig.',
+    'Driver bits: T15 for every 3.5 mm screw, T20 for every 4.0 mm one, T30 for the wall screws. Buy all of them in one brand and finish (zinc-plated or black) so the heads match where they show.',
     'Track saw, drill-driver, four 600 and two 1200 clamps, a 1200 level or a laser, a stud finder, an edge-banding iron and trimmer.',
   ], wN, { size: 5.8 });
   const mx = nx + wN + 10;
   s.heading(mx, ny, 'GLUE');
   s.numbered(mx, ny - 6, [
     'PVA wood glue, D3 water resistant, on every dowel and carcass joint and the backs.',
-    'Epoxy or PU construction adhesive under the steel flat; construction adhesive behind the kick board.',
+    'Epoxy or PU construction adhesive under the steel flat; a high-grab hybrid polymer adhesive (CT1 or similar) behind the kick board, which has no fixings in its face.',
     'No glue on runners, hinges, plates or the kit hardware: they have to come off.',
   ], 100, { size: 5.8 });
   const wx = mx + 110;
@@ -1212,7 +1212,7 @@ function pageFixings(doc, M, S, info) {
 /* ------------------------------------------------------------------ assembly details
    A half page for every step that joins plywood. Each operation gets an exploded view, all at one standard scale:
    the parts going on are pulled back along their joint, each screw floats off its head side with a dashed line from
-   its tip through its clearance hole to where it lands, and dowels and Dominos float in the gap. Under the views,
+   its tip through its clearance hole to where it lands, and dowels float in the gap. Under the views,
    set-out strips give every line of holes with its distances from a named edge. Tags name the fixings (the key is
    drawn full size on the first half page); numbered circles give the driving order. */
 const STD_SCALES = [2, 2.5, 5, 7.5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 100];
@@ -1770,7 +1770,7 @@ function drawSetout(s, G, pat, x, yTop) {
     const ib = partBox(ip), ka = Math.max(ib[k], tb[k]), kb = Math.min(ib[k + 3], tb[k + 3]), ja = Math.max(ib[j], j0), jb = Math.min(ib[j + 3], j1);
     if (kb - ka > 0.5 && jb - ja > 0.2) s.rect(X(ka), Yj(ja), (kb - ka) / sc, (jb - ja) / sc, { lw: 0.1, color: GREY, dash: [0.6, 0.4] });
   }
-  // holes from the head side: clearance and countersink for screws; dowel and Domino holes, in the far face, dashed
+  // holes from the head side: clearance and countersink for screws; dowel holes, in the far face, dashed
   const yL = Yj(L.jv), maxSeq = Math.max(0, ...L.rel.map(h => h.seq || 0));
   for (const h of L.rel) {
     const D = fxD(h.key), cx = X(tb[k] + h.r);
@@ -2163,7 +2163,7 @@ function halfStep(s, M, S, hv, region) {
     s.line([X0, X1], [y + 1.4, y + 1.4], { lw: 0.1, color: LIGHT });
     s.text(X0, y - 1, 'SET-OUT', { size: 5.2, weight: 'bold', color: GREY });
     s.text(X0 + 10.5, y - 1, 'Each line of holes as drilled, seen from the head side, with each distance from the edge named at the left, to 0.5 mm.', { size: 4.8, color: GREY });
-    s.text(X0 + 10.5, y - 3.2, 'Dark: screw holes and countersinks. Dashed brown: dowel or Domino holes in the face against the joint. Dashed grey: the part behind.', { size: 4.8, color: GREY });
+    s.text(X0 + 10.5, y - 3.2, 'Dark: screw holes and countersinks. Dashed brown: dowel holes in the face against the joint. Dashed grey: the part behind.', { size: 4.8, color: GREY });
     y -= 5.6;
     for (const row of flow.rows) {
       let x = X0;
@@ -2230,7 +2230,7 @@ function halfKey(s, M, S, region, hv, info) {
   const [X0, Y0, X1, Y1] = region, W = X1 - X0, B = S.build, J = B.joinery;
   const inDet = new Set();
   for (const k of Object.keys(J.steps)) for (const i of J.steps[k]) for (const op of i.ops) for (const f of op.fast) inDet.add(f.key);
-  const order = ['s50', 's40', 's35', 's30', 's25', 'b30', 'b25', 'b20', 'b16', 'r14', 'r10', 'h17', 'h15', 'w75', 'm4', 'brad', 'br30', 'd8', 'dom'];
+  const order = ['s50', 's30', 's25', 'b25', 'h15', 'r10', 'w75', 'm4', 'd8'];
   const used = order.filter(k => B.fixings.some(f => f.key === k));
   s.text(X0, Y1 - 3.5, 'FIXINGS KEY, FULL SIZE', { size: 9, weight: 'bold' });
   s.para(X0, Y1 - 8, s.wrap(`Every fixing in this design at 1:1, with the tag used in the assembly details on sheets ${info.detFrom}-${info.detFrom + info.nDet - 1}. Lay a screw on its outline to check it. Counts are for the whole build; the schedule on sheet ${info.fixAt} adds spares.`, W, 6), { size: 6, color: GREY });
@@ -2247,7 +2247,7 @@ function halfKey(s, M, S, region, hv, info) {
       s.text(cx, yl - 3.6, FX_SIZE[k] || k, { size: 5.4, ha: 'center' });
       const q = (B.fixings.find(f => f.key === k) || {}).qty;
       if (q) s.text(cx, yl - 6.1, `${q} in all`, { size: 5, ha: 'center', color: GREY });
-      if (!inDet.has(k)) s.text(cx, yl - 8.4, { w75: 'into the studs', r14: 'runners', h15: 'hinges', h17: 'hinge plates', m4: 'handles' }[k] || 'hardware', { size: 4.6, ha: 'center', color: GREY });
+      if (!inDet.has(k)) s.text(cx, yl - 8.4, { w75: 'into the studs', h15: 'all hardware', m4: 'handles' }[k] || 'hardware', { size: 4.6, ha: 'center', color: GREY });
       x += ws[i] + gap;
     });
   };

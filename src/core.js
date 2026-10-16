@@ -1342,11 +1342,12 @@ function reviewNotes(model, S) {
     ['Plinths and kick boards', `Each tower sits on a ${f0(G.zPl)} high ladder plinth so it can be levelled; the bed-cabinet sides go to the floor like the kit's verticals. ${G.kickC ? `One kick board runs right across, ${f0(G.kickC)} high because the face panel's bottom edge sweeps down to ${f0(G.clear.minZ)} mm off the floor as the bed turns; the drawers and tower plinths sit ${f0(G.drawerDrop)} lower to match, and the header filler is one piece too.` : 'There is no kick board under the bed, so each tower has its own.'}`],
     ['Headboard', G.head && !G.head.skipped ? `The bed's swing bulges furthest back at pivot height (${f0(G.clear.minY)} from the wall)${G.ledge && !G.ledge.skipped ? `, so the ledge stays below mattress height at ${f0(G.ledge.y)}` : ', so nothing stands below mattress height'}. Above the mattress nothing swings back, so a ${f0(P.headH)} backrest steps out to ${P.headGap} mm behind the open mattress and leans back ${P.headAngle} deg, on three tapered ribs, with a ${f0(G.head.capY - G.yB1)} deep bedside shelf on top at ${f0(G.head.top + P.Thead)}.` : G.ledge && !G.ledge.skipped ? `A ${f0(G.ledge.y - G.yB1)} deep ledge at mattress height fills the gap behind the open mattress.` : 'Turned off: pillows can fall behind the head of the open bed.'],
     ['Shelf above the bed', `It spans ${f0(2 * G.xB)} only ${f0(P.gapHolder)} mm above the closed bed. The centre divider carries it: glued and screwed to the shelf and the top, it turns the shelf into two ${f0(G.xB + P.T / 2)} mm bays held on three sides. ${P.edgeSteel ? `A ${f0(P.steelH)} x ${f0(P.steelT)} steel flat let into the front edge, ${f0(P.steelH - P.T)} mm proud underneath and hidden by the flaps, stiffens the free edge and takes the push latches.` : ''} ${P.upstand > 0 ? `A ${f0(P.upstand)} mm lip runs along the front edge.` : 'The top is flat to the front edge, so boxes slide straight in.'} Worst case, one bay holding 100 kg a square metre: about ${G.shelfSag.toFixed(1)} mm over time.`],
-    ['Shelf fixings', 'The divider only works if it cannot rack: glue it with Dominos or biscuits and screws along each edge (no deep housing). Make the shelf, upper sides, divider, top, wall rails and the 6 mm back up as one box on the floor, slide it in onto the bed-cabinet sides, screw it down and through the tower sides, and screw the rails into the studs; the build sequence sheets have the steps and screws.'],
+    ['Shelf fixings', 'The divider only works if it cannot rack: glue it with 8 mm dowels and screws along each edge, like the upper sides (no deep housing). Make the shelf, upper sides, divider, top, wall rails and the 6 mm back up as one box on the floor, slide it in onto the bed-cabinet sides, screw it down and through the tower sides, and screw the rails into the studs; the build sequence sheets have the steps and screws.'],
     ['Safety lock', P.lockType === 'twin' ? `A twin pin straddles the centre divider behind the flap joint: two 10 mm pins ${f0(P.twinSpacing)} apart, nutted through one steel bar, run through a hardwood block in the divider's front notch and go ${P.lockDepth} mm into the foot rail. One pull through either flap lifts both 30 mm; a spring ball plunger holds them up while the bed is down.${P.lockTab ? ' A 2 mm tab on the bar pokes out through the flap joint, so it can be lifted without opening a flap, and shows whether it is locked.' : ''}`
       : P.lockType === 'pins' ? `Two 10 mm drop pins, ${f0(P.lockPinX)} either side of centre behind the flaps, go down through the shelf and ${P.lockDepth} mm into the foot rail. Lift both before lowering the bed.` : 'Turned off.'],
     ['Wall anchoring', `The gas springs pull the cabinet forward as the bed comes down. ${f0(P.wallRail)} mm wall rails under the shelf and under the top take screws into the studs (the kit asks for four 3 in screws through its header rear rail for a queen).`],
     ['Bed deck as the kit builds it', `Face panel in two ${f0(G.xFo + P.faceOverhang)} halves (a sheet is 1220 wide)${P.faceOverhang ? `, ${f0(P.faceOverhang)} past the side rails so the reveal to the cabinet sides matches the fronts` : ''}, ${P.struts} cross struts and a ${P.Tsup} mm mattress support. Side rails ${f0(P.railD)} deep with the 2-7/8 in radius at the foot end, head rail ${f0(P.headRailD)} so it stands proud as a lip behind the pillows, foot rail ${f0(P.footRailD)} so the legs can swing past it.`],
+    ['Screws, kept few', `Six kinds of screw plus the wall screws, and one 8 mm dowel. Every edge joint takes an 8g x 50, every face-to-face joint an 8g x 30, the drawer fronts 8g x 25 pan heads, and every 6 and 12 mm part (backs, drawer boxes, deck, headboard) a 6g x 25. All the hinge, stay, runner and rail hardware takes one 3.5 x 15; only the runners on the 12 mm drawer sides need 3.5 x 10. The price: some joints get more screw than they strictly need (32 into an edge where 22 would do), so pilot every edge and keep the drill square; the 6g x 25 bites 13 into the 12 mm drawer edges rather than 18, which the glue makes up; and the mattress support's screws run through the strut and ${f0(Math.max(0, 25 - P.Tsup - P.Tladder))} into the back of the face panel, leaving ${f0(Math.max(0, P.T - 25 + P.Tsup + P.Tladder))} over their tips. No brads: the header's battens are glued and clamped, and the kick board is bonded with no fixings in its face.`],
     ['Tower backs', `${P.Tback} mm backs square the towers and stop them racking; they stop ${f0(G.backInset)} mm short top and bottom so each comes out of one sheet. The bed bay has no back.`],
     ['Thicknesses that fit your stock', st18 ? `Deck struts in ${P.Tladder} mm, drawer boxes in ${P.Tb} mm and the backrest in ${P.Thead} mm leave the ${P.T} mm parts on ${st18.need} of your ${st18.have} sheets.` : ''],
   ].filter(e => e[1]);
@@ -1447,19 +1448,20 @@ function hardwareList(model) {
    screws 50 from the ends of a joint and no more than 200 apart, centred in the 18 mm edge; dowels for alignment
    in the butt joints; anchor to the studs. Quantities are counted from the model; studs assumed 450 apart. */
 /* ------------------------------------------------------------------ joinery
-   Every screw, dowel, Domino and brad in the plywood joints, placed, so the assembly drawings, the step cards and the
+   Every screw and dowel in the plywood joints, placed, so the assembly drawings, the step cards and the
    fixings schedule all count the same things. Rules: screws 50 from the ends of a joint and no more than 200 apart
    (150 on the 6 mm backs, 250 to 300 on the bed deck), centred in the edge they go into; dowels midway between the
    screws; all of them moved clear of hardware and of anything that would stop the driver. Each step is a list of
    operations in working order; each operation adds parts and drives one set of fixings. */
-// drawn sizes: length, shank, head (mm); a Domino is length x thickness x width
+// drawn sizes: length, shank, head (mm)
+// Seven kinds of screw in all: two 8g lengths and one 6g for the cabinetwork, the pan heads for the drawer fronts,
+// one 3.5 x 15 for every piece of hinge, stay, runner and rail hardware and a 3.5 x 10 for the runners on the 12 mm
+// drawer sides, and the wall screws. No brads, no Dominos: one 8 mm dowel throughout.
 const FAST = {
-  s50: [50, 4, 8], s40: [40, 4, 8], s30: [30, 4, 8], s35: [35, 4, 8], s25: [25, 4, 8.5], b30: [30, 3.5, 7], b25: [25, 3.5, 7],
-  b20: [20, 3.5, 7], b16: [16, 3.5, 7], r10: [10, 3.5, 7], brad: [40, 1.6, 2.6], br30: [30, 1.6, 2.6], w75: [75, 6, 12], d8: [30, 8, 8], dom: [40, 8, 22],
+  s50: [50, 4, 8], s30: [30, 4, 8], s25: [25, 4, 8.5], b25: [25, 3.5, 7], r10: [10, 3.5, 7], w75: [75, 6, 12], d8: [30, 8, 8],
 };
 // short names for the fixings, used on the drawings and the schedule
-const TAGS = { s50: 'A', s40: 'B', s30: 'C', s35: 'D', s25: 'E', b30: 'F', b25: 'G', b20: 'H', b16: 'J', r14: 'P', r10: 'Q',
-  h15: 'U', h17: 'V', brad: 'N', br30: 'W', d8: 'DW', dom: 'DM', w75: 'K', kit: 'KM', m4: 'M4', pin: 'SP' };
+const TAGS = { s50: 'A', s30: 'B', s25: 'C', b25: 'D', h15: 'E', r10: 'F', d8: 'DW', w75: 'K', kit: 'KM', m4: 'M4', pin: 'SP' };
 function joinery(model) {
   const { P, G, parts } = model, T = P.T;
   const byName = new Map();
@@ -1511,8 +1513,8 @@ function joinery(model) {
       const xo = s * (G.xOo - Tp / 2), xi = s * (G.xJ + Tp / 2);
       inst('plinth', { show: S === 'R', side: S, bench: true, base: [eo, ei], ops: [{
         title: 'Front and back onto the ends', add: [[pf, [0, E, 0]], [pb, [0, -E, 0]]],
-        fast: [F('s40', pf, eo, [0, -1, 0], Tp, zs.map(z => [xo, G.yC - Tp, z])), F('s40', pf, ei, [0, -1, 0], Tp, zs.map(z => [xi, G.yC - Tp, z])),
-          F('s40', pb, eo, [0, 1, 0], Tp, zs.map(z => [xo, G.yB1 + Tp, z])), F('s40', pb, ei, [0, 1, 0], Tp, zs.map(z => [xi, G.yB1 + Tp, z]))],
+        fast: [F('s50', pf, eo, [0, -1, 0], Tp, zs.map(z => [xo, G.yC - Tp, z])), F('s50', pf, ei, [0, -1, 0], Tp, zs.map(z => [xi, G.yC - Tp, z])),
+          F('s50', pb, eo, [0, 1, 0], Tp, zs.map(z => [xo, G.yB1 + Tp, z])), F('s50', pb, ei, [0, 1, 0], Tp, zs.map(z => [xi, G.yB1 + Tp, z]))],
         setout: `two a corner, ${zs.map(r05).join(' and ')} up, centred on the ends` }] });
     }
     // ---------- tower carcass
@@ -1537,8 +1539,8 @@ function joinery(model) {
       if (bk) {
         const b = bb(bk), z0 = Math.max(G.zPl + T, b[2]), z1 = Math.min(G.zTopB, b[5]);
         const zsS = spread(z0, z1, 25, 150), xsS = spread(s * G.xOi, s * G.xT2, 25, 150);
-        const f = [F('b20', bk, T1, [0, 1, 0], P.Tback, zsS.map(z => [xo, G.yB1, z])), F('b20', bk, T2, [0, 1, 0], P.Tback, zsS.map(z => [xi, G.yB1, z])),
-          ...sh.map((p, k) => F('b20', bk, p, [0, 1, 0], P.Tback, xsS.map(x => [x, G.yB1, zsh[k]])))];
+        const f = [F('b25', bk, T1, [0, 1, 0], P.Tback, zsS.map(z => [xo, G.yB1, z])), F('b25', bk, T2, [0, 1, 0], P.Tback, zsS.map(z => [xi, G.yB1, z])),
+          ...sh.map((p, k) => F('b25', bk, p, [0, 1, 0], P.Tback, xsS.map(x => [x, G.yB1, zsh[k]])))];
         f[0].seq = f[0].pts.map((_, i, a) => i === 0 || i === a.length - 1 ? 1 : 2); f[1].seq = f[0].seq.slice();
         ops.push({ title: 'Back on, square', add: [[bk, [0, -E, 0]]], fast: f, setout: 'the four corner screws first (1), check the diagonals, then the rest (2)' });
       }
@@ -1549,7 +1551,7 @@ function joinery(model) {
         const xs = spread(s * G.xOi, s * G.xT2, 40, 200), Tp = P.Tplinth;
         inst('towerPlinth', { show: S === 'R', side: S, base: [pf, pb, eo, ei].filter(Boolean), ops: [{
           title: 'Tower onto its plinth', add: tower.map(p => [p, [0, 0, E]]), clip: [-1, 620],
-          fast: [F('s40', Tb, pf, [0, 0, -1], T, xs.map(x => [x, G.yC - Tp / 2, G.zPl])), F('s40', Tb, pb, [0, 0, -1], T, xs.map(x => [x, G.yB1 + Tp / 2, G.zPl]))],
+          fast: [F('s50', Tb, pf, [0, 0, -1], T, xs.map(x => [x, G.yC - Tp / 2, G.zPl])), F('s50', Tb, pb, [0, 0, -1], T, xs.map(x => [x, G.yB1 + Tp / 2, G.zPl]))],
           setout: 'down through the bottom, over the plinth front and back, between the sides' }] });
       }
       // ---------- bed-cabinet side, pads, onto the tower
@@ -1596,7 +1598,7 @@ function joinery(model) {
       const xs = spread(-G.xB, G.xB, 50, 150, avoid);
       const order = xs.map((x, i) => i).sort((a, b) => Math.abs(xs[a]) - Math.abs(xs[b]) || xs[a] - xs[b]), seq = xs.map(() => 0);
       order.forEach((i, k) => { seq[i] = k + 1; });
-      ops.push({ title: 'Steel flat into the shelf', add: [[SF, [0, E, 0]]], fast: [F('s35', SF, B2, [0, -1, 0], P.steelT, xs.map(x => [x, G.yC - P.steelT, zShelf]), { seq })],
+      ops.push({ title: 'Steel flat into the shelf', add: [[SF, [0, E, 0]]], fast: [F('s50', SF, B2, [0, -1, 0], P.steelT, xs.map(x => [x, G.yC - P.steelT, zShelf]), { seq })],
         setout: 'bedded in epoxy; drive them in the numbered order, from the middle out, so the flat pulls straight' });
     }
     const xBack = spread(-G.xJ, G.xJ, 25, 150); // the back's screws in the shelf's rear edge
@@ -1607,20 +1609,20 @@ function joinery(model) {
     // the divider's top edge runs the full depth unless its front notch is as tall as the space
     const ysTop = G.twin && G.zBm1 + G.twin.notchH >= G.zTopB - 30 ? ys4 : ys;
     const f3 = [...U.flatMap((p, k) => [dowels(B2, p, [0, 0, 1], yd.map(y => [xu[k], y, G.zBm1])), F('s50', B2, p, [0, 0, 1], T, ys.map(y => [xu[k], y, G.zBm1]))]),
-      F('dom', B2, B4, [0, 0, 1], 20, mid(ys4).map(y => [0, y, G.zBm1]), { along: [0, 1, 0] }), F('s50', B2, B4, [0, 0, 1], T, ys4.map(y => [0, y, G.zBm1]))];
+      dowels(B2, B4, [0, 0, 1], mid(ys4).map(y => [0, y, G.zBm1])), F('s50', B2, B4, [0, 0, 1], T, ys4.map(y => [0, y, G.zBm1]))];
     for (const p of B5) { const b = bb(p); f3.push(F('s50', B2, p, [0, 0, 1], T, spread(b[0], b[3], 50, 200).map(x => [x, (b[1] + b[4]) / 2, G.zBm1]))); }
     ops.push({ title: 'Upper sides and divider onto the shelf', add: [...U, B4, ...B5].map(p => [p, [0, 0, E]]), fast: f3, view: 'below',
       setout: 'seen from below; on the bench the box lies on its back' });
     const f4 = [...U.flatMap((p, k) => [dowels(B3, p, [0, 0, -1], yd.map(y => [xu[k], y, G.zTopB])), F('s50', B3, p, [0, 0, -1], T, ys.map(y => [xu[k], y, G.zTopB]))]),
-      F('dom', B3, B4, [0, 0, -1], 20, mid(ysTop).map(y => [0, y, G.zTopB]), { along: [0, 1, 0] }), F('s50', B3, B4, [0, 0, -1], T, ysTop.map(y => [0, y, G.zTopB])),
+      dowels(B3, B4, [0, 0, -1], mid(ysTop).map(y => [0, y, G.zTopB])), F('s50', B3, B4, [0, 0, -1], T, ysTop.map(y => [0, y, G.zTopB])),
       ...B7.filter(Boolean).map(p => { const b = bb(p); return F('s50', B3, p, [0, 0, -1], T, spread(b[0], b[3], 50, 200).map(x => [x, G.yB1 + T / 2, G.zTopB])); })];
     ops.push({ title: 'Top on, with its wall rails', add: [[B3, [0, 0, E]], ...B7.filter(Boolean).map(p => [p, [0, 0, 0]])], fast: f4 });
     if (B11) {
       const b = bb(B11), xL = xBack, zU = spread(G.zBm1, G.zTopB, 25, 150);
-      const f = [F('b20', B11, B2, [0, 1, 0], P.Tback, xL.map(x => [x, G.yB1, (Math.max(G.zBm0, b[2]) + G.zBm1) / 2])),
-        F('b20', B11, B3, [0, 1, 0], P.Tback, xL.map(x => [x, G.yB1, (G.zTopB + Math.min(G.zTop, b[5])) / 2])),
-        ...U.map((p, k) => F('b20', B11, p, [0, 1, 0], P.Tback, zU.map(z => [xu[k], G.yB1, z]))), F('b20', B11, B4, [0, 1, 0], P.Tback, zU.map(z => [0, G.yB1, z])),
-        ...B7.filter(Boolean).map(p => { const q = bb(p); return F('b20', B11, p, [0, 1, 0], P.Tback, spread(q[0], q[3], 25, 150, [[-30, 30]]).map(x => [x, G.yB1, (q[2] + q[5]) / 2])); })];
+      const f = [F('b25', B11, B2, [0, 1, 0], P.Tback, xL.map(x => [x, G.yB1, (Math.max(G.zBm0, b[2]) + G.zBm1) / 2])),
+        F('b25', B11, B3, [0, 1, 0], P.Tback, xL.map(x => [x, G.yB1, (G.zTopB + Math.min(G.zTop, b[5])) / 2])),
+        ...U.map((p, k) => F('b25', B11, p, [0, 1, 0], P.Tback, zU.map(z => [xu[k], G.yB1, z]))), F('b25', B11, B4, [0, 1, 0], P.Tback, zU.map(z => [0, G.yB1, z]))];
+      // none into the wall rails under the top: they are only 18 deep, and the row into the top's rear edge is just above
       f[0].seq = f[0].pts.map((_, i, a) => i === 0 || i === a.length - 1 ? 1 : 2); f[1].seq = f[0].seq.slice();
       ops.push({ title: 'Back on, square', add: [[B11, [0, -E, 0]]], fast: f, setout: 'the four corner screws first (1), check the diagonals, then the rest (2)' });
     }
@@ -1638,7 +1640,7 @@ function joinery(model) {
     const ctx = parts.filter(p => !p.hw && !p.bed && /^(T[1-6]|B1|B8|B9)$/.test(p.mark));
     inst('fitBox', { show: true, base: [], context: ctx, ops: [{ title: 'Slide the box in, fix it from inside the towers', add: box.map(p => [p, [0, 0, 0]]), fast: f, front: true, ctx: true, clip: [G.zS2b - 60, P.H],
       arrow: [[0, G.yC + 700, (G.zBm1 + G.zTopB) / 2], [0, G.yC + 120, (G.zBm1 + G.zTopB) / 2]],
-      setout: 'through the tower sides from inside the top compartments: into the upper sides (C) and the shelf ends (A)' }] });
+      setout: `through the tower sides from inside the top compartments: into the upper sides (${TAGS.s30}) and the shelf ends (${TAGS.s50})` }] });
   }
 
   // ---------- bed frame (closed geometry; the frame is built face down)
@@ -1659,9 +1661,9 @@ function joinery(model) {
     const face = F1.flatMap((fp, k) => {
       const s = k ? 1 : -1, r = bb(F2[k]), xr = (r[0] + r[3]) / 2, half = s > 0 ? [0, b3[3]] : [b3[0], 0];
       const zs = spread(r[2], r[5], 50, 200), x3 = spread(half[0], half[1], 50, 200), x4 = spread(half[0], half[1], 50, 200, avoidX);
-      return [F('s40', fp, F2[k], [0, -1, 0], T, zs.map(z => [xr, G.yFb, z]), { seq: ends(zs) }),
-        F('s40', fp, F3, [0, -1, 0], T, x3.map(x => [x, G.yFb, (b3[2] + b3[5]) / 2]), { seq: nearMid(x3) }),
-        F('s40', fp, F4, [0, -1, 0], T, x4.map(x => [x, G.yFb, (b4[2] + b4[5]) / 2]), { seq: nearMid(x4) })];
+      return [F('s50', fp, F2[k], [0, -1, 0], T, zs.map(z => [xr, G.yFb, z]), { seq: ends(zs) }),
+        F('s50', fp, F3, [0, -1, 0], T, x3.map(x => [x, G.yFb, (b3[2] + b3[5]) / 2]), { seq: nearMid(x3) }),
+        F('s50', fp, F4, [0, -1, 0], T, x4.map(x => [x, G.yFb, (b4[2] + b4[5]) / 2]), { seq: nearMid(x4) })];
     });
     ops.push({ title: 'Face panel onto the rails', add: F1.map(p => [p, [0, E, 0]]), fast: face,
       setout: 'each half: its four corner screws first (1), check the diagonals, then the rest (2); sink the heads 2 below the face and fill before finishing' });
@@ -1677,12 +1679,17 @@ function joinery(model) {
     }
     if (F7[0] && F5[0] && F6.length) {
       const f = [];
+      // the deck screw reaches through the support and the strut into the face panel when that leaves 8 or more of the
+      // face over its tip; otherwise it stops in the strut
+      const thru = P.Tsup + P.Tladder, deep = FAST.b25[0] - thru, toFace = deep > 0 && T - deep >= 8;
       F7.forEach((sp, k) => {
         const zs = strutPts.get(F5[k]), b5 = bb(F5[k]);
-        f.push(F('b16', sp, F5[k], [0, 1, 0], P.Tsup, mid(zs).map(z => [(b5[0] + b5[3]) / 2, G.ySup1, z])));
-        for (const p of F6) { const b = bb(p); f.push(F('b16', sp, p, [0, 1, 0], P.Tsup, mid(strutPts.get(p.name + k)).map(x => [x, G.ySup1, (b[2] + b[5]) / 2]))); }
+        const g = (strut, pts) => toFace ? F('b25', sp, F1[k], [0, 1, 0], thru, pts.map(q => [q[0], G.yFb, q[2]]), { via: [strut] }) : F('b25', sp, strut, [0, 1, 0], P.Tsup, pts);
+        f.push(g(F5[k], mid(zs).map(z => [(b5[0] + b5[3]) / 2, G.ySup1, z])));
+        for (const p of F6) { const b = bb(p); f.push(g(p, mid(strutPts.get(p.name + k)).map(x => [x, G.ySup1, (b[2] + b[5]) / 2]))); }
       });
-      ops.push({ title: 'Mattress support onto the struts', add: F7.map(p => [p, [0, -E, 0]]), fast: f, setout: 'between the strut screws' });
+      ops.push({ title: 'Mattress support onto the struts', add: F7.map(p => [p, [0, -E, 0]]), fast: f,
+        setout: toFace ? `between the strut screws, through the support and the strut, ${Math.round(deep)} into the face panel` : 'between the strut screws' });
     }
     inst('frame', { show: true, bench: true, base: [F3, F4], ops });
   }
@@ -1693,23 +1700,23 @@ function joinery(model) {
     const ops = [], b1 = bb(H1), Tg = P.Tledge;
     const ribX = ribs.map(p => { const b = bb(p); return (b[0] + b[3]) / 2; }), ribAvoid = ribX.map(x => [x - 22, x + 22]);
     if (ribs.length) ops.push({ title: 'Ribs onto the ledge top, from below', bench: true, add: ribs.map(p => [p, [0, 0, E]]), view: 'below',
-      fast: ribs.map((p, k) => F('b30', H1, p, [0, 0, 1], Tg, spread(b1[1], Math.min(b1[4], bb(p)[4]), 40, 120).map(y => [ribX[k], y, b1[5]]))),
+      fast: ribs.map((p, k) => F('s50', H1, p, [0, 0, 1], Tg, spread(b1[1], Math.min(b1[4], bb(p)[4]), 40, 120).map(y => [ribX[k], y, b1[5]]))),
       setout: 'with the ledge top upside down on the bench' });
     const b2 = bb(H2), b3 = bb(H3);
     ops.push({ title: 'Ledge top onto its front and wall cleat', add: [H1, ...ribs].map(p => [p, [0, 0, E]]),
       fast: [F('s50', H1, H2, [0, 0, -1], Tg, spread(-G.xB, G.xB, 50, 200, ribAvoid).map(x => [x, (b2[1] + b2[4]) / 2, b2[5]])),
         F('s50', H1, H3, [0, 0, -1], Tg, spread(-G.xB, G.xB, 50, 200, ribAvoid).map(x => [x, (b3[1] + b3[4]) / 2, b3[5]]))],
-      setout: 'the wall cleat is screwed into the studs first (K, two at each stud)' });
+      setout: `the wall cleat is screwed into the studs first (${TAGS.w75}, two at each stud)` });
     if (H4 && ribs.length && G.head) {
       const a = G.head.a * Math.PI / 180, B0 = G.head.B0, B1p = G.head.B1, Th = P.Thead;
       const L = Math.hypot(B1p[0] - B0[0], B1p[1] - B0[1]), ss = spread(0, L, 50, 200), nrm = [0, Math.cos(a), Math.sin(a)];
       ops.push({ title: 'Backrest onto the ribs', add: [[H4, nrm.map(v => v * E)]],
-        fast: ribs.map((p, k) => F('b30', H4, p, nrm.map(v => -v), Th, ss.map(t => [ribX[k], B0[0] + (B1p[0] - B0[0]) * t / L, B0[1] + (B1p[1] - B0[1]) * t / L]))) });
+        fast: ribs.map((p, k) => F('b25', H4, p, nrm.map(v => -v), Th, ss.map(t => [ribX[k], B0[0] + (B1p[0] - B0[0]) * t / L, B0[1] + (B1p[1] - B0[1]) * t / L]))) });
       if (H6) {
         const zt = G.head.top, yE = (G.head.B1[0] + G.head.F1[0]) / 2;
         ops.push({ title: 'Bedside shelf on top', add: [[H6, [0, 0, E]]],
-          fast: [...ribs.map((p, k) => F('b30', H6, p, [0, 0, -1], Th, spread(G.yB1, G.head.B1[0], 35, 200).map(y => [ribX[k], y, zt]))),
-            F('b30', H6, H4, [0, 0, -1], Th, spread(-G.xB, G.xB, 50, 200, ribAvoid).map(x => [x, yE, zt]))] });
+          fast: [...ribs.map((p, k) => F('b25', H6, p, [0, 0, -1], Th, spread(G.yB1, G.head.B1[0], 35, 200).map(y => [ribX[k], y, zt]))),
+            F('b25', H6, H4, [0, 0, -1], Th, spread(-G.xB, G.xB, 50, 200, ribAvoid).map(x => [x, yE, zt]))] });
       }
     }
     inst('ledge', { show: true, base: [H2, H3], ops });
@@ -1732,10 +1739,10 @@ function joinery(model) {
     const members = parts.filter(p => p.mark === 'RN' && p.anim && !p.anim.k && p.name.startsWith(`Drawer ${i + 1} runner`) && p.name.endsWith(`(${S})`));
     const ops = [
       { title: 'Front and back into the first side', add: [[so, [s * E, 0, 0]]],
-        fast: [bf, bkk].map((p, k) => F('b30', so, p, [-s, 0, 0], Tb, zs.map(z => [xo, k ? yb : yf, z]))), setout: 'glued; clear of the bottom groove and of the runner' },
+        fast: [bf, bkk].map((p, k) => F('b25', so, p, [-s, 0, 0], Tb, zs.map(z => [xo, k ? yb : yf, z]))), setout: 'glued; clear of the bottom groove and of the runner' },
       { title: 'Slide the bottom into the grooves', add: [[bot, [-s * E, 0, 0]]], fast: [], arrow: 'add' },
       { title: 'Close with the second side', add: [[si, [-s * E, 0, 0]]],
-        fast: [bf, bkk].map((p, k) => F('b30', si, p, [s, 0, 0], Tb, zs.map(z => [xi2, k ? yb : yf, z]))), setout: 'check the diagonals before the glue grabs' }];
+        fast: [bf, bkk].map((p, k) => F('b25', si, p, [s, 0, 0], Tb, zs.map(z => [xi2, k ? yb : yf, z]))), setout: 'check the diagonals before the glue grabs' }];
     if (members.length) {
       const cx = (p) => { const q = bb(p); return (q[0] + q[3]) / 2; };
       const att = members.map(p => { const side = Math.abs(cx(p) - cx(so)) < Math.abs(cx(p) - cx(si)) ? so : si, out = Math.sign(cx(p) - cx(side)); return { p, side, out }; });
@@ -1757,39 +1764,26 @@ function joinery(model) {
   const K3 = mk('K3')[0], bat = mk('B12'), K1s = mk('K1');
   const ops = [];
   if (K3 && bat.length) {
-    const bradX = new Map(bat.map(p => { const q = bb(p); return [p, spread(q[0], q[3], 30, 200)]; }));
-    const offBrads = (p) => (bradX.get(p) || []).map(x => [x - 9, x + 9]);
     ops.push({ title: 'Battens onto the back of the header', bench: true, add: bat.map(p => [p, [0, -E, 0]]),
-      fast: bat.map(p => { const q = bb(p); return F('brad', p, K3, [0, 1, 0], q[4] - q[1], bradX.get(p).map(x => [x, G.yFb, (q[2] + q[5]) / 2])); }),
-      setout: 'glued and pinned' });
+      fast: [], setout: 'glued and clamped, every 200, flush with the header\'s bottom edge; leave it an hour before you handle it' });
     const f = [];
     for (const [S, s] of sides) {
       const top = one(`Tower top (${S})`), bt2 = bat.find(p => { const q = bb(p); return Math.sign(q[0] + q[3]) === s && Math.abs(q[0] + q[3]) > 10; });
       if (top && bt2) {
         const q = bb(bt2), lo = Math.max(Math.min(s * G.xOi, s * G.xT2), q[0] + 15), hi = Math.min(Math.max(s * G.xOi, s * G.xT2), q[3] - 15);
-        if (hi > lo) f.push(F('s30', top, bt2, [0, 0, 1], T, spread(lo, hi, 15, 150, offBrads(bt2)).map(x => [x, G.yFb - 15, G.zTop])));
+        if (hi > lo) f.push(F('s30', top, bt2, [0, 0, 1], T, spread(lo, hi, 15, 150).map(x => [x, G.yFb - 15, G.zTop])));
       }
     }
     const cb = bat.find(p => { const q = bb(p); return Math.abs(q[0] + q[3]) < 10; });
     if (cb && B3) {
       const hz = G.flapHw.hinges.flatMap(h => [[h - 38, h + 38], [-h - 38, -h + 38]]).concat([[-24, 24]]);
-      f.push(F('s30', B3, cb, [0, 0, 1], T, spread(-G.xB, G.xB, 50, 250, hz.concat(offBrads(cb))).map(x => [x, G.yFb - 15, G.zTop])));
+      f.push(F('s30', B3, cb, [0, 0, 1], T, spread(-G.xB, G.xB, 50, 250, hz).map(x => [x, G.yFb - 15, G.zTop])));
     }
     ops.push({ title: 'Header onto the tops, scribed to the ceiling', add: [K3, ...bat].map(p => [p, [0, 0, E]]), fast: f, view: 'below', ctx: true, clip: [G.zS2b + 200, P.H + 400],
       setout: 'up through the tops from inside the top compartments and through the flaps' });
   }
-  if (K1s.length) {
-    const f = [];
-    for (const k1 of K1s) {
-      const q = bb(k1), zk = (q[2] + q[5]) / 2;
-      for (const [S, s] of sides) {
-        const pf = one(`Plinth front (${S})`), B1 = one(`Bed-cabinet side (${S})`);
-        if (pf) { const b = bb(pf); const xs = [b[0] + 50, b[3] - 50].filter(x => x > q[0] + 20 && x < q[3] - 20); if (xs.length) f.push(F('br30', k1, pf, [0, -1, 0], T + P.frontGap, xs.map(x => [x, G.yC, Math.min(zk, b[5] / 2)]))); }
-        if (B1 && q[0] < s * G.xB && q[3] > s * G.xB) f.push(F('br30', k1, B1, [0, -1, 0], T + P.frontGap, [12, q[5] - 12].map(z => [s * (G.xB + T / 2), G.yC, z])));
-      }
-    }
-    ops.push({ title: 'Kick board', add: K1s.map(p => [p, [0, E, 0]]), fast: f, ctx: true, clip: [-1, 420], setout: 'construction adhesive on the plinth fronts and side edges; punch the brads and fill' });
-  }
+  if (K1s.length) ops.push({ title: 'Kick board, bonded', add: K1s.map(p => [p, [0, E, 0]]), fast: [], ctx: true, clip: [-1, 420],
+    setout: `no fixings in its face: high-grab adhesive on the plinth fronts${G.kickC ? ' and the bed-cabinet sides\' front edges' : ''}, ${Math.round(P.frontGap)} mm packers behind, taped to the doors above while it cures` });
   if (ops.length) inst('kickHeader', { show: true, base: K3 && bat.length ? [K3] : [], context: parts.filter(p => !p.hw && !p.bed && /^(T[1-6]|P[12]|B[1-4]|B1[01])$/.test(p.mark)), ops });
 
   // counts per fixing over every copy (both towers, every drawer)
@@ -1809,27 +1803,17 @@ function assembly(model, sheets) {
   const studs = (L) => Math.max(2, Math.floor(L / STUDS) + 1);
   const has = (mk) => parts.some(p => p.mark === mk);
   const FX = {
-    s50: ['Cabinet screw 8g x 50 (4.0 x 50), countersunk', 'pilot 3 x 35 deep in the edge; 4.5 clearance + countersink in the face'],
-    s40: ['Cabinet screw 8g x 40 (4.0 x 40), countersunk', 'pilot 3; 4.5 clearance + countersink'],
-    s30: ['Cabinet screw 8g x 30 (4.0 x 30), countersunk', 'pilot 2.5 in the face; 4.5 clearance + countersink'],
-    s35: ['Countersunk screw 8g x 35, through the steel flat', '4.5 + countersink in the steel (HSS bit); pilot 3 in the shelf edge'],
-    s25: ['Pan-head screw 8g x 25 (4.0 x 25), drawer fronts', '6 through the box front (room to adjust); pilot 2.5 x 10 in the front'],
-    b30: ['Countersunk screw 6g x 30 (3.5 x 30), drawer boxes', 'pilot 2 in the 12 mm edge; 3.5 clearance + countersink'],
-    b25: ['Countersunk screw 6g x 25 (3.5 x 25), deck struts', 'pilot 2 in the face panel, 10 deep; 3.5 clearance + countersink'],
-    b20: ['Countersunk screw 6g x 20 (3.5 x 20), backs, brackets', 'pilot 2'],
-    b16: ['Countersunk screw 6g x 16 (3.5 x 16), mattress support', 'pilot 2 in the struts; 3.5 clearance + countersink'],
-    r14: ['Pan-head chipboard screw 4 x 14, runners\' cabinet members', 'pilot 2.5 x 8 (or a Vix bit) through the runner holes'],
-    r10: ['Pan-head chipboard screw 3.5 x 10, runners\' drawer members', 'pilot 2 x 6: the box sides are only 12 thick'],
-    h15: ['Chipboard screw 3.5 x 15, hinge cups and stays', 'pilot 2 x 8; cups bored 35 x 13 deep'],
-    h17: ['Chipboard screw 3.5 x 17, hinge plates', 'pilot 2 x 10 on the 37 / 32 holes (or 6.3 system screws in 5 mm holes)'],
+    s50: ['Cabinet screw 8g x 50 (4.0 x 50), countersunk, T20: every edge joint', 'pilot 3 x 35 deep in the edge; 4.5 clearance + countersink in the face (HSS bit in the steel flat)'],
+    s30: ['Cabinet screw 8g x 30 (4.0 x 30), countersunk, T20: face to face', 'pilot 2.5 in the face; 4.5 clearance + countersink'],
+    s25: ['Pan-head screw 8g x 25 (4.0 x 25), T20: drawer fronts', '6 through the box front (room to adjust); pilot 2.5 x 10 in the front'],
+    b25: ['Countersunk screw 6g x 25 (3.5 x 25), T15: 6 and 12 mm parts', 'pilot 2; 3.5 clearance + countersink; in the face panel no more than 10 deep'],
+    h15: ['Chipboard screw 3.5 x 15, countersunk, T15: all the hardware', 'pilot 2 x 8: hinge cups and plates, flap stays, runners\' cabinet members, rail brackets'],
+    r10: ['Pan-head chipboard screw 3.5 x 10, T15: runners\' drawer members', 'pilot 2 x 6: the box sides are only 12 thick'],
     d8: ['Fluted beech dowel 8 x 30, glued', '8 mm: 12 deep in the face (depth stop), 19 deep in the edge'],
-    dom: ['Domino 8 x 40 (or No. 20 biscuit), glued', 'divider to the shelf and the top'],
-    w75: ['Batten screw 14g x 75 (6.0 x 75), into timber studs', '6.5 clearance in the rail or panel; brick: 8 x 65 sleeve anchors in 10 mm holes'],
+    w75: ['Batten screw 14g x 75 (6.0 x 75), T30, into timber studs', '6.5 clearance in the rail or panel; brick: 8 x 65 sleeve anchors in 10 mm holes'],
     kit: [`Machine screw for the kit plates, ${P.packer ? f0(P.Tpacker) + ' longer than supplied' : 'as supplied'}`, 'through the side' + (P.packer ? ' and its pad' : '') + ', as the kit plates'],
     m4: ['Handle bolt M4 x 25 (18 mm fronts)', '5 through the front'],
     pin: ['Shelf pin 5 mm', '5 x 10 deep holes, 32 apart, 37 in from front and back'],
-    brad: ['Brad 40 mm, 16 gauge, glued: header battens', 'no pilot'],
-    br30: ['Brad 30 mm, 16 gauge, with construction adhesive: kick board', 'punch and fill'],
   };
   const qty = {}, steps = [];
   const step = (o) => { o.fix = []; steps.push(o); return o; };
@@ -1862,7 +1846,7 @@ function assembly(model, sheets) {
   addJ(st, 'carcass');
   st = step({ title: 'Fit out the towers', h: 1.5, parts: (p) => p.mark === 'HR' || (p.mark === 'RN' && p.pick) || (p.mark === 'HG' && isPlate(p)) || p.mark === 'T5',
     text: `While they lie on their backs: the runners' cabinet members flush with the front edge on their centre lines, the hinge plates (${G.hingeDoor.H} mm, ${G.hingeDoor.code}), the hanging-rail brackets${P.topShelf ? ' and the shelf pins' : ''}.` });
-  add(st, 'r14', nDr * 2 * useR); add(st, 'h17', doorHinges * 2); add(st, 'b20', nTow * 2 * 3); if (P.topShelf) add(st, 'pin', nTow * 4);
+  add(st, 'h15', nDr * 2 * useR + doorHinges * 2 + nTow * 2 * 3); if (P.topShelf) add(st, 'pin', nTow * 4);
   st = step({ title: 'Stand the towers in place', h: 1.5, people: 2, parts: () => false, hl: (p) => /^(T[1-6]|P[12])$/.test(p.mark),
     text: `Stand each tower up on the floor (its diagonal is ${f0(Math.hypot(G.zTop - G.zPl, G.cD + P.Tback))}), lift it onto its plinth and screw down through the bottom into the plinth from inside. Plumb it, pack the outer side off the wall and screw through the packers into the side-wall studs.` });
   addJ(st, 'towerPlinth'); add(st, 'w75', nTow * 3);
@@ -1871,7 +1855,7 @@ function assembly(model, sheets) {
   addJ(st, 'bedSide'); add(st, 'kit', 8);
   const boxParts = ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B10', 'B11', 'SF'];
   st = step({ title: 'Make up the shelf box', h: 3, people: 2, parts: (p) => boxParts.includes(p.mark),
-    text: `On the floor: ${P.edgeSteel ? `bed the steel flat in epoxy or PU adhesive in the shelf's front notch and screw it every 150; ` : ''}screw the wall rail under the shelf through the shelf. Glue, dowel and screw the two upper sides between the shelf and the top (through the shelf and the top into their edges), the divider in the middle with Dominos, and the top's wall rails. Square it, then glue and screw the 6 mm back onto the back edges every 150: it ties the two sides together.` });
+    text: `On the floor: ${P.edgeSteel ? `bed the steel flat in epoxy or PU adhesive in the shelf's front notch and screw it every 150; ` : ''}screw the wall rail under the shelf through the shelf. Glue, dowel and screw the two upper sides between the shelf and the top (through the shelf and the top into their edges), the divider in the middle the same way, and the top's wall rails. Square it, then glue and screw the 6 mm back onto the back edges every 150: it ties the two sides together.` });
   addJ(st, 'shelfBox');
   st = step({ title: 'Fit the shelf box', h: 1.5, people: 2, parts: () => false, hl: (p) => boxParts.includes(p.mark),
     text: `Slide the box in from the front onto the bed-cabinet sides, so the upper sides stand on the lower ones with the shelf between. Screw down through the shelf into the lower sides and, from inside the towers, through the tower sides into the upper sides, two rows. Screw the three wall rails through the back into the studs.` });
@@ -1879,7 +1863,7 @@ function assembly(model, sheets) {
   add(st, 'w75', 2 * studs(2 * G.xB) + 2 * 2 * studs(B7L));
   st = step({ title: 'Flaps, stays, latches' + (G.twin ? ' and twin pin' : ''), h: 2, parts: (p) => ['D4', 'FH', 'FS', 'PL'].includes(p.mark) || (p.mark === 'LP' && !p.bed),
     text: `Hinge plates under the top (${G.hingeFlap.H} mm, ${G.hingeFlap.code}), hinges in the flaps, then hang them and set the reveals. Gas stays on the upper sides and the divider, push latches drilled 10 into the shelf edge.${G.twin ? ' Glue and screw the twin-pin block into the divider\'s notch, press the bushes in and try the pins.' : ''}` });
-  add(st, 'h17', 4 * 2); add(st, 'h15', 4 * 2 + 4 * 4); if (G.twin) add(st, 's50', 4);
+  add(st, 'h15', 4 * 2 + 4 * 2 + 4 * 4); if (G.twin) add(st, 's50', 4);
   const nStrut = parts.filter(p => p.mark === 'F6').length;
   st = step({ title: 'Bed frame and gas springs', h: 4, people: 2, parts: (p) => (p.bed && !p.mattress && p.mark !== 'HD' && p.mark !== 'SP') || p.mark === 'GS', bed: 70,
     text: `Build the frame to the Create-A-Bed plan: rails, deck struts, mattress support and the face panel in two halves, glued and screwed. Fit the frame plates, legs and lower ball studs, hang the frame on the pivots, and fit the gas springs last with the bed down, as the kit says. Swing it slowly and check the clearances on sheets 3 and 6.` });
@@ -1900,7 +1884,7 @@ function assembly(model, sheets) {
     text: `Screw the hinges into the cups, clip them onto the plates and adjust: side ±2, depth +3/-2, height ±2 for even ${f0(P.gap)} reveals.` });
   add(st, 'h15', doorHinges * 2);
   st = step({ title: 'Kick board and header', h: 1.5, parts: (p) => /^K[1-4]$/.test(p.mark) || p.mark === 'B12',
-    text: `Glue and pin the battens to the back of the header at its bottom edge, scribe the header to the ceiling, then screw up through the tops into the battens from inside the top compartments and through the flaps. Kick board: construction adhesive on the plinth fronts and the bed-cabinet sides' front edges, and two brads at each.` });
+    text: `Glue and clamp the battens to the back of the header at its bottom edge, scribe the header to the ceiling, then screw up through the tops into the battens from inside the top compartments and through the flaps. Kick board: no fixings in its face. High-grab adhesive (a hybrid polymer such as CT1) on the plinth fronts and the bed-cabinet sides' front edges, 1 mm packers behind it to keep the line with the doors, and tape it up to the doors while it cures.` });
   addJ(st, 'kickHeader');
   st = step({ title: 'Handles, adjust, final checks', h: 1.5, parts: () => true, bed: 0,
     text: `Handles on the drawers, doors and the bed face. Check the reveals, the runners' stops, the flap stays and the twin pin, re-tighten every wall screw, and swing the bed down once more, slowly, with the mattress on.` });
