@@ -119,4 +119,40 @@ function checkJoinery(params, label) {
 let jp = checkJoinery({}, 'joinery default');
 jp += checkJoinery({ W: 2600, H: 2400, D: 560, drawers: [150, 150, 200, 250, 250], hangClear: 900, sideClear: 0, doorHinge: 'inner' }, 'joinery variant');
 jp += checkJoinery({ mT: 305, gapHydr: 25, kickCentre: 'none', topShelf: false, ledge: false, packer: false, edgeSteel: false, lockType: 'pins', upstand: 40, drawers: [150, 200, 250] }, 'joinery edge');
+jp += checkJoinery({ gapHydr: 30, packer: true, Tpacker: 18 }, 'joinery pads');
 if (jp) process.exitCode = 1;
+
+// ---------- solid overlaps (sampled points, not bounding boxes): hardware against plywood and against other hardware,
+// bed closed, half open and down. Hardware that sits in a hole or a pocket, or touches by design, is listed as allowed.
+{
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const inPoly = (p, poly) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const a = poly[i], b = poly[j]; if ((a[1] > p[1]) !== (b[1] > p[1]) && p[0] < (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
+  const segD = (p, a, b) => { const ab = [b[0] - a[0], b[1] - a[1]], L2 = ab[0] * ab[0] + ab[1] * ab[1], t = L2 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * ab[0] + (p[1] - a[1]) * ab[1]) / L2)) : 0; return Math.hypot(p[0] - a[0] - ab[0] * t, p[1] - a[1] - ab[1] * t); };
+  const depthIn = (q, p) => { const d = sub(p, q.s.o), w = dot(d, q.s.n); if (w < 0 || w > q.s.len) return null; const uv = [dot(d, q.s.u), dot(d, q.s.v)]; if (!inPoly(uv, q.polys[0])) return null;
+    for (let i = 1; i < q.polys.length; i++) if (inPoly(uv, q.polys[i])) return null; let dd = Math.min(w, q.s.len - w); for (const pl of q.polys) for (let i = 0; i < pl.length; i++) dd = Math.min(dd, segD(uv, pl[i], pl[(i + 1) % pl.length])); return dd; };
+  const sample = (q) => { const pts = [], poly = q.polys[0]; let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity; for (const p of poly) { u0 = Math.min(u0, p[0]); u1 = Math.max(u1, p[0]); v0 = Math.min(v0, p[1]); v1 = Math.max(v1, p[1]); }
+    const su = Math.max(1.5, (u1 - u0) / 30), sv = Math.max(1.5, (v1 - v0) / 30), sw = Math.max(1.5, q.s.len / 40);
+    for (let u = u0 + su / 2; u < u1; u += su) for (let v = v0 + sv / 2; v < v1; v += sv) if (inPoly([u, v], poly)) for (let w = sw / 2; w < q.s.len; w += sw) pts.push(C.to3(q.s, [u, v], w));
+    for (const p of poly) { pts.push(C.to3(q.s, p, 0.01)); pts.push(C.to3(q.s, p, q.s.len - 0.01)); } return pts; };
+  // [hardware mark, other mark]: cups in doors, pins through block, shelf and foot rail, latches drilled in, the pivot bar
+  // in its pocket and bush, the bush through the rail, the upper stud's nut in its hole, balls in the spring sockets,
+  // the legs and their rail, the rail closing onto the stop domes
+  const ALLOW = new Set(['HG D1', 'HG D2', 'HG HG', 'FH D4', 'FH FH', 'LP LP', 'LP B2', 'LP F4', 'PL B2', 'PL SF', 'PV B1', 'PV F2', 'PV PV', 'PV B8', 'BS B1', 'BS B8', 'BS GS', 'GS BS', 'LG LG', 'ST F2', 'SF PL']);
+  let bad = 0;
+  const sets = [['default', {}], ['pads', { gapHydr: 30, packer: true, Tpacker: 18 }]].concat(process.env.OVERLAP_PROBE ? [['probe', JSON.parse(process.env.OVERLAP_PROBE)]] : []);
+  for (const [label, params] of sets) for (const ang of [0, 45, 90]) {
+    const m = C.build(params, { bedAngle: ang }), all = [];
+    for (const p of m.parts) if (!p.mattress) p.solids.forEach((sl) => all.push({ p, s: sl, box: C.prismBox(sl), polys: sl.loops.map(l => C.loopPolyline(l, 16)) }));
+    const hw = all.filter(q => q.p.hw), found = new Map();
+    for (const A of hw) for (const B of all) {
+      if (A.p === B.p || (ALLOW.has(A.p.mark + ' ' + B.p.mark) && !(/^Lower ball-stud/.test(A.p.name) && /^B[18] /.test(B.p.mark + ' ')))) continue;
+      const a = A.box, b = B.box; if (Math.min(a[3], b[3]) - Math.max(a[0], b[0]) < -0.2 || Math.min(a[4], b[4]) - Math.max(a[1], b[1]) < -0.2 || Math.min(a[5], b[5]) - Math.max(a[2], b[2]) < -0.2) continue;
+      let dmax = 0; for (const pt of sample(A)) { const d = depthIn(B, pt); if (d !== null && d > dmax) dmax = d; }
+      if (dmax > 0.1) { const k = `${A.p.mark} ${A.p.name}  x  ${B.p.mark} ${B.p.name}`; if (!found.has(k) || found.get(k) < dmax) found.set(k, dmax); }
+    }
+    console.log(`solid overlaps ${label} at ${ang} deg: ${found.size} not allowed`);
+    for (const [k, d] of found) console.log(`   ${d.toFixed(1)} mm  ${k}`);
+    bad += found.size;
+  }
+  if (bad) process.exitCode = 1;
+}

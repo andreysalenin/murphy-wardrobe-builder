@@ -112,14 +112,13 @@ class MurphyScene {
     for (const p of model.parts) {
       const style = KIND_STYLE[p.kind] || KIND_STYLE.carcass;
       if (p.dyn && (p.dyn.type === 'spring' || p.dyn.type === 'stay' || p.dyn.type === 'link')) {
-        // two tubes re-aimed every frame
-        const grp = new THREE.Group();
-        const body = new THREE.Mesh(unitCyl, this.mat(p.kind, style, false)), rod = new THREE.Mesh(unitCyl, this.mat('chrome', KIND_STYLE.chrome, false));
-        if (p.dyn.type === 'link') { body.material = rod.material; }
-        grp.add(body); grp.add(rod);
+        // tubes re-aimed every frame: socket, body, rod, socket for a spring; body and rod for a stay; two links
+        const grp = new THREE.Group(), kinds = C.dynSegs(G, p.dyn, 0).map(sg => p.dyn.type === 'link' ? 'rod' : sg[3]);
+        const meshes = kinds.map(() => new THREE.Mesh(unitCyl, this.mat(p.kind, style, false)));
+        meshes.forEach(m => grp.add(m));
         this.root.add(grp);
-        const rec = { part: p, mesh: body, rod, grp, style, dyn: p.dyn };
-        body.userData.rec = rod.userData.rec = rec;
+        const rec = { part: p, mesh: meshes[0], meshes, kinds, grp, style, dyn: p.dyn };
+        meshes.forEach(m => { m.userData.rec = rec; });
         this.recs.push(rec); this.dyns.push(rec);
         continue;
       }
@@ -192,12 +191,8 @@ class MurphyScene {
       mesh.userData.seg = [a, b, d]; // for the vector renderer
     };
     for (const r of this.dyns) {
-      if (r.dyn.type === 'link') { const [l1, l2] = C.linkEnds(r.dyn, T(r.dyn.id)); aim(r.mesh, l1[0], l1[1], 5); aim(r.rod, l2[0], l2[1], 5); continue; }
-      const [a, b] = r.dyn.type === 'spring' ? C.springEnds(G, r.dyn, th) : C.stayEnds(r.dyn, T(r.dyn.id) * Math.PI / 2 * 0.92);
-      const bodyLen = r.dyn.type === 'spring' ? 390 : 150;
-      const d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], L = Math.hypot(...d), k = Math.min(bodyLen, L - 40) / L;
-      const m = [a[0] + d[0] * k, a[1] + d[1] * k, a[2] + d[2] * k];
-      aim(r.mesh, a, m, r.dyn.type === 'spring' ? 14 : 15); aim(r.rod, m, b, r.dyn.type === 'spring' ? 8 : 6);
+      const state = r.dyn.type === 'spring' ? th : r.dyn.type === 'stay' ? T(r.dyn.id) * Math.PI / 2 * 0.92 : T(r.dyn.id);
+      C.dynSegs(G, r.dyn, state).forEach((sg, i) => { if (r.meshes[i]) aim(r.meshes[i], sg[0], sg[1], sg[2]); });
     }
     for (const r of this.recs) if (r.part.dyn && r.part.dyn.type === 'pin') r.grp.position.z = (o.bed || 0) > 0.2 ? r.part.dyn.lift : 0;
     for (const r of this.recs) {
@@ -214,8 +209,8 @@ class MurphyScene {
         if (o.bySheet && !p.hw) m = this.mat('t' + p.T, { color: T_COL[p.T] || 0x8a8f96, rough: 0.8 }, o.section);
         else m = this.mat(p.kind, r.style, o.section);
       }
-      r.mesh.material = m;
-      if (r.rod) r.rod.material = this.mat('chrome', KIND_STYLE.chrome, o.section);
+      if (r.meshes) r.meshes.forEach((mesh, i) => { const k = r.kinds[i]; mesh.material = k === 'rod' ? this.mat('chrome', KIND_STYLE.chrome, o.section) : k === 'end' ? this.mat('rubber', KIND_STYLE.rubber, o.section) : m; });
+      else r.mesh.material = m;
       if (r.edges) r.edges.material = o.section ? this.edgeMatClip() : this.edgeMat;
     }
     this.arcs.visible = !!o.section;
@@ -229,14 +224,14 @@ class MurphyScene {
   bounds() {
     const b = new THREE.Box3();
     this.root.updateMatrixWorld(true);
-    for (const r of this.recs) if (this.isVisible(r.grp)) b.expandByObject(r.mesh);
+    for (const r of this.recs) if (this.isVisible(r.grp)) for (const mesh of (r.meshes || [r.mesh])) b.expandByObject(mesh);
     return b;
   }
   isVisible(obj) { while (obj) { if (!obj.visible) return false; obj = obj.parent; } return true; }
   // what a ray hits first among the visible parts: an element id, 'bed', or null (carcass and fixed parts block the ray)
   pick(ray) {
     const meshes = [];
-    for (const r of this.recs) if (this.isVisible(r.grp)) { meshes.push(r.mesh); if (r.rod) meshes.push(r.rod); }
+    for (const r of this.recs) if (this.isVisible(r.grp)) meshes.push(...(r.meshes || [r.mesh]));
     this.scene.updateMatrixWorld(true);
     for (const h of ray.intersectObjects(meshes, false)) {
       if (this.opts.section && this.clip.distanceToPoint(h.point) < 0) continue;
@@ -703,7 +698,7 @@ class VectorRenderer {
     for (const r of ms.recs) {
       const vis = ms.isVisible(r.grp);
       if (!vis && !(ms.opts.fitAll && !r.part.mattress)) continue;
-      const meshes = r.dyn ? [r.mesh, r.rod] : [r.mesh];
+      const meshes = r.meshes || [r.mesh];
       for (const mesh of meshes) {
         const mat = mesh.material, col = [mat.color.r, mat.color.g, mat.color.b];
         const sols = r.dyn ? (mesh.userData.seg ? [C.cyl(mesh.userData.seg[2], mesh.userData.seg[0], mesh.userData.seg[1])] : []) : r.part.solids;

@@ -6,7 +6,8 @@ const LS_KEY = 'murphy-wardrobe-builder.v3', LS_VIEW = 'murphy-wardrobe-builder.
 const $ = (id) => document.getElementById(id);
 const NUM_FIELDS = ['W', 'H', 'D', 'sideClear', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
   'hangClear', 'railDrop', 'runnerClear', 'runnerLen', 'boxLess', 'gap', 'gapAbove', 'frontGap', 'T', 'Tb', 'Tback', 'Tsup', 'Tladder', 'Tplinth', 'Tpacker', 'Tledge', 'Thead',
-  'pivotFromRail', 'pivotAboveHead', 'cabPivotZ', 'pinGap', 'packerH', 'packerDepth', 'springLowAlong', 'springLowOut', 'springUpFront', 'springUpZ', 'stopFront', 'stopBelowTop',
+  'pivotFromRail', 'pivotAboveHead', 'cabPivotZ', 'pinGap', 'springLowAlong', 'springLowOut', 'springUpFront', 'springUpZ', 'stopFront', 'stopBelowTop',
+  'springD', 'springRodD', 'springEndD', 'springBodyL', 'studS', 'plateT', 'nutStack', 'stopD', 'stopH', 'legD',
   'railD', 'headRailD', 'footRailD', 'railR', 'legFromFoot', 'legFromTop', 'struts', 'ladderW',
   'ledgeClear', 'headAngle', 'headH', 'headGap', 'upstand', 'steelH', 'steelT', 'twinSpacing', 'lockPinX', 'wallRail', 'kerf', 'trim'];
 const SEL_FIELDS = ['kickCentre', 'doorHinge', 'lockType'];
@@ -27,6 +28,12 @@ if (!readLS(LS_KEY + ':gap11')) {
 if (!readLS(LS_KEY + ':reveal6')) {
   if (params.faceOverhang === 0 && params.gapHydr === 11) params.faceOverhang = 5;
   writeLS(LS_KEY + ':reveal6', 1);
+}
+// the bed stops now default to where the closed bed stands plumb (0): saved settings still on the kit's 7-3/8 in
+// follow, once
+if (!readLS(LS_KEY + ':stopPlumb')) {
+  if (Math.abs((params.stopFront || 0) - 187.3) < 0.05) params.stopFront = 0;
+  writeLS(LS_KEY + ':stopPlumb', 1);
 }
 params = C.normParams(params);
 let model = null, summary = null, viewer = null, timer = null;
@@ -94,6 +101,7 @@ function rebuild(keepView, sync) {
   renderSummary();
   renderSheets();
   renderReview();
+  renderClearances();
   $('hdr-size').textContent = `${f0(params.W)} x ${f0(params.H)} x ${f0(params.D)}`;
 }
 
@@ -155,6 +163,18 @@ function renderSheets() {
     S.cut.map(r => `<tr><td class="m"><span class="chip" style="background:var(--${TCLASS(r.T)})"></span>${esc(r.mark)}</td><td>${esc(r.name)}</td><td class="n">${r.qty}</td><td class="n">${r.T}</td><td class="n">${f0(r.L)}</td><td class="n">${f0(r.W)}</td><td>${r.grain ? 'along length' : ''}</td></tr>`).join('') + '</tbody>';
 }
 
+function renderClearances() {
+  const S = C.clearanceSchedule(model), rows = [];
+  const fmt = (v) => typeof v === 'number' ? f0(v) : esc(v);
+  for (const g of S.groups) {
+    rows.push(`<tr class="grp"><td colspan="5">${esc(g.title.toLowerCase().replace(/^./, c => c.toUpperCase()))}</td></tr>`);
+    for (const r of g.rows) rows.push(`<tr class="${r.st}"><td class="id"><span class="st ${r.st}" aria-label="${r.st === 'ok' ? 'enough' : r.st === 'tight' ? 'less than it needs' : r.st === 'clash' ? 'parts meet' : 'for information'}"></span>${r.id}</td><td>${esc(r.what)}</td><td class="r">${esc(r.need)}</td><td class="n">${fmt(r.here)}</td><td class="note">${esc(r.note)}</td></tr>`);
+  }
+  $('clr-table').innerHTML = '<thead><tr><th>Id</th><th>Clearance</th><th class="n">Needs</th><th class="n">Here</th><th>Note</th></tr></thead><tbody>' + rows.join('') + '</tbody>';
+  const all = S.groups.flatMap(g => g.rows), nt = all.filter(r => r.st === 'tight').length, nc = all.filter(r => r.st === 'clash').length;
+  $('clr-note').textContent = nc ? `${nc} where parts meet` : nt ? `${nt} less than ${nt > 1 ? 'they need' : 'it needs'}` : 'all clear';
+  $('clr-measure').innerHTML = '<b>Measure on your kit:</b> ' + S.measure.map(([, what, used]) => `${esc(what.toLowerCase())} (${esc(used)})`).join('; ') + '. Enter them under Create-A-Bed hardware.';
+}
 function renderReview() {
   const R = C.reviewNotes(model, summary);
   const li = (items) => items.map(([t, b]) => `<li><b>${esc(t)}.</b> ${esc(b)}</li>`).join('');

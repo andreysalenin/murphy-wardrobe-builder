@@ -304,7 +304,9 @@ function View(s, view, scale, paperXY, refUV) {
       for (const sol of (p.draw || p.solids)) {
         const cs = C.prismCorners(sol);
         if (o.cut !== undefined) { const ds = cs.map(pr.depth); if (Math.min(...ds) > o.cut + 0.01 || Math.max(...ds) < o.cut - 0.01) continue; }
-        const pts = hull(cs.map(pr.uv)).map(v.Puv);
+        let poly = hull(cs.map(pr.uv));
+        if (o.window) { poly = clipPoly(poly, o.window); if (poly.length < 3) continue; }
+        const pts = poly.map(v.Puv);
         s.polyFill(pts.concat([pts[0]]), Object.assign({ lw: LW_THIN, color: ACC, dash: [1.2, 0.8] }, o.st || {}));
       }
     }
@@ -379,7 +381,7 @@ function pageOverview(doc, M, S, I, info) {
   let yy = yb - 8;
   s.text(x0, yy, 'IN THIS SET', { size: 7.5, weight: 'bold' });
   yy = s.para(x0, yy - 5, [`1 Overview   2 Elevations and plans   3 Sections and the bed swing   4 Bed frame`,
-    `5 Hardware positions   6 Cut list   ${info.plansFrom}-${info.plansTo} Cutting plans   ${info.seqFrom}-${info.seqFrom + 1} Build sequence`,
+    `5 Hardware positions   6 Clearances   7 Cut list   ${info.plansFrom}-${info.plansTo} Cutting plans   ${info.seqFrom}-${info.seqFrom + 1} Build sequence`,
     `${info.detFrom}-${info.detFrom + info.nDet - 1} Assembly details and fixings key   ${info.fixAt} Fixings schedule   ${info.total} Design review`], { size: 6.2 });
   s.text(x0, yy - 3, 'READ FIRST', { size: 7.5, weight: 'bold', color: ACC });
   const bads = M.checks.filter(c => c.level !== 'info');
@@ -536,7 +538,7 @@ function pageSections(doc, M, M90, M45, S, info) {
   // lowest point and clearance notes
   const low = v.P([0, G.pivot[0], G.clear.minZ]);
   s.leader(low, [low[0] + 18, oz - 6], `lowest point ${f0(G.clear.minZ)} off the floor`, { size: 5.6, box: true });
-  s.leader(v.P([0, G.yFb - 20, G.zF1]), [v.P([0, 0, 0])[0] + 70, v.P([0, 0, G.zF1 + 140])[1]], `${f0(P.gapHolder)} under the shelf${G.steel ? `, ${f0(G.zF1 - (G.zBm1 - P.steelH) < 0 ? 0 : G.steel.z0 - G.zF1)} under the steel flat in its front edge` : ''}; the bed top rises ${Math.max(0, G.clear.maxZ - G.zF1).toFixed(1)} as it turns`, { size: 5.6, box: true, ha: 'left' });
+  s.leader(v.P([0, G.yFb - 20, G.zF1]), [v.P([0, 0, 0])[0] + 70, v.P([0, 0, G.zF1 + 140])[1]], `${f0(P.gapHolder)} under the shelf${G.steel ? `, ${f0(Math.max(0, G.steel.z0 - G.zF1))} under the steel flat in its front edge` : ''}; the bed top rises ${Math.max(0, G.clear.maxZ - G.zF1).toFixed(1)} as it turns`, { size: 5.6, box: true, ha: 'left' });
   s.viewLabel(ox + 76, 278, `SECTION A-A`, `through the bed bay at ${xs} from the centre line, looking at the left side; bed closed, at 45 deg and down`);
 
   // tower section
@@ -556,8 +558,8 @@ function pageSections(doc, M, M90, M45, S, info) {
 
   // clearance table
   const cx = 292;
-  s.heading(cx, 262, 'SWING CLEARANCES', 'closest approach while the bed turns 0 to 90 deg');
-  const rows = G.clear.list.filter(r => r.name !== 'back wall').map(r => [r.name, r.part, f0(r.angle) + ' deg', (r.min < 0 ? 'CLASH ' : '') + f0(r.min)]);
+  s.heading(cx, 262, 'SWING CLEARANCES', 'closest approach while the bed turns 0 to 90 deg; all of them on sheet 6');
+  const rows = G.clear.list.filter(r => r.name !== 'back wall' && r.min < 60).sort((a, b) => a.min - b.min).map(r => [r.name, r.part, f0(r.angle) + ' deg', (r.min < 0 ? 'CLASH ' : '') + f0(r.min)]);
   let y = s.table(cx, 252, [['FIXED PART', 40, 'left'], ['MOVING PART', 32, 'left'], ['AT', 14, 'right'], ['CLEAR', 16, 'right']], rows, { rowH: 4.4, size: 5.8, hsize: 5.4 });
   y -= 7;
   s.heading(cx, y, 'BED DOWN');
@@ -637,7 +639,7 @@ function pageBed(doc, M, S, info) {
   const sc2 = 2.5, dx0 = 268, dy0 = 150;
   const win = [G.xFi - 45, G.xT2 + 25, -(G.yF + 6), -(G.pivot[0] - 150)];
   const vd = View(s, 'top', sc2, [dx0, dy0], [win[0], win[2]]);
-  vd.parts(M.parts.filter(p => !p.leg), { cut: G.pivot[1], filter: (p) => !p.hw || p.mattress || ['PV', 'BS', 'GS'].includes(p.mark), window: win });
+  drawSection(s, vd, sectionAt(M.parts.filter(p => !p.leg && p.name.indexOf('(L)') < 0), G.pivot[1]), win);
   const a0 = vd.Puv([win[0], win[2]]), a1 = vd.Puv([win[1], win[3]]);
   s.rect(a0[0], a0[1], a1[0] - a0[0], a1[1] - a0[1], { lw: 0.2, dash: [2, 0.8, 0.4, 0.8] });
   const D = (X, y) => [-X, y, 0];
@@ -649,6 +651,11 @@ function pageBed(doc, M, S, info) {
   const pq = vd.P(D((G.xFo + xsD[3]) / 2, G.pivot[0]));
   s.circle(pq[0], pq[1], 0.9, { fill: ACC, lw: 0 });
   vd.dimAt(D(G.xT2 + 25, G.pivot[0]), D(G.xT2 + 25, G.yF), a1[0] + 4, 'v', null, { size: 5.4, color: ACC });
+  {
+    const [ea, eb] = C.springEnds(G, { xCab: G.springCabX, xBed: G.springBedX, cab: G.springCab, bed: G.springBed }, 0);
+    const t = (ea[2] - G.pivot[1]) / (ea[2] - eb[2]), q = vd.P(D(ea[0] + (eb[0] - ea[0]) * t, ea[1] + (eb[1] - ea[1]) * t));
+    s.leader(q, [a0[0] - 3, q[1] + 10], 'gas spring rod, behind the rail', { size: 5, ha: 'right' });
+  }
   s.text(a0[0], a1[1] + 7, 'PLAN AT THE PIVOT  1:2.5', { size: 7, weight: 'bold' });
   s.text(a0[0], a1[1] + 3, `rail to the mounting face ${f0(G.effGap)}; kit ${P.pinGap}`, { size: 5.6, color: GREY });
 
@@ -671,7 +678,7 @@ function pageHardware(doc, M, S, info) {
   v.outline(M.parts, { filter: (p) => p.mark === 'F2' && R(p), st: { color: GREY, dash: [1, 0.8], lw: 0.12 } });
   v.outline(M.parts, { filter: (p) => p.mark === 'GS' && R(p), st: { color: ACC, lw: 0.2 } });
   const yE = G.yC; // B1 front edge
-  const pts = [['pivot', G.pivot, '11-3/4 in, 4-3/4 in'], ['upper ball stud', G.springCab, '30-3/4 in, 10 in'], ['bed stop', G.stop, '6 in below the 87-1/8 in top, 7-3/8 in']];
+  const pts = [['pivot', G.pivot, '11-3/4 in, 4-3/4 in'], ['upper ball stud', G.springCab, '30-3/4 in, 10 in'], ['bed stop', G.stop, P.stopFront > 0 ? '6 in below the 87-1/8 in top, 7-3/8 in; drill after a trial closing' : '6 in below the top; set back so the bed closes plumb; drill after a trial closing']];
   const xR = v.P([0, yE, 0])[0] + 6;
   pts.forEach(([name, q], i) => {
     const pq = v.Puv([q[0], q[1]]);
@@ -682,8 +689,14 @@ function pageHardware(doc, M, S, info) {
     s.text(xR, pq[1] - 3, `kit: ${pts[i][2]}`, { size: 5, va: 'middle', color: GREY });
   });
   v.dimAt([0, G.yB1, G.zBm0], [0, yE, G.zBm0], v.P([0, 0, G.zBm0])[1] + 4, 'h', null, { size: 5.4 });
+  {
+    const X = C.gapFacts(P, G), need = X.nut < 2;
+    for (const off of need ? [-10, 10] : [0]) s.poly(nutPath(G, v, off), { lw: need ? 0.25 : 0.15, color: need ? BAD : GREY, dash: need ? null : [1, 0.7] });
+    const mid = nutPath(G, v, 0)[22];
+    s.leader(mid, [ox + 4, oz - 9], need ? `relief for the lower stud nuts, if yours need it: ${f0(Math.max(1, Math.ceil(2 - X.nut)))} deep, 20 wide, R${f0(G.springArm)} about the pivot hole` : `path of the lower stud's nut, R${f0(G.springArm)} about the pivot`, { size: 5, ha: 'left', color: need ? BAD : GREY });
+  }
   s.text(ox - 18, 276, 'BED-CABINET SIDE B1  1:10', { size: 7.5, weight: 'bold' });
-  s.para(ox - 18, 272, s.wrap(`From inside the bay; front edge on the right. Heights from the floor. Depths from B1's front edge, not the kit's numbers: the bed face stands ${fh(G.yF - yE)} mm proud of the carcass here. ${P.packer ? 'Plates screw to the ' + fh(P.Tpacker) + ' mm packers (shaded).' : ''}`, 92, 5.4), { size: 5.4, color: GREY });
+  s.para(ox - 18, 272, s.wrap(`From inside the bay; front edge on the right. Heights from the floor. Depths from B1's front edge, not the kit's numbers: the bed face stands ${fh(G.yF - yE)} mm proud of the carcass here. ${P.packer ? 'Plates screw to ' + fh(P.Tpacker) + ' mm pads (shaded); the lower ball-stud nuts sweep the side between them.' : ''}`, 92, 5.4), { size: 5.4, color: GREY });
 
   // 2. tower door, inside face: hinge cups
   const dx = 150, sd = 10, dy = 250 - Math.max(G.midDoor[1] - G.midDoor[0], G.topDoor[1] - G.topDoor[0]) / sd;
@@ -791,9 +804,147 @@ function pageHardware(doc, M, S, info) {
   s.finish();
 }
 
+/* ------------------------------------------------------------------ clearances
+   The model's clearance schedule, and three plan sections through the gap beside the bed at the kit's hardware,
+   drawn as true sections of the parts (the side on your right, bed closed). */
+function sectionAt(parts, z, filter) { // convex solids cut by the plane at height z, in top-view (u, v) = (-x, -y)
+  const out = [];
+  for (const p of parts) {
+    if (filter && !filter(p)) continue;
+    for (const sol of (p.draw || p.solids)) {
+      const pts = [];
+      for (const loop of sol.loops) {
+        const pl = C.loopPolyline(loop, 16), a = pl.map(q => C.to3(sol, q, 0)), b = pl.map(q => C.to3(sol, q, sol.len));
+        const cut = (A, B) => { const d1 = A[2] - z, d2 = B[2] - z; if (d1 === 0) pts.push(A); if (d1 * d2 < 0) { const t = d1 / (d1 - d2); pts.push([A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t]); } };
+        for (let i = 0; i < pl.length; i++) { const j = (i + 1) % pl.length; cut(a[i], a[j]); cut(b[i], b[j]); cut(a[i], b[i]); }
+      }
+      if (pts.length >= 3) { const h = hull(pts.map(q => [-q[0], -q[1]])); if (h.length >= 3) out.push({ p, poly: h }); }
+    }
+  }
+  return out;
+}
+function drawSection(s, v, items, win) { // true sections from sectionAt: plywood first, hardware on top
+  items.sort((a, b) => (a.p.hw && !a.p.mattress ? 1 : 0) - (b.p.hw && !b.p.mattress ? 1 : 0));
+  for (const it of items) {
+    const poly = clipPoly(it.poly, win); if (poly.length < 3) continue;
+    const pts = poly.map(v.Puv), hw = it.p.hw && !it.p.mattress;
+    const fill = it.p.mark === 'GS' ? [120, 126, 134] : hw ? (FILL[it.p.kind] || FILL.metal) : it.p.kind === 'front' ? CUT_FRONT : it.p.mattress ? FILL.mattress : CUT;
+    s.polyFill(pts.concat([pts[0]]), { fill, lw: hw ? 0.12 : LW_CUT, color: hw ? [30, 32, 36] : INK });
+  }
+}
+// the path the lower ball stud's nut sweeps on the bed-cabinet side, about the pivot, at radius springArm + off
+function nutPath(G, v, off) {
+  const t0 = Math.min(0, G.closedTh, G.fitTh) - 5 * Math.PI / 180, t1 = 95 * Math.PI / 180, pts = [];
+  const k = (G.springArm + (off || 0)) / G.springArm;
+  for (let i = 0; i <= 40; i++) { const q = C.rot2(G.springBed, G.pivot, t0 + (t1 - t0) * i / 40); pts.push(v.Puv([G.pivot[0] + (q[0] - G.pivot[0]) * k, G.pivot[1] + (q[1] - G.pivot[1]) * k])); }
+  return pts;
+}
+function pageClearances(doc, M, M45, M90, S, info) {
+  const { P, G } = M, K = C.KIT_HW;
+  const s = Sheet(doc, 6, info.total, 'CLEARANCES', '1:1, 1:7.5', info);
+  const SCH = C.clearanceSchedule(M);
+  const ST = { ok: [92, 150, 104], tight: ACC, clash: BAD, info: null };
+  const f1 = (v) => { const r = Math.round(v * 10) / 10; return Number.isInteger(r) ? String(r) : r.toFixed(1); };
+  // 1. plan sections through the gap at 1:1, left (the side on your right: |x| grows to the right, room at the bottom)
+  const X = (v) => -v;
+  const section = (ox, oy, z, xr, yr, title, sub) => {
+    const win = [xr[0], xr[1], -yr[1], -yr[0]];
+    const v = View(s, 'top', 1, [ox, oy], [win[0], win[2]]);
+    drawSection(s, v, sectionAt(M.parts.filter(p => !p.leg && p.name.indexOf('(L)') < 0), z), win);
+    const a0 = v.Puv([win[0], win[2]]), a1 = v.Puv([win[1], win[3]]);
+    s.rect(a0[0], a0[1], a1[0] - a0[0], a1[1] - a0[1], { lw: 0.2, dash: [2, 0.8, 0.4, 0.8] });
+    s.text(a0[0], a1[1] + 15.5, title, { size: 7.2, weight: 'bold' });
+    s.text(a0[0], a1[1] + 12, sub, { size: 5.4, color: GREY });
+    const chain = (xs, y, lvl, o) => { for (let i = 0; i < xs.length - 1; i++) v.dimAt([X(xs[i]), y, z], [X(xs[i + 1]), y, z], a1[1] + 2.5 + lvl * 5, 'h', f1(xs[i + 1] - xs[i]), Object.assign({ size: 5 }, (o && o[i]) || {})); };
+    return { v, a0, a1, chain, p: (x, y) => v.P([X(x), y, z]) };
+  };
+  const xr = [G.xFi - 26, G.xJ + 6];
+  // (a) at the lower ball stud
+  const yb = G.springBed[0];
+  const A = section(22, 196, G.springBed[1], xr, [G.yRail - 42, G.yRail + 26], 'AT THE LOWER BALL STUD  1:1', `bed closed, ${f0(G.springBed[1])} above the floor; the nut sweeps the side on a ${f0(G.springArm)} radius as the bed turns`);
+  A.chain([G.xFo, G.xFo + P.plateT, G.nutX, G.xB], yb, 0, [{ side: 'start' }, { side: 'over' }, { side: 'end', color: ACC }]);
+  A.chain([G.springBedX, G.xFo, G.xB], yb, 1, [{}, { side: 'end' }]);
+  A.v.dimAt([X(G.xFi - 20), G.yRail, 0], [X(G.xFi - 20), yb, 0], A.a0[0] - 4, 'v', f1(G.yRail - yb), { size: 5 });
+  s.text(A.a0[0] - 6.5, (A.a0[1] + A.a1[1]) / 2 + 22, "ball above the rail's top edge", { size: 4.6, color: GREY, angle: 90 });
+  for (const [lbl, yy, dir] of [['WALL', A.a1[1] - 3, 1], ['ROOM', A.a0[1] + 3, -1]]) { const xa = A.a0[0] + 3; s.arrow([xa, yy + dir * 3], [0, dir], { L: 1.6, W: 0.5, color: GREY }); s.line([xa, xa], [yy, yy + dir * 2], { lw: 0.15, color: GREY }); s.text(xa + 1.6, yy + dir * 1.2, lbl, { size: 4.6, color: GREY, va: 'middle' }); }
+  s.leader(A.p(G.springBedX - 4, yb + 4), [A.a0[0] + 6, A.a0[1] - 6], 'ball, in the spring\'s socket, 5/16 in over the rail', { size: 5, ha: 'left' });
+  s.leader(A.p((G.xFo + P.plateT + G.nutX) / 2, yb + 3), [A.a1[0] + 5, A.a1[1] - 14], 'nut and stud end', { size: 5, ha: 'left' });
+  s.leader(A.p(G.xFo + P.plateT / 2, G.yRail - 20), [A.a1[0] + 5, A.a1[1] - 22], 'lower ball-stud plate, its tab past the rail', { size: 5, ha: 'left' });
+  s.leader(A.p((G.xFi + G.xFo) / 2, G.yRail + 14), [A.a1[0] + 5, A.a0[1] + 8], 'side rail', { size: 5, ha: 'left' });
+  s.leader(A.p((G.xB + G.xJ) / 2, G.yRail + 14), [A.a1[0] + 5, A.a0[1] + 3], 'bed-cabinet side', { size: 5, ha: 'left' });
+  // (b) at the pivot
+  const yp = G.pivot[0];
+  const B = section(22, 108, G.pivot[1], xr, [yp - 26, yp + 26], 'AT THE PIVOT  1:1', `${f0(G.pivot[1])} above the floor`);
+  B.chain([G.xFi - P.plateT, G.xFi, G.xFo, G.xMount - P.plateT, G.xMount, G.xMount + K.barIn], yp, 0, [{ side: 'start' }, {}, { side: 'over' }, { side: 'over2' }, { side: 'end' }]);
+  B.chain([G.xFo, G.xMount], yp, 1, [{ color: ACC }]);
+  s.leader(B.p(G.xFo + 3, yp + 13), [B.a1[0] + 5, B.a0[1] + 12], 'plastic spacer on the bar', { size: 5, ha: 'left' });
+  s.leader(B.p(G.xMount - P.plateT / 2, yp + 20), [B.a1[0] + 5, B.a0[1] + 6], `male plate${P.packer ? ' on its pad' : ''}; bar 1/2 in into the side`, { size: 5, ha: 'left' });
+  s.leader(B.p(G.xFi - P.plateT / 2, yp - 20), [B.a1[0] + 5, B.a1[1] - 6], 'female plate, bush through the rail', { size: 5, ha: 'left' });
+  // (c) through the top of the gas spring
+  const zC = G.springCab[1] - 32;
+  const [ea, eb] = C.springEnds(G, { xCab: G.springCabX, xBed: G.springBedX, cab: G.springCab, bed: G.springBed }, 0);
+  const t = (ea[2] - zC) / (ea[2] - eb[2]), xc = ea[0] + (eb[0] - ea[0]) * t, yc = ea[1] + (eb[1] - ea[1]) * t, edge = xc + P.springD / 2;
+  const Cc = section(22, 30, zC, xr, [yc - 24, yc + 24], 'AT THE TOP OF THE GAS SPRING  1:1', `bed closed, ${f0(zC)} above the floor, just under the upper ball stud`);
+  Cc.chain([edge, G.xMount - P.plateT, G.xMount], yc, 0, [{ side: 'start', color: ACC }, { side: 'end' }]);
+  Cc.chain([xc, edge, G.xB], yc, 1, [{}, { side: 'end' }]);
+  for (const xx of [G.xFi, G.xFo]) { const q0 = Cc.p(xx, yc + 24), q1 = Cc.p(xx, yc - 24); s.line([q0[0], q1[0]], [q0[1], q1[1]], { lw: 0.15, dash: [1.2, 0.8], color: GREY }); }
+  s.text(Cc.p((G.xFi + G.xFo) / 2, yc + 24)[0], Cc.a0[1] - 4, `side rail's line; the rail is ${f0(G.yRail - yc)} nearer the room here`, { size: 5, color: GREY, ha: 'center' });
+  s.leader(Cc.p(xc - 6, yc + 6), [Cc.a1[0] + 5, Cc.a0[1] + 10], `gas spring body, ${f0(P.springD)}`, { size: 5, ha: 'left' });
+  s.leader(Cc.p(G.xMount - P.plateT / 2, yc - 15), [Cc.a1[0] + 5, Cc.a1[1] - 8], `upper ball-stud plate${P.packer ? ' on its pad' : ''}`, { size: 5, ha: 'left' });
+
+  // what is in the gap, and what to measure
+  const nx = 152, ny = 268;
+  s.heading(nx, ny, 'WHERE THE GAS SPRINGS RUN');
+  let yy = s.para(nx, ny - 6, s.wrap(`Not in the ${f1(P.gapHydr)} mm gap. Both ball studs point in: the lower one through a tab on its plate that reaches past the rail's top edge, the upper one off the bed-cabinet side${P.packer ? ' (on its pad)' : ''}. So each spring runs along the top edge of its rail, behind it with the bed closed, ${f1(SCH.groups[0].rows[2].here)} from the side. The gap holds the pivot spacer and plates, the bed stops and the lower stud's nut.`, 96, 5.6), { size: 5.6 });
+  const nutRow = SCH.groups[0].rows[1];
+  yy = s.para(nx, yy - 2, s.wrap(nutRow.st === 'ok' ? `The lower stud's nut clears the side by ${f1(nutRow.here)} (A2).` : `The lower stud's nut passes the side ${f1(nutRow.here)} away (A2). Measure yours from the plate's face against the rail to the end of the stud: up to ${f1(G.nutX - G.xFo + nutRow.here - 1)} passes with 1 to spare. More needs a relief routed ${f0(Math.max(1, Math.ceil(2 - nutRow.here)))} deep and 20 wide in each bed-cabinet side, on a ${f0(G.springArm)} radius about the pivot hole (drawn on sheet 5), before the sides go in; or a wider gap with pads under the plates.`, 96, 5.6), { size: 5.6, color: nutRow.st === 'ok' ? INK : BAD });
+  s.heading(nx, yy - 6, 'KIT SIZES USED: MEASURE YOURS', 'the booklet gives positions, not sizes; enter yours under Create-A-Bed hardware');
+  s.table(nx, yy - 13, [['', 66, 'left'], ['USED', 18, 'right'], ['ROWS', 14, 'left']], SCH.measure.map(([, what, used, rows]) => [what, used, rows]), { rowH: 4.2, size: 5.2, hsize: 5 });
+
+  // the springs through the swing, side view from inside the bay, cut just short of the bed-cabinet side
+  {
+    const se = 7.5, ex = 158, ez = 22;
+    const ve = View(s, 'side', se, [ex, ez], [G.yB1 - 6, 0]);
+    const cutX = G.xB - 0.5, band = (p) => p.name.indexOf('(R)') < 0;
+    const fixedK = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'K1'];
+    ve.parts(M.parts, { cut: cutX, filter: (p) => band(p) && ((!p.bed && (fixedK.includes(p.mark) || ['PV', 'BS', 'ST', 'B8', 'B9'].includes(p.mark))) || (p.bed && ['F2', 'F3', 'BS', 'PV'].includes(p.mark)) || p.mark === 'GS'), window: [G.yB1 - 6, G.yFb + 10, 0, G.springCab[1] + 70] });
+    for (const [Mx, st] of [[M45, { color: GREY, dash: [0.6, 0.6], lw: 0.12 }], [M90, { color: ACC, lw: 0.18 }]]) {
+      ve.outline(Mx.parts, { filter: (p) => band(p) && ((p.bed && ['F2', 'F3', 'BS'].includes(p.mark)) || p.mark === 'GS'), st, window: [G.yB1 - 6, G.yFb + 10, 0, G.springCab[1] + 70] });
+    }
+    const w0 = ve.Puv([G.yB1 - 6, 0]), w1 = ve.Puv([G.yFb + 10, G.springCab[1] + 70]);
+    s.line([w0[0], w1[0]], [w0[1], w0[1]], { lw: 0.35 });
+    const lo = (Mx, th) => ve.Puv(C.rot2(G.springBed, G.pivot, th));
+    s.leader(lo(M, 0), [w1[0] + 2, lo(M, 0)[1] + 6], 'closed', { size: 5, ha: 'left' });
+    s.leader(lo(M45, Math.PI / 4), [w1[0] + 2, lo(M45, Math.PI / 4)[1] + 14], '45 deg', { size: 5, ha: 'left', color: GREY });
+    s.leader(lo(M90, Math.PI / 2), [w1[0] + 2, lo(M90, Math.PI / 2)[1] + 22], 'down', { size: 5, ha: 'left', color: ACC });
+    s.poly(nutPath(G, ve, 0), { lw: 0.15, color: BAD, dash: [1, 0.7] });
+    const nm = nutPath(G, ve, 0)[30];
+    s.leader(nm, [w0[0] + 2, w0[1] - 5], `path of the lower stud's nut, R${f0(G.springArm)} about the pivot`, { size: 4.8, ha: 'left', color: BAD });
+    s.text(ex, w1[1] + 9.5, 'THE GAS SPRINGS THROUGH THE SWING  1:7.5', { size: 7.2, weight: 'bold' });
+    s.text(ex, w1[1] + 6, `from inside the bay, cut at the bed-cabinet side; closed, 45 deg (grey), down (amber)`, { size: 5.2, color: GREY });
+  }
+
+  // 2. the schedule, right
+  const x0 = 258;
+  s.heading(x0, 280, 'CLEARANCE SCHEDULE', 'every clearance the build depends on, from this design; mm');
+  const cols = [['', 4.5, 'center'], ['', 8, 'left'], ['CLEARANCE', 87, 'left'], ['NEEDS', 25, 'right'], ['HERE', 29.5, 'right']];
+  const tw = cols.reduce((a, c) => a + c[1], 0);
+  let y = s.table(x0, 273, cols, [], { rowH: 4.2, size: 5.4, hsize: 5 });
+  const n = SCH.groups.reduce((a, g) => a + g.rows.length, 0), rh = Math.min(4.2, (y - 47 - SCH.groups.length * 5.6) / n);
+  for (const g of SCH.groups) {
+    s.text(x0 + 1.4, y - 3.9, g.title, { size: 5.8, weight: 'bold' });
+    y = s.table(x0, y - 5.6, cols, g.rows.map(r => [ST[r.st], r.id, r.what, r.need, typeof r.here === 'number' && /^at \d/.test(r.note) ? `${f1(r.here)}, ${r.note.slice(3)} deg`.replace(' deg deg', ' deg') : typeof r.here === 'number' ? f1(r.here) : r.here]), { header: false, rowH: rh, size: 5.2, chipCol: 0, boldCol: 1 });
+  }
+  let lx = x0 + 1;
+  for (const [tt, c] of [['OK', ST.ok], ['LESS THAN IT NEEDS', ST.tight], ['PARTS MEET', ST.clash]]) { s.rect(lx, y - 5, 3, 2.2, { fill: c, lw: 0 }); s.text(lx + 4.2, y - 3.9, tt, { size: 5, va: 'middle' }); lx += 6.5 + s.tw(tt, 5); }
+  s.text(x0, y - 8.6, 'Swing rows: the closest approach while the bed turns, and the angle; parts only count when they share a band across the bed.', { size: 4.8, color: GREY });
+  void tw;
+  s.finish();
+}
+
 function pageCutList(doc, M, S, info) {
   const { P } = M;
-  const s = Sheet(doc, 6, info.total, 'CUT LIST', '-', info);
+  const s = Sheet(doc, 7, info.total, 'CUT LIST', '-', info);
   s.heading(14, 280, 'CUT LIST', `lengths along the grain where it matters; kerf ${P.kerf}, ${P.trim} trimmed off each sheet edge`);
   const rows = S.cut.map(r => [T_RGB[r.T] || GREY, r.mark, r.name, r.qty, r.T, f0(r.L), f0(r.W), r.grain ? 'yes' : '', r.band ? (r.band / 1000).toFixed(1) : '']);
   const cols = [['', 6, 'center'], ['MARK', 13, 'left'], ['PART', 70, 'left'], ['QTY', 10, 'right'], ['T', 9, 'right'], ['LENGTH', 16, 'right'], ['WIDTH', 16, 'right'], ['GRAIN', 12, 'center'], ['BAND m', 14, 'right']];
@@ -2143,8 +2294,8 @@ async function make(model, summary, progress) {
   const P = model.P;
   const nPlans = Math.ceil(summary.sheets.reduce((a, q) => a + q.bins.length, 0) / 8) || 0;
   const halves = detailHalves(model, summary), nDet = Math.ceil(halves.length / 2);
-  const info = { project: 'Murphy wardrobe', date: new Date().toISOString().slice(0, 10), total: 10 + nPlans + nDet, plansFrom: 7, plansTo: 6 + nPlans, seqFrom: 7 + nPlans,
-    detFrom: 9 + nPlans, nDet, halves, fixAt: 9 + nPlans + nDet, detSheet: {} };
+  const info = { project: 'Murphy wardrobe', date: new Date().toISOString().slice(0, 10), total: 11 + nPlans + nDet, plansFrom: 8, plansTo: 7 + nPlans, seqFrom: 8 + nPlans,
+    detFrom: 10 + nPlans, nDet, halves, fixAt: 10 + nPlans + nDet, detSheet: {} };
   halves.forEach((hv, i) => { if (hv.key) info.detSheet[hv.key] = info.detFrom + Math.floor(i / 2); });
   const tick = () => new Promise(r => setTimeout(r, 15));
   progress('Rendering views...', 0.1); await tick();
@@ -2192,10 +2343,12 @@ async function make(model, summary, progress) {
   pageBed(doc, model, summary, info);
   progress('Hardware positions...', 0.7); await tick();
   pageHardware(doc, model, summary, info);
+  progress('Clearances...', 0.74); await tick();
+  pageClearances(doc, model, M45, M90, summary, info);
   progress('Cut list...', 0.78); await tick();
   pageCutList(doc, model, summary, info);
   progress('Cutting plans...', 0.85); await tick();
-  pagesPlans(doc, model, summary, info, 7);
+  pagesPlans(doc, model, summary, info, 8);
   progress('Build sequence...', 0.9); await tick();
   pageSequence(doc, model, summary, I, info, 0);
   pageSequence(doc, model, summary, I, info, 1);

@@ -67,11 +67,20 @@ const DEFAULTS = {
   springLowOut: 15,     // ... about 5/8 in beyond the rail's top edge (plate overhangs, p.15, p.18)
   springUpFront: 254,   // upper ball stud 10 in back from the front (p.22)
   springUpZ: 781,       // ... 30-3/4 in above the floor in the kit's cabinet (p.22)
-  stopFront: 187.3,     // bed stop 7-3/8 in back from the front (p.22)
+  stopFront: 0,         // bed stop back from the face; 0 puts it where the closed bed stands plumb (kit: 7-3/8 in, p.22)
   stopBelowTop: 79.4,   // ... 6 in below the top of the 87-1/8 in vertical = 3-1/8 in below the frame top
-  packer: false,
-  packerH: 950,
-  packerDepth: 300,
+  packer: false,        // pads under the kit's cabinet-side plates, for a gap wider than the kit's 11 mm
+  // kit hardware sizes. The booklet gives positions, not sizes: these are typical, measure yours
+  springD: 22,          // gas spring body (you measured 22)
+  springRodD: 10,       // its rod: a 22 body is the 10/22 size
+  springEndD: 20,       // plastic ball sockets on the ends
+  springBodyL: 345,     // upper ball centre to the end of the body
+  studS: 12.7,          // ball-stud plate face to the ball centre (about 1/2 in, p.14 section)
+  plateT: 3.2,          // ball-stud and pivot plates, 1/8 in steel
+  nutStack: 7,          // lower ball-stud plate: nut and stud end standing off its outer face. The kit's 7/16 in gap leaves 7.9
+  stopD: 25.4,          // bed stop dome diameter
+  stopH: 12.7,          // ... and how far it stands off the cabinet side
+  legD: 19,             // fold-out leg tube, 3/4 in: its arm passes 3/8 in behind the 3 in foot rail (p.6, p.10)
   // around the bed
   ledge: true,          // headboard ledge at the back of the bed bay
   ledgeClear: 15,       // ledge front to the bed's swept envelope
@@ -146,6 +155,18 @@ function hingeFit(overlay) {
   best.S = HINGE_HW.S + best.H; best.cup = best.B + HINGE_HW.cup / 2;
   return best;
 }
+/* Create-A-Bed parts the booklet draws but does not size (typical; the sizes worth measuring are parameters).
+   Plates are [across the rail or side (y), along it (z)]. */
+const KIT_HW = {
+  lowPlate: { w: 89, l: 100, tab: 29, over: 6.4 }, // lower ball-stud plate: 29 past the rail's top edge, 1/4 in past its head end (p.15, p.18)
+  upPlate: { w: 76, l: 89 }, malePlate: { w: 76, l: 100 }, femalePlate: { w: 76, l: 76 },
+  bar: 15.9, barIn: 12.7, bush: 25.4, spacerD: 32, eclip: 6, // 5/8 in pivot bar, its 1/2 in end in the side (p.22); 1 in bush
+  ball: 13, collar: 13, collarT: 3, neck: 7, nutD: 14, // ball stud: hex collar on the ball side, nut on the other
+  sockBack: 10, sockLen: 28,                      // ball sockets: behind the ball centre, and ball centre to the body or rod
+  pad: { 'Pivot pad': [62, 80], 'Upper ball-stud pad': [60, 78], 'Bed-stop pad': [50, 70] }, // half sizes
+  stayD: [15, 6],                                  // flap gas stays: body and rod
+  legRailUp: 30,                                   // the legs' 3/4 in support rail, centre above the floor with the bed down
+};
 const PLY_DENSITY = 6.2e-7; // kg/mm3, birch-faced structural ply about 620 kg/m3
 
 function clone(o) { return JSON.parse(JSON.stringify(o)); }
@@ -166,9 +187,11 @@ function normParams(p) {
   num('pivotFromRail', 10, 300); num('pivotAboveHead', 30, 600); num('pinGap', 0, 60); num('cabPivotZ', 50, 600);
   num('legFromFoot', 20, 300); num('legFromTop', 10, 250);
   num('springLowAlong', 20, 600); num('springLowOut', -100, 100); num('springUpFront', 50, 600); num('springUpZ', 200, 1500);
-  num('stopFront', 50, 600); num('stopBelowTop', 10, 600);
+  num('stopFront', 0, 600); if (P.stopFront > 0 && P.stopFront < 50) P.stopFront = 50; num('stopBelowTop', 10, 600);
+  num('springD', 10, 40); num('springRodD', 4, 20); num('springEndD', 8, 40); num('springBodyL', 100, 700);
+  num('studS', 4, 40); num('plateT', 1, 10); num('nutStack', 0, 30); num('stopD', 8, 60); num('stopH', 2, 40); num('legD', 10, 40);
   num('headAngle', 0, 20); num('headH', 150, 1200); num('headGap', 0, 80); num('lockPinX', 50, 800); num('lockDepth', 5, 40);
-  num('packerH', 200, 2000); num('packerDepth', 80, 600);
+  delete P.packerH; delete P.packerDepth;
   num('ledgeClear', 0, 100); num('upstand', 0, 200); num('wallRail', 40, 200);
   num('steelH', 10, 40); num('steelT', 5, 20); num('twinSpacing', 40, 90);
   num('kerf', 0, 8); num('trim', 0, 30);
@@ -403,12 +426,46 @@ function derived(P) {
   // kit hardware in this cabinet (y from the wall, z from the floor). The kit's cabinet front = face-panel front.
   G.springCab = [G.yF - P.springUpFront, G.pivot[1] + (P.springUpZ - P.cabPivotZ)];
   G.springBed = [G.yRail - P.springLowOut, G.pivot[1] - P.springLowAlong]; // on the frame (closed)
-  G.stop = [G.yF - P.stopFront, G.zF1 - P.stopBelowTop];
+  // across the gap. The plastic spacer on each pivot bar and the male plate fill the kit's 7/16 in between the rail
+  // and the face the cabinet plates screw to. Both ball studs point in (p.14, p.22), so each spring runs along its
+  // rail's top edge, in line with the rail; only the plates, the lower stud's nut and the stop are in the gap.
+  G.springBedX = G.xFo - P.studS;                             // |x| of the lower ball (stud through the plate's tab)
+  G.springCabX = G.xMount - P.plateT - P.studS;               // |x| of the upper ball
+  G.nutX = G.xFo + P.plateT + P.nutStack;                     // |x| reached by the lower stud's nut and end
+  G.springArm = Math.hypot(G.springBed[0] - G.pivot[0], G.springBed[1] - G.pivot[1]); // the nut's path about the pivot
+  // bed stop: a dome on the cabinet side that the rail's top edge closes against. It catches the rail's outer corner
+  // where the dome stands effGap high, stopRho off its centre; by default it goes where that leaves the bed plumb.
+  G.stopReach = P.stopH - G.effGap;
+  G.stopRho = G.stopReach > 0 ? (P.stopD / 2) * Math.sqrt(Math.max(0, 1 - (G.effGap / P.stopH) ** 2)) : 0;
+  G.stop = [P.stopFront > 0 ? G.yF - P.stopFront : G.yRail - G.stopRho, G.zF1 - P.stopBelowTop];
+  // closed position: the bed turns back (negative) or stops short (positive) until its rail meets the domes
+  G.closedTh = G.stopReach > 0 ? -Math.atan2(G.yRail - (G.stop[0] + G.stopRho), G.stop[1] - G.pivot[1]) : 0;
+  G.leanTop = -(G.zF1 - G.pivot[1]) * Math.sin(G.closedTh);  // face panel's top behind the fronts (negative: proud)
+  // fitting the springs: the bed pushed back 3 in at the top, mattress off and stops out (assembly booklet p.5)
+  G.fitTh = -Math.atan2(76.2, G.zF1 - G.pivot[1]);
   // legs: pivot on the side rail near the foot end
   G.legPivot = [G.yRail + P.legFromTop, G.zF1 - P.legFromFoot];
   G.legArm = (G.zF1 + 20) - G.legPivot[1];
+  G.legD = P.legD;
   G.legPost = G.pivot[1] - (G.legPivot[0] - G.pivot[0]);       // height of the leg pivot once the bed is down
   G.legPostCab = P.cabPivotZ - (G.legPivot[0] - G.pivot[0]);
+  // flap gas stays: the flap end a quarter of the way down the flap's back, the fixed end low and well back on the side
+  // panel, so the stroke suits a real stay (closed length well over its stroke); force to hold the flap level
+  {
+    const zA = G.flapZ[1], ax = [G.yF, zA];
+    const fixed = [G.yC - Math.min(250, G.cD * 0.42), zA - Math.min(G.flapH * 0.8, zA - G.zBm1 - 30)], flap = [G.yFb - 12, zA - Math.min(90, G.flapH * 0.25)];
+    const at = (phi) => rot2(flap, ax, -phi), len = (phi) => { const q = at(phi); return Math.hypot(q[0] - fixed[0], q[1] - fixed[1]); };
+    const L0 = len(0), L1 = len(Math.PI / 2), q = at(Math.PI / 2), dy = q[0] - fixed[0], dz = q[1] - fixed[1];
+    const arm = Math.abs((ax[0] - fixed[0]) * dz - (ax[1] - fixed[1]) * dy) / Math.hypot(dy, dz);
+    const kg = G.flapW * G.flapH * T * PLY_DENSITY;
+    G.stay = { fixed, flap, L0, L1, stroke: L1 - L0, body: L1 - L0 + 45, arm, N: kg * 9.81 * G.flapH / 2 / 2 / Math.max(arm, 1) };
+    // stock gas stays run to about 500 long, with a stroke of a quarter of their length or more
+    G.stay.ok = L1 <= 500 && G.stay.stroke >= 0.25 * L1 && L0 >= G.stay.stroke + 90;
+    // ... and the stay's clearance to the shelf under it and the top over it as the flap opens
+    let clear = Infinity;
+    for (let i = 0; i <= 45; i++) { const q = at(i / 45 * Math.PI / 2); for (const r of [[G.yB1, G.yC, G.zBm0, G.zBm1], [G.yB1, G.yC, G.zTopB, G.zTop]]) clear = Math.min(clear, segRectDist(fixed, q, r) - KIT_HW.stayD[0] / 2); }
+    G.stay.clear = clear;
+  }
   // drawers
   G.runner = runnerFor(P, G.cD);
   G.boxW = G.towerIn - 2 * P.runnerClear;
@@ -575,11 +632,14 @@ function build(params, opts) {
     put({ mark: 'B1', name: `Bed-cabinet side (${S})`, grp: bgrp, kind: 'carcass', T, L: G.zBm0, W: G.cD, grain: true, band: G.zBm0,
       solids: [box(x0, x1, G.yB1, G.yC, 0, G.zBm0)] });
     if (P.packer) {
+      // a pad under each cabinet plate, no bigger than the plate and its screws: the lower stud's nut sweeps the side
+      // on a circle about the pivot between them, so it keeps the whole gap
       const [k0, k1] = sx(s, G.xB - P.Tpacker, G.xB);
-      put({ mark: 'B8', name: `Pivot packer (${S})`, grp: bgrp, kind: 'packer', T: P.Tpacker, L: P.packerH, W: P.packerDepth, grain: false,
-        solids: [box(k0, k1, G.yC - P.packerDepth, G.yC, 0, P.packerH)] });
-      put({ mark: 'B9', name: `Bed-stop packer (${S})`, grp: bgrp, kind: 'packer', T: P.Tpacker, L: 140, W: 100, grain: false,
-        solids: [box(k0, k1, G.stop[0] - 50, G.stop[0] + 50, G.stop[1] - 70, G.stop[1] + 70)] });
+      for (const [mk, nmP, q] of [['B8', 'Pivot pad', G.pivot], ['B8', 'Upper ball-stud pad', G.springCab], ['B9', 'Bed-stop pad', G.stop]]) {
+        const [hy, hz] = KIT_HW.pad[nmP];
+        put({ mark: mk, name: `${nmP} (${S})`, grp: bgrp, kind: 'packer', T: P.Tpacker, L: 2 * hz, W: 2 * hy, grain: false,
+          solids: [box(k0, k1, q[0] - hy, q[0] + hy, q[1] - hz, q[1] + hz)] });
+      }
     }
   }
   const stT = P.edgeSteel ? P.steelT : 0;
@@ -632,7 +692,7 @@ function build(params, opts) {
     G.flapHw.hinges.forEach((hx, k) => { const [c] = sx(s, hx, hx); flapHinge(c, S, k, anim); });
     G.flapHw.stays.forEach((hx, k) => {
       const [c] = sx(s, hx, hx);
-      const dyn = { type: 'stay', id: anim.id, x: c, fixed: [G.yC - 250, G.zBm1 + 50], flap: [G.yFb - 10, G.flapZ[1] - 150], axis: flapAxis };
+      const dyn = { type: 'stay', id: anim.id, x: c, fixed: G.stay.fixed, flap: G.stay.flap, axis: flapAxis, body: G.stay.body };
       put({ mark: 'FS', name: `Flap gas stay (${S}) ${k + 1}`, grp: 'hardware', kind: 'metal', hw: true, dyn, solids: staySolids(dyn, 0) });
     });
     const [lx] = sx(s, G.flapHw.latch, G.flapHw.latch);
@@ -714,24 +774,38 @@ function build(params, opts) {
   const hz = Math.min(G.zF1 - 150, Math.max(G.zF0 + 600, 1676));
   for (const hxv of [-70, 70]) fput({ mark: 'HD', name: 'Bed handle', grp: 'hardware', kind: 'metal', hw: true,
     solids: [cyl(12, [hxv, G.yF + 30, hz - 100], [hxv, G.yF + 30, hz + 100]), cyl(10, [hxv, G.yF, hz - 90], [hxv, G.yF + 30, hz - 90]), cyl(10, [hxv, G.yF, hz + 90], [hxv, G.yF + 30, hz + 90])] });
-  const [yp, zp] = G.pivot;
+  const [yp, zp] = G.pivot, K = KIT_HW, pt = P.plateT;
   for (const [S, s] of sides) {
-    // pivot: female plate inside the side rail (bush through a 1 in hole), male plate and bar on the cabinet side
-    fput({ mark: 'PV', name: `Female pivot plate (${S})`, grp: 'hardware', kind: 'metal', hw: true,
-      solids: [box(...sx(s, G.xFi - 4, G.xFi), yp - 38, yp + 38, zp - 38, zp + 38)] });
-    put({ mark: 'PV', name: `Male pivot plate and bar (${S})`, grp: 'hardware', kind: 'metal', hw: true,
-      solids: [box(...sx(s, G.xMount - 4, G.xMount), yp - 38, yp + 38, zp - 50, zp + 50), cyl(16, [s * (G.xMount - 4), yp, zp], [s * (G.xFi - 2), yp, zp])] });
-    // gas spring: lower ball stud plate on the outside of the rail (overhangs the head end 1/4 in), upper plate on the cabinet side
-    const [bs0, bs1] = sx(s, G.xFo, G.xFo + 3);
-    fput({ mark: 'BS', name: `Lower ball stud plate (${S})`, grp: 'hardware', kind: 'metal', hw: true,
-      solids: [box(bs0, bs1, G.springBed[0] - 20, G.springBed[0] + 55, G.zF0 - 6.4, G.zF0 + 76), cyl(12, [s * (G.xFo + 3), G.springBed[0], G.springBed[1]], [s * (G.xFo + 9), G.springBed[0], G.springBed[1]])] });
-    put({ mark: 'BS', name: `Upper ball stud plate (${S})`, grp: 'hardware', kind: 'metal', hw: true,
-      solids: [box(...sx(s, G.xMount - 4, G.xMount), G.springCab[0] - 32, G.springCab[0] + 32, G.springCab[1] - 45, G.springCab[1] + 45), cyl(12, [s * (G.xMount - 4), G.springCab[0], G.springCab[1]], [s * (G.xMount - 10), G.springCab[0], G.springCab[1]])] });
-    const sdyn = { type: 'spring', x: s * (G.xFo + G.effGap / 2 - 1), cab: G.springCab, bed: G.springBed };
+    const at = (x, q) => [s * x, q[0], q[1]];
+    const across = (x0, x1, q, d) => cyl(d, at(x0, q), at(x1, q)); // a short cylinder across the bed at (y, z) = q
+    const ball = (x, q) => [across(x - K.ball * 0.3, x + K.ball * 0.3, q, K.ball), across(x - K.ball / 2, x + K.ball / 2, q, K.ball * 0.72)];
+    // pivot: the female plate inside the rail with its bush through the 1 in hole; the male plate on the cabinet side,
+    // its bar's 1/2 in end in a pocket in the side, then the plastic spacer, the bush and an E-clip (p.17, p.22, assembly p.3)
+    fput({ mark: 'PV', name: `Female pivot plate and bush (${S})`, grp: 'hardware', kind: 'metal', hw: true,
+      solids: [box(...sx(s, G.xFi - pt, G.xFi), yp - K.femalePlate.w / 2, yp + K.femalePlate.w / 2, zp - K.femalePlate.l / 2, zp + K.femalePlate.l / 2),
+        across(G.xFi, G.xFo, G.pivot, K.bush)] });
+    put({ mark: 'PV', name: `Male pivot plate, bar and spacer (${S})`, grp: 'hardware', kind: 'metal', hw: true,
+      solids: [box(...sx(s, G.xMount - pt, G.xMount), yp - K.malePlate.w / 2, yp + K.malePlate.w / 2, zp - K.malePlate.l / 2, zp + K.malePlate.l / 2),
+        across(G.xFi - pt - K.eclip, G.xMount + K.barIn, G.pivot, K.bar),
+        across(G.xMount - Math.max(pt + 1, P.pinGap), G.xMount - pt, G.pivot, K.spacerD)] });
+    // gas spring. The lower plate sits on the rail's outer face at the head end with a tab past the rail's top edge;
+    // its stud goes through the tab, nut outside in the gap, ball over the rail's top edge 5/16 in clear of it (p.14-16,
+    // p.18). The upper plate is on the cabinet side, its nut in a hole in the side, ball pointing in (p.22).
+    const lp = K.lowPlate;
+    fput({ mark: 'BS', name: `Lower ball-stud plate (${S})`, grp: 'hardware', kind: 'metal', hw: true,
+      solids: [box(...sx(s, G.xFo, G.xFo + pt), G.yRail - lp.tab, G.yRail - lp.tab + lp.w, G.zF0 - lp.over, G.zF0 - lp.over + lp.l),
+        across(G.xFo + pt, G.nutX, G.springBed, K.nutD), across(G.xFo - K.collarT, G.xFo, G.springBed, K.collar),
+        across(G.springBedX, G.xFo - K.collarT, G.springBed, K.neck), ...ball(G.springBedX, G.springBed)] });
+    put({ mark: 'BS', name: `Upper ball-stud plate (${S})`, grp: 'hardware', kind: 'metal', hw: true,
+      solids: [box(...sx(s, G.xMount - pt, G.xMount), G.springCab[0] - K.upPlate.w / 2, G.springCab[0] + K.upPlate.w / 2, G.springCab[1] - K.upPlate.l / 2, G.springCab[1] + K.upPlate.l / 2),
+        across(G.xMount, G.xMount + 8, G.springCab, K.nutD), across(G.xMount - pt - K.collarT, G.xMount - pt, G.springCab, K.collar),
+        across(G.springCabX, G.xMount - pt - K.collarT, G.springCab, K.neck), ...ball(G.springCabX, G.springCab)] });
+    const sdyn = { type: 'spring', xCab: s * G.springCabX, xBed: s * G.springBedX, cab: G.springCab, bed: G.springBed,
+      d: P.springD, rod: P.springRodD, end: P.springEndD, body: P.springBodyL };
     put({ mark: 'GS', name: `Gas spring (${S})`, grp: 'hardware', kind: 'metal', hw: true, dyn: sdyn, solids: springSolids(G, sdyn, bedTh) });
-    // bed stop: a pin with a bumper reaching across the gap behind the rail's top edge
+    // bed stop: a rubber dome on the cabinet side, behind the rail's top edge; the rail's outer corner closes onto it
     put({ mark: 'ST', name: `Bed stop (${S})`, grp: 'hardware', kind: 'rubber', hw: true,
-      solids: [cyl(28, [s * G.xMount, G.stop[0], G.stop[1]], [s * (G.xFo - 13), G.stop[0], G.stop[1]])] });
+      solids: [[0, 0.5, 1], [0.5, 0.85, 0.866], [0.85, 1, 0.527]].map(([a, b, k]) => across(G.xMount - b * P.stopH, G.xMount - a * P.stopH, G.stop, P.stopD * k)) });
     // legs: L-shaped tube on a plate inside the rail, schematic
     fput({ mark: 'LG', name: `Leg pivot plate (${S})`, grp: 'hardware', kind: 'metal', hw: true,
       solids: [box(...sx(s, G.xFi - 3, G.xFi), G.legPivot[0] - 19, G.legPivot[0] + 19, G.legPivot[1] - 32, G.legPivot[1] + 32)] });
@@ -758,7 +832,9 @@ function build(params, opts) {
   if (P.headboard) {
     const a = P.headAngle * Math.PI / 180, Th = P.Thead, H = P.headH;
     const z0 = G.ledge && !G.ledge.skipped ? G.ledge.top : Math.round(C.open.mattTop);
-    const y0 = Math.floor(C.open.mattHead - P.headGap);
+    // behind the mattress's head as it comes down past the backrest's foot, and behind the closed mattress's back
+    // face (and its straps) too
+    const y0 = Math.floor(Math.min(C.open.mattHead, C.mattBack, G.yM0 - 3) - P.headGap);
     const n = [-Math.cos(a), -Math.sin(a)];
     const F0 = [y0, z0], F1 = [y0 - H * Math.sin(a), z0 + H * Math.cos(a)];
     const B0 = [F0[0] + Th * n[0], F0[1] + Th * n[1]], B1 = [F1[0] + Th * n[0], F1[1] + Th * n[1]];
@@ -810,23 +886,27 @@ function legSolids(G, x, th, rotated) {
   const deg = th * 180 / Math.PI;
   const [p0, p1, p2] = legGeom(G, legPsi(deg));
   const q = (p) => { const w = [x, p[0], p[1]]; return th ? rotYZ(w, G.pivot, th) : w; };
-  const out = [cyl(25, q(p0), q(p1)), cyl(25, q(p1), q(p2))];
-  const t = (G.legPost - 14) / G.legPost, pb = [p1[0] + (p2[0] - p1[0]) * t, p1[1] + (p2[1] - p1[1]) * t];
+  const out = [cyl(G.legD, q(p0), q(p1)), cyl(G.legD, q(p1), q(p2))];
+  const t = (G.legPost - KIT_HW.legRailUp) / G.legPost, pb = [p1[0] + (p2[0] - p1[0]) * t, p1[1] + (p2[1] - p1[1]) * t];
   if (x > 0) out.push(cyl(19, q(pb), [-x, ...q(pb).slice(1)])); // the leg support rail, carried by the right-hand leg
   void rotated;
   return out;
 }
-// gas spring between the cabinet stud (fixed) and the bed stud (turns with the bed): body at the cabinet end ("mount this end up")
+// gas spring between the cabinet stud (fixed) and the bed stud (turns with the bed): body at the cabinet end ("mount
+// this end up"). As segments [a, b, dia, kind] from the upper ball down: socket, body, rod, socket.
 function springEnds(G, dyn, th) {
   const b = rot2(dyn.bed, G.pivot, th);
-  return [[dyn.x, dyn.cab[0], dyn.cab[1]], [dyn.x, b[0], b[1]]];
+  return [[dyn.xCab, dyn.cab[0], dyn.cab[1]], [dyn.xBed, b[0], b[1]]];
 }
-function tubeSolids(a, b, bodyLen, dBody, dRod) {
-  const d = sub(b, a), L = Math.hypot(d[0], d[1], d[2]), u = mul(d, 1 / L);
-  const m = add(a, mul(u, Math.min(bodyLen, L - 40)));
-  return [cyl(dBody, a, m), cyl(dRod, m, b)];
+function tubeSegs(a, b, bodyLen, dBody, dRod, dEnd) {
+  const d = sub(b, a), L = Math.hypot(d[0], d[1], d[2]), u = mul(d, 1 / L), at = (t) => add(a, mul(u, t));
+  const e = dEnd ? KIT_HW.sockLen : 0, k = KIT_HW.sockBack, m = Math.max(e + 1, Math.min(bodyLen, L - e - 10));
+  const segs = [[at(e), at(m), dBody, 'body'], [at(m), at(L - e), dRod, 'rod']];
+  if (dEnd) { segs.unshift([at(-k), at(e), dEnd, 'end']); segs.push([at(L - e), at(L + k), dEnd, 'end']); }
+  return segs;
 }
-function springSolids(G, dyn, th) { const [a, b] = springEnds(G, dyn, th); return tubeSolids(a, b, 390, 14, 8); }
+function springSegs(G, dyn, th) { const [a, b] = springEnds(G, dyn, th); return tubeSegs(a, b, dyn.body, dyn.d, dyn.rod, dyn.end); }
+function springSolids(G, dyn, th) { return springSegs(G, dyn, th).map(([a, b, d]) => cyl(d, a, b)); }
 // flap gas stay: fixed end on the side panel, moving end on the flap (flap opens about axis [y, z], positive = up and out)
 function stayEnds(dyn, phi) {
   const [ay, az] = dyn.axis, c = Math.cos(phi), s = Math.sin(phi);
@@ -845,33 +925,41 @@ function linkEnds(dyn, t) {
   });
 }
 function linkSolids(dyn, t) { return linkEnds(dyn, t).map(([a, b]) => cyl(5, a, b)); }
-function staySolids(dyn, phi) { const [a, b] = stayEnds(dyn, phi); return tubeSolids(a, b, 150, 15, 6); }
+function staySegs(dyn, phi) { const [a, b] = stayEnds(dyn, phi); return tubeSegs(a, b, dyn.body || 150, KIT_HW.stayD[0], KIT_HW.stayD[1]); }
+function staySolids(dyn, phi) { return staySegs(dyn, phi).map(([a, b, d]) => cyl(d, a, b)); }
+// the moving tubes as segments, for the viewer: spring (state: bed angle, rad), stay (flap angle, rad), links (0..1 open)
+function dynSegs(G, dyn, state) {
+  if (dyn.type === 'spring') return springSegs(G, dyn, state);
+  if (dyn.type === 'stay') return staySegs(dyn, state);
+  return linkEnds(dyn, state).map(([a, b]) => [a, b, 5, 'rod']);
+}
 
 /* ------------------------------------------------------------------ swing clearances
-   Everything in the (y, z) side profile within the bed's width. The bed turns
-   through 0..90 deg about the pivot; sampled points are checked against the fixed
-   obstacles. Negative clearance = collision. */
+   The side profile (y, z) of everything that turns with the bed and everything fixed around it, each with the band of
+   |x| it occupies. The bed turns from its closed position (on the stops) to 90 deg about the pivot; each moving shape
+   is checked against the fixed ones that share part of its x band. The gas springs are capsules between their balls,
+   one end fixed and one turning with the bed, checked against both. Negative clearance = collision. */
 function bedProfile(P, G) {
-  const sh = [];
-  const rect = (name, y0, y1, z0, z1, soft) => sh.push({ name, soft: !!soft, pts: [[y0, z0], [y1, z0], [y1, z1], [y0, z1]] });
-  rect('face panel', G.yFb, G.yF, G.zFace0, G.zF1);
-  sh.push({ name: 'side rail', pts: loopPolyline(rectLoopR01(G.yRail, G.zF0, G.yFb, G.zF1, P.railR), 10) });
-  rect('head rail', G.yFb - P.headRailD, G.yFb, G.zF0, G.zF0 + P.T);
-  rect('foot rail', G.yFb - P.footRailD, G.yFb, G.zF1 - P.T, G.zF1);
-  rect('mattress support', G.ySup0, G.ySup1, G.zF0 + P.T, G.zF1 - P.T);
-  rect('mattress', G.yM0, G.yM1, G.zM0, G.zM1, true);
-  sh.push({ name: 'stowed legs', open: true, pts: legGeom(G, 180) });
+  const sh = [], K = KIT_HW;
+  const rect = (name, y0, y1, z0, z1, x, o) => sh.push(Object.assign({ name, x, pts: [[y0, z0], [y1, z0], [y1, z1], [y0, z1]] }, o || {}));
+  rect('face panel', G.yFb, G.yF, G.zFace0, G.zF1, [0, G.xFo + P.faceOverhang]);
+  sh.push({ name: 'side rail', x: [G.xFi, G.xFo], pts: loopPolyline(rectLoopR01(G.yRail, G.zF0, G.yFb, G.zF1, P.railR), 10) });
+  rect('head rail', G.yFb - P.headRailD, G.yFb, G.zF0, G.zF0 + P.T, [0, G.xFi]);
+  rect('foot rail', G.yFb - P.footRailD, G.yFb, G.zF1 - P.T, G.zF1, [0, G.xFi]);
+  rect('mattress support', G.ySup0, G.ySup1, G.zF0 + P.T, G.zF1 - P.T, [0, G.xFi]);
+  rect('mattress', G.yM0, G.yM1, G.zM0, G.zM1, [0, P.mW / 2], { soft: true, mattress: true });
+  for (const zs of [G.zM1 - 406, G.zM0 + 406]) rect('mattress strap', G.yM0 - 3, G.yM0, zs - 20, zs + 20, [0, P.mW / 2 + 3], { soft: true, mattress: true });
+  const lp = K.lowPlate, q = G.springBed, r = K.nutD / 2;
+  rect('lower ball-stud plate', G.yRail - lp.tab, G.yRail - lp.tab + lp.w, G.zF0 - lp.over, G.zF0 - lp.over + lp.l, [G.xFo, G.xFo + P.plateT]);
+  rect('lower stud nut', q[0] - r, q[0] + r, q[1] - r, q[1] + r, [G.xFo + P.plateT, G.nutX], { nut: true }); // its x clearance to the side is checked on its own
   return sh;
 }
-function samplePoly(pts, step, closed) {
-  const out = [];
-  const n = pts.length, m = closed === false ? n - 1 : n;
-  for (let i = 0; i < m; i++) {
-    const a = pts[i], b = pts[(i + 1) % n], L = Math.hypot(b[0] - a[0], b[1] - a[1]), k = Math.max(1, Math.ceil(L / step));
-    for (let j = 0; j < k; j++) out.push([a[0] + (b[0] - a[0]) * j / k, a[1] + (b[1] - a[1]) * j / k]);
-  }
-  if (closed === false) out.push(pts[n - 1]);
-  return out;
+// the legs at a bed angle (deg), in the bed's own coordinates: the tube, and the support rail between the feet
+function legShapes(P, G, deg) {
+  const [p0, p1, p2] = legGeom(G, legPsi(deg)), t = (G.legPost - KIT_HW.legRailUp) / G.legPost;
+  const pb = [p1[0] + (p2[0] - p1[0]) * t, p1[1] + (p2[1] - p1[1]) * t];
+  return [{ name: 'legs', open: true, legs: true, r: G.legD / 2, x: [G.xFi - 14 - G.legD / 2, G.xFi - 14 + G.legD / 2], pts: [p0, p1, p2] },
+    { name: 'leg support rail', open: true, r: 9.5, x: [0, G.xFi - 14], pts: [pb, pb] }];
 }
 function rectDist(p, r) { // signed distance, positive outside; r = [y0, y1, z0, z1]
   const dy = Math.max(r[0] - p[0], 0, p[0] - r[1]), dz = Math.max(r[2] - p[1], 0, p[1] - r[3]);
@@ -879,19 +967,31 @@ function rectDist(p, r) { // signed distance, positive outside; r = [y0, y1, z0,
   return -Math.min(p[0] - r[0], r[1] - p[0], p[1] - r[2], r[3] - p[1]);
 }
 function obstacles(P, G, withAdded) {
-  const ob = [];
-  ob.push({ name: 'floor', rect: [-1e5, 1e5, -1e5, 0] });
-  ob.push({ name: 'back wall', rect: [-1e5, 0, -1e5, 1e5] });
-  ob.push({ name: 'shelf over the bed', rect: [G.yB1, G.yC, G.zBm0, G.zBm1] });
-  if (G.steel) ob.push({ name: 'steel flat under the shelf edge', rect: [G.steel.y0, G.steel.y1, G.steel.z0, G.steel.z1] });
-  ob.push({ name: 'wall rail under the shelf', rect: [G.yB1, G.yB1 + P.T, G.zBm0 - P.wallRail, G.zBm0] });
-  ob.push({ name: 'flaps', rect: [G.yFb, G.yF, G.flapZ[0], G.flapZ[1]] });
+  const ob = [], K = KIT_HW, all = [0, 1e5];
+  const add = (name, rect, x, o) => ob.push(Object.assign({ name, rect, x }, o || {}));
+  const around = (q, w, l) => [q[0] - w / 2, q[0] + w / 2, q[1] - l / 2, q[1] + l / 2];
+  add('floor', [-1e5, 1e5, -1e5, 0], all);
+  add('back wall', [-1e5, 0, -1e5, 1e5], all);
+  add('shelf over the bed', [G.yB1, G.yC, G.zBm0, G.zBm1], [0, G.xJ]);
+  if (G.steel) add('steel flat under the shelf edge', [G.steel.y0, G.steel.y1, G.steel.z0, G.steel.z1], [0, G.xB]);
+  add('wall rail under the shelf', [G.yB1, G.yB1 + P.T, G.zBm0 - P.wallRail, G.zBm0], [0, G.xB]);
+  add('flaps', [G.yFb, G.yF, G.flapZ[0], G.flapZ[1]], [G.flapX[0], G.flapX[1]]);
+  // the bed-cabinet sides and what is fixed to them
+  add('bed-cabinet side', [G.yB1, G.yC, 0, G.zBm0], [G.xB, G.xJ], { side: true });
+  if (P.packer) for (const [nm, q] of [['pivot pad', G.pivot], ['upper ball-stud pad', G.springCab], ['bed-stop pad', G.stop]]) {
+    const [hy, hz] = K.pad[nm[0].toUpperCase() + nm.slice(1)];
+    add(nm, [q[0] - hy, q[0] + hy, q[1] - hz, q[1] + hz], [G.xB - P.Tpacker, G.xB], { side: true });
+  }
+  add('male pivot plate', around(G.pivot, K.malePlate.w, K.malePlate.l), [G.xMount - P.plateT, G.xMount]);
+  add('upper ball-stud plate', around(G.springCab, K.upPlate.w, K.upPlate.l), [G.xMount - P.plateT, G.xMount]);
+  // the side rail closes onto the stops: that contact is the point of them, so only other parts are checked
+  add('bed stops', around(G.stop, P.stopD, P.stopD), [G.xMount - P.stopH, G.xMount], { skip: ['side rail'] });
   if (withAdded) {
-    if (G.kickC >= 15) ob.push({ name: 'kick board under the bed', rect: [G.yFb, G.yF, 0, G.kickC] });
-    if (G.ledge && !G.ledge.skipped) ob.push({ name: 'headboard ledge', rect: [G.yB1, G.ledge.y, 0, G.ledge.top] });
+    if (G.kickC >= 15) add('kick board under the bed', [G.yFb, G.yF, 0, G.kickC], [0, G.plankL / 2]);
+    if (G.ledge && !G.ledge.skipped) add('headboard ledge', [G.yB1, G.ledge.y, 0, G.ledge.top], [0, G.xB]);
     if (G.head && !G.head.skipped) {
-      ob.push({ name: 'headboard backrest', rect: [Math.min(G.head.B1[0], G.head.B0[0]), G.head.y0, G.head.B0[1], G.head.top] });
-      ob.push({ name: 'bedside shelf', rect: [G.yB1, G.head.capY, G.head.top, G.head.top + P.Thead] });
+      add('headboard backrest', [Math.min(G.head.B1[0], G.head.B0[0]), G.head.y0, G.head.B0[1], G.head.top], [0, G.xB]);
+      add('bedside shelf', [G.yB1, G.head.capY, G.head.top, G.head.top + P.Thead], [0, G.xB]);
     }
   }
   return ob;
@@ -913,7 +1013,45 @@ function segRectDist(a, b, r) { // a, b points; r = [y0, y1, z0, z1]; negative w
   }
   return d;
 }
+// 2D helpers for the springs against the turning bed parts (polygons)
+function ptSegD(p, a, b) {
+  const dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz;
+  const t = L2 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dz) / L2)) : 0;
+  return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dz);
+}
+function segsCross(a, b, c, d) {
+  const o = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+  return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0;
+}
+function inPoly2(p, poly) {
+  let c = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const a = poly[i], b = poly[j]; if ((a[1] > p[1]) !== (b[1] > p[1]) && p[0] < (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0]) c = !c; }
+  return c;
+}
+function segPolyDist(a, b, poly) { // negative when the segment enters the polygon
+  let d = Infinity;
+  for (let i = 0; i < poly.length; i++) {
+    const c = poly[i], e = poly[(i + 1) % poly.length];
+    if (segsCross(a, b, c, e)) return -0.1;
+    d = Math.min(d, ptSegD(a, c, e), ptSegD(b, c, e), ptSegD(c, a, b), ptSegD(e, a, b));
+  }
+  if (inPoly2(a, poly) || inPoly2(b, poly)) return -Math.max(0.1, Math.min(...[a, b].map(p => Math.min(...poly.map((c, i) => ptSegD(p, c, poly[(i + 1) % poly.length]))))));
+  return d;
+}
+const xOverlap = (a, b) => Math.min(a[1], b[1]) - Math.max(a[0], b[0]) > 0.05;
+// a clash between parts that only just share an x band is only as deep as that sliver
+const xDepth = (d, a, b) => d < 0 ? -Math.min(-d, Math.min(a[1], b[1]) - Math.max(a[0], b[0])) : d;
+// the springs as capsules in the side profile at bed angle th (the left one, |x| as they are): each socket wraps its
+// ball, so its capsule runs from the ball centre to where the body or rod starts
+function springCaps(G, th) {
+  const P = G.P, [a, b] = springEnds(G, { xCab: G.springCabX, xBed: G.springBedX, cab: G.springCab, bed: G.springBed }, th);
+  const d = sub(b, a), L = Math.hypot(d[0], d[1], d[2]), u = mul(d, 1 / L), at = (t) => add(a, mul(u, t));
+  const e = KIT_HW.sockLen, m = Math.max(e + 1, Math.min(P.springBodyL, L - e - 10));
+  const cap = (name, p, q, dia) => ({ name, a: [p[1], p[2]], b: [q[1], q[2]], r: dia / 2, x: [Math.min(p[0], q[0]) - dia / 2, Math.max(p[0], q[0]) + dia / 2] });
+  return [cap('upper socket', a, at(e), P.springEndD), cap('spring body', at(e), at(m), P.springD), cap('spring rod', at(m), at(L - e), P.springRodD), cap('lower socket', at(L - e), b, P.springEndD)];
+}
 function clearances(P, G, withAdded) {
+  G.P = P;
   const shapes = bedProfile(P, G);
   const ob = obstacles(P, G, withAdded);
   const res = ob.map(o => ({ name: o.name, min: Infinity, part: '', angle: 0 }));
@@ -926,29 +1064,173 @@ function clearances(P, G, withAdded) {
     faceUnder: Math.min(...fo.map(p => p[1])),
     reach: Math.max(...fo.map(p => p[0])),
   };
-  const lowZ = open.mattTop + 60;
-  let minY = Infinity, maxZ = -Infinity, minZ = Infinity;
-  const steps = 180;
-  for (let i = 0; i <= steps; i++) {
-    const th = (i / steps) * Math.PI / 2;
-    for (const sh of shapes) {
-      const q = sh.pts.map(p => rot2(p, G.pivot, th));
-      for (const p of q) { if (p[1] < lowZ && p[0] < minY) minY = p[0]; if (p[1] > maxZ) maxZ = p[1]; if (p[1] < minZ) minZ = p[1]; }
+  const lowZ = open.mattTop + 60, zBack = open.mattTop - 10;
+  let minY = Infinity, maxZ = -Infinity, minZ = Infinity, mattBack = Infinity; // mattBack: furthest back the mattress gets near and above its open top
+  // the springs: against everything fixed or turning that shares their x band (their own plates and studs excepted)
+  const springRes = new Map(), noteS = (name, d, part, deg) => { const r = springRes.get(name); if (!r || d < r.min) springRes.set(name, { name, min: d, part, angle: deg }); };
+  const legsRes = { floorBefore: Infinity, floorAt90: Infinity };
+  const th0 = Math.min(0, G.closedTh || 0), steps = 180;
+  const run = (th, opts) => {
+    const deg = th * 180 / Math.PI, list = shapes.filter(sh => !(opts.noMattress && sh.mattress)).concat(opts.noLegs ? [] : legShapes(P, G, deg));
+    const world = list.map(sh => ({ sh, q: sh.pts.map(p => rot2(p, G.pivot, th)) }));
+    for (const { sh, q } of world) {
+      if (!sh.legs && sh.name !== 'leg support rail') for (const p of q) {
+        if (p[1] < lowZ && p[0] < minY) minY = p[0];
+        if (sh.mattress && !opts.fit && p[1] >= zBack && p[0] < mattBack) mattBack = p[0];
+        if (!opts.fit) { if (p[1] > maxZ) maxZ = p[1]; if (p[1] < minZ) minZ = p[1]; }
+      }
+      if (sh.legs) { const foot = q[q.length - 1][1]; if (deg > 89.5) legsRes.floorAt90 = Math.min(legsRes.floorAt90, foot); else legsRes.floorBefore = Math.min(legsRes.floorBefore, foot); }
       const n = q.length, m = sh.open ? n - 1 : n;
-      for (let e = 0; e < m; e++) {
-        const a = q[e], b = q[(e + 1) % n];
-        for (let k = 0; k < ob.length; k++) {
-          const d = segRectDist(a, b, ob[k].rect);
-          if (d < res[k].min) { res[k].min = d; res[k].part = sh.name; res[k].angle = i * 90 / steps; }
-        }
+      for (let k = 0; k < ob.length; k++) {
+        const o = ob[k];
+        if (!xOverlap(sh.x, o.x) || (o.skip && o.skip.includes(sh.name)) || (sh.legs && o.name === 'floor') || (sh.nut && o.side)) continue;
+        let d = Infinity;
+        for (let e = 0; e < m; e++) d = Math.min(d, segRectDist(q[e], q[(e + 1) % n], o.rect) - (sh.r || 0));
+        d = xDepth(d, sh.x, o.x);
+        const tgt = opts.fit ? opts.fit : res;
+        if (d < tgt[k].min) { tgt[k].min = d; tgt[k].part = sh.name; tgt[k].angle = deg; }
       }
     }
-  }
+    if (opts.fit) return;
+    for (const c of springCaps(G, th)) {
+      for (const o of ob) if (xOverlap(c.x, o.x)) noteS(o.name, xDepth(segRectDist(c.a, c.b, o.rect) - c.r, c.x, o.x), c.name, deg);
+      for (const { sh, q } of world) if (!sh.open && !sh.mattress && xOverlap(c.x, sh.x) && !/^lower (ball-stud plate|stud nut)$/.test(sh.name)) noteS(sh.name, xDepth(segPolyDist(c.a, c.b, q) - c.r, c.x, sh.x), c.name, deg);
+    }
+  };
+  for (let i = 0; i <= steps; i++) run(th0 + (i / steps) * (Math.PI / 2 - th0), {});
+  // fitting the springs: the bed pushed back past closed, mattress off, stops out, legs folded
+  const fit = ob.map(o => ({ name: o.name, min: Infinity, part: '', angle: 0 }));
+  run(G.fitTh, { fit, noMattress: true, noLegs: false });
+  const fitMin = fit.filter(r => r.name !== 'bed stops' && isFinite(r.min)).sort((a, b) => a.min - b.min)[0] || null;
   // tallest kick board under the bed that stays outside the circle swept by the face panel's bottom edge
   const rMax = Math.max(Math.hypot(G.yFb - G.pivot[0], G.zFace0 - G.pivot[1]), Math.hypot(G.yF - G.pivot[0], G.zFace0 - G.pivot[1]));
   const dy = Math.max(0, G.yFb - G.pivot[0], G.pivot[0] - G.yF);
   const kickMax = G.pivot[1] - Math.sqrt(Math.max(0, (rMax + 6) * (rMax + 6) - dy * dy));
-  return { list: res, minY, maxZ, minZ, kickMax, open };
+  // spring lengths, ball centre to ball centre: closed, open and where it is snapped on
+  const sLen = (th) => { const [a, b] = springEnds(G, { xCab: G.springCabX, xBed: G.springBedX, cab: G.springCab, bed: G.springBed }, th); return Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]); };
+  const spring = { list: [...springRes.values()].filter(r => isFinite(r.min)).sort((a, b) => a.min - b.min), closed: sLen(G.closedTh || 0), open: sLen(Math.PI / 2), fitted: sLen(G.fitTh) };
+  delete G.P;
+  return { list: res.filter(r => isFinite(r.min) || r.name === 'back wall' || r.name === 'floor'), minY, maxZ, minZ, kickMax, open, mattBack, spring, legs: legsRes, fit: fitMin, fitAngle: G.fitTh * 180 / Math.PI };
+}
+
+/* ------------------------------------------------------------------ the gap beside the bed
+   What sits between a side rail and its bed-cabinet side, in |x| from the centre line. */
+function gapFacts(P, G) {
+  const K = KIT_HW;
+  // the lower stud's nut runs on a circle about the pivot; a pad on that circle is what it passes, else the side
+  let nutFace = G.xB, nutOn = 'bed-cabinet side';
+  if (P.packer) {
+    const t0 = Math.min(0, G.closedTh, G.fitTh);
+    for (const [nm, q] of [['Pivot pad', G.pivot], ['Upper ball-stud pad', G.springCab], ['Bed-stop pad', G.stop]]) {
+      const [hy, hz] = K.pad[nm], r = [q[0] - hy, q[0] + hy, q[1] - hz, q[1] + hz];
+      for (let i = 0; i <= 90; i++) if (rectDist(rot2(G.springBed, G.pivot, t0 + i / 90 * (Math.PI / 2 - t0)), r) < K.nutD / 2 + 1) { nutFace = G.xB - P.Tpacker; nutOn = nm.toLowerCase(); break; }
+    }
+  }
+  // the body is widest; it starts sockLen down the spring from the upper ball, where the spring has moved a little
+  // toward the lower ball's x (most when it is longest)
+  const Lmax = Math.hypot(G.springCab[0] - G.springBed[0], G.springCab[1] - G.springBed[1]) + G.springArm, k = K.sockLen / Math.max(Lmax, 1);
+  const bodyTopX = G.springCabX + (G.springBedX - G.springCabX) * Math.min(1, k);
+  const springMaxX = Math.max(bodyTopX + P.springD / 2, Math.max(G.springCabX, G.springBedX) + P.springEndD / 2);
+  return {
+    spacer: G.effGap,                                     // rail to the face the cabinet plates screw to
+    nut: nutFace - G.nutX, nutOn,                         // lower stud nut to whatever it sweeps past
+    springSide: G.xMount - springMaxX,                    // spring body to the side (or the pad under its plate)
+    springPlate: G.xMount - P.plateT - springMaxX,        // ... and to the face of its upper plate
+    face: (P.packer ? G.effGap : P.gapHydr) - P.faceOverhang, // face panel edge to the side or pads
+    barEnd: G.xFi - P.plateT - K.eclip - P.mW / 2,        // pivot bar end and E-clip to the mattress
+  };
+}
+// least gap Blum asks beside the hinge edge of a 110 deg full-overlay door, by door thickness (rounded up)
+function hingeGapMin(T) { return T <= 19 ? 3 : T <= 22 ? 4 : 6; }
+
+/* ------------------------------------------------------------------ clearance schedule
+   Every clearance the build depends on, grouped: [what, needs, here, status, note]. status: ok, tight (less than it
+   needs), clash (parts meet), info. "here" is a number in mm unless the row says otherwise. */
+function clearanceSchedule(model) {
+  const { P, G } = model, C = G.clear, X = gapFacts(P, G);
+  const r1 = (v) => Math.round(v * 10) / 10, cap = (t) => t[0].toUpperCase() + t.slice(1);
+  const atLeast = (here, need) => here < 0 ? 'clash' : here < need - 0.05 ? 'tight' : 'ok';
+  const near = (here, want, tol) => Math.abs(here - want) <= tol ? 'ok' : 'tight';
+  const row = (what, need, here, st, note) => ({ what, need, here: typeof here === 'number' ? r1(here) : here, st, note: note || '' });
+  const groups = [];
+  // A. across the gap
+  const A = [];
+  A.push(row('Side rail to the face the cabinet plates screw to', `${r1(P.pinGap)} (kit)`, X.spacer, near(X.spacer, P.pinGap, 1), "the pivots' plastic spacer and male plate fill it"));
+  A.push(row(`Lower ball-stud nut, sweeping past the ${X.nutOn}`, '2 or more', X.nut, atLeast(X.nut, 2), `plate ${r1(P.plateT)} + nut ${r1(P.nutStack)} off the rail: measure yours`));
+  A.push(row(`Gas spring body to the ${P.packer ? 'pad' : 'bed-cabinet side'}`, '2 or more', X.springSide, atLeast(X.springSide, 2), 'set by the ball studs, not the gap'));
+  A.push(row('Gas spring body to its upper plate', '1 or more', X.springPlate, atLeast(X.springPlate, 1)));
+  A.push(row("Bed stop domes past the rail's outer face", '1.5 or more', G.stopReach, G.stopReach < 0.5 ? 'clash' : G.stopReach < 1.5 ? 'tight' : 'ok', 'the rail closes onto them; rubber gives'));
+  A.push(row(`Bed face panel edge to the ${P.packer ? 'pads' : 'side'}`, '5 or more', X.face, atLeast(X.face, 5), 'kit 3/16 in'));
+  A.push(row('Mattress to the side rail', '20 or more', P.gapMx, atLeast(P.gapMx, 20), 'kit 1 in'));
+  A.push(row('Pivot bar end and E-clip to the mattress', '10 or more', X.barEnd, atLeast(X.barEnd, 10)));
+  groups.push({ key: 'A', title: 'ACROSS THE GAP BESIDE THE BED', sub: 'side rail to bed-cabinet side, each side', rows: A });
+  // B. the gas springs through the swing
+  const S = C.spring, B = [];
+  B.push(row('Gas spring, ball to ball: closed / open / fitted', `stroke ${Math.ceil(S.fitted - S.open)}+`, `${Math.round(S.closed)} / ${Math.round(S.open)} / ${Math.round(S.fitted)}`, 'info', `about 10 in stroke, about ${Math.round(S.fitted)} extended`));
+  for (const r of S.list.slice(0, 6)) B.push(row(`${cap(r.part)} to the ${r.name}`, '3 or more', r.min, atLeast(r.min, 3), `at ${Math.round(r.angle)} deg`));
+  groups.push({ key: 'B', title: 'GAS SPRINGS THROUGH THE SWING', sub: 'side profile, in the band the springs run in', rows: B });
+  // C. the bed through its swing
+  const Cr = [];
+  const soft = (part) => /mattress/.test(part);
+  for (const r of C.list.filter(q => q.name !== 'back wall' && isFinite(q.min) && q.min < 60).sort((a, b) => a.min - b.min)) {
+    const need = soft(r.part) ? 10 : 5;
+    Cr.push(row(`${cap(r.part)} to the ${r.name}`, `${need} or more`, r.min, atLeast(r.min, need), `at ${Math.round(r.angle)} deg`));
+  }
+  Cr.push(row('Leg feet with the bed down', 'on the floor', C.legs.floorAt90, Math.abs(C.legs.floorAt90) <= 3 ? 'ok' : 'tight', `${Math.round(C.legs.floorBefore)} up just before`));
+  { // the leg arms swing past the back of the foot rail (both on the bed)
+    const fr = [G.yFb - P.footRailD, G.yFb, G.zF1 - P.T, G.zF1];
+    let d = Infinity; for (let psi = 0; psi <= 180; psi += 2) { const [p0, p1, p2] = legGeom(G, psi); d = Math.min(d, segRectDist(p0, p1, fr), segRectDist(p1, p2, fr)); }
+    d -= P.legD / 2;
+    Cr.push(row('Leg arms past the back of the foot rail', '0 or more', d, d < -0.1 ? 'clash' : 'ok', 'kit: 3/8 in, a 3/4 in tube'));
+  }
+  if (C.fit) Cr.push(row(`Fitting the springs, bed 3 in back: ${C.fit.part} to the ${C.fit.name}`, '3 or more', C.fit.min, atLeast(C.fit.min, 3), 'mattress off, stops out'));
+  Cr.push(row('Closed on its stops: face panel top behind the fronts', '0', G.leanTop, near(G.leanTop, 0, 2), G.stopReach > 0 ? `stops ${r1(G.yF - G.stop[0])} back from the face; drill after a trial closing` : 'no stop'));
+  groups.push({ key: 'C', title: 'THE BED THROUGH ITS SWING', sub: 'side profile, closed to 90 deg', rows: Cr });
+  // D. fronts and fittings
+  const D = [], Fm = hingeGapMin(P.T);
+  D.push(row('Reveal beside the bed face', `${P.gap}`, G.bedReveal, G.bedReveal < P.gap - 1 ? 'tight' : G.bedReveal > P.gap + 1 ? 'info' : 'ok', G.bedReveal > P.gap + 1 ? 'wider than the other fronts' : ''));
+  D.push(row('Bed face top to the flaps', `${P.gap}`, G.flapZ[0] - G.zF1, near(G.flapZ[0] - G.zF1, P.gap, 1)));
+  if (P.doorHinge === 'outer') D.push(row('Door hinge edge to the cavity wall', `${Fm} or more`, P.gap, atLeast(P.gap, Fm), 'Blum, to open to 110 deg'));
+  else D.push(row('Open doors to the lowered bed', '10 or more', G.doorX[0] - G.xFo - P.faceOverhang, atLeast(G.doorX[0] - G.xFo - P.faceOverhang, 10)));
+  D.push(row('Flap gas stays: closed length less stroke', '90 or more', G.stay.L0 - G.stay.stroke, G.stay.ok ? 'ok' : 'tight', G.stay.ok ? `stay about ${Math.ceil(G.stay.L1 / 5) * 5} open, ${Math.ceil(G.stay.stroke / 10) * 10} stroke` : 'no stock stay: use a lift fitting'));
+  D.push(row('Flap stays to the shelf and the top, as the flaps open', '5 or more', G.stay.clear, atLeast(G.stay.clear, 5)));
+  { // how far the flaps open before their free edge reaches the ceiling
+    const ax = [G.yF, G.flapZ[1]], pts = [[G.yFb, G.flapZ[0]], [G.yF, G.flapZ[0]]];
+    let ang = 180; for (let a = 0; a <= 180; a += 0.5) if (Math.max(...pts.map(p => rot2(p, ax, -a * Math.PI / 180)[1])) >= P.H) { ang = a; break; }
+    D.push(row('Flaps open before they touch the ceiling', '95 deg or more', `${Math.round(ang)} deg`, ang >= 95 ? 'ok' : 'tight'));
+  }
+  if (G.twin || P.lockType === 'pins') {
+    const lift = G.twin ? G.twin.lift : P.lockDepth + P.gapHolder + 8;
+    D.push(row('Safety pins: into the foot rail / above it when lifted', '10 / 5 or more', `${r1(P.lockDepth)} / ${r1(lift - P.lockDepth)}`, P.lockDepth >= 10 && lift - P.lockDepth >= 5 ? 'ok' : 'tight'));
+  }
+  D.push(row('Drawer runners, each side of the box', '12.5 to 13.2', P.runnerClear, P.runnerClear >= 12.5 && P.runnerClear <= 13.2 ? 'ok' : 'tight', RUNNER_HW.name));
+  D.push(row('Drawer runner end to the tower back', `${RUNNER_HW.kt} or more`, G.cD - G.runner, atLeast(G.cD - G.runner, RUNNER_HW.kt)));
+  D.push(row('Hanging rail top to the shelf above', '30 or more', P.railDrop - 12.5, atLeast(P.railDrop - 12.5, 30), 'for hanger hooks'));
+  groups.push({ key: 'D', title: 'FRONTS AND FITTINGS', sub: '', rows: D });
+  // E. fitting in the room
+  const E = [], towerH = G.zTop - G.zPl, diag = Math.hypot(towerH, G.cD + P.Tback);
+  E.push(row('Towers to the cavity walls', '3 or more', P.sideClear, atLeast(P.sideClear, 3), 'to plumb and scribe'));
+  E.push(row('Carcass back to the wall', '5 or more', P.backGap, atLeast(P.backGap, 5)));
+  E.push(row('Standing a tower up: diagonal under the ceiling', '10 or more', P.H - diag, atLeast(P.H - diag, 10), 'from the floor'));
+  E.push(row('Header filler, to scribe to the ceiling', '20 or more', P.gapAbove, atLeast(P.gapAbove, 20)));
+  const holder = G.steel ? Math.min(P.gapHolder, G.steel.z0 - G.zF1) : P.gapHolder;
+  E.push(row(`Bed top to the shelf over it${G.steel ? ' (steel flat)' : ''}`, '10 or more', holder, atLeast(holder, 10)));
+  groups.push({ key: 'E', title: 'FITTING IN THE ROOM', sub: '', rows: E });
+  groups.forEach(g => g.rows.forEach((r, i) => { r.id = g.key + (i + 1); }));
+  // the kit sizes these rest on: measure them
+  const measure = [
+    ['nutStack', 'Lower ball-stud plate: plate face to the end of the stud or nut', `${r1(P.plateT + P.nutStack)}`, 'A2'],
+    ['studS', 'Ball stud: plate face to the ball centre', `${r1(P.studS)}`, 'A3, A4, B'],
+    ['plateT', 'Ball-stud plates, thickness', `${r1(P.plateT)}`, 'A2, A4'],
+    ['springD', 'Gas spring body diameter (measured)', `${r1(P.springD)}`, 'A3, B'],
+    ['springRodD', 'Gas spring rod and socket diameters', `${r1(P.springRodD)} / ${r1(P.springEndD)}`, 'B'],
+    ['springBodyL', 'Gas spring: upper ball centre to the end of the body', `${r1(P.springBodyL)}`, 'B'],
+    ['springLen', 'Gas spring, ball to ball, fully out / fully in', `${Math.round(S.fitted)} / ${Math.round(S.open)} wanted`, 'B1'],
+    ['pinGap', 'Pivot: plastic spacer plus male plate', `${r1(P.pinGap)}`, 'A1'],
+    ['stopD', 'Bed stop dome: diameter / height', `${r1(P.stopD)} / ${r1(P.stopH)}`, 'A5, C'],
+    ['legD', 'Fold-out leg tube diameter', `${r1(P.legD)}`, 'C'],
+  ];
+  return { groups, measure };
 }
 
 /* ------------------------------------------------------------------ checks (design review, live) */
@@ -969,10 +1251,27 @@ function checks(model) {
   if (G.kickC && G.drawerDrop > 0) w('info', `One-piece kick board, ${f0(G.kickC)} high`, `The bottom edge of the face panel sweeps down to ${f0(C.minZ)} mm above the floor as the bed turns, so the kick board that runs right across is ${f0(G.kickC)} high. The drawers start ${f0(G.drawerDrop)} lower, at ${f0(G.zPl)}, on lower plinths, and the hanging space gains the ${f0(G.drawerDrop)}: ${f0(G.hangClear)} clear.`, 'swing');
   if ((G.kickC || P.gapAbove > 0) && G.plankL < G.plankSpan - 0.5) w('info', `Kick board and header end ${f0(G.plankEnd)} from the walls`, `In one piece they can be ${f0(G.plankL)} long at most (your longest ${P.T} mm sheet less the trim), ${f0(G.plankSpan - G.plankL)} short of the ${f0(G.plankSpan)} the doors span. A sheet ${f0(G.plankSpan + 2 * P.trim)} or longer runs them to ${P.gap} mm off the walls like the doors.`, 'layout');
   if (G.ledge && G.ledge.skipped) w('info', 'No room for a headboard ledge', 'The bed sweeps too close to the wall for a ledge behind the pillows.', 'swing');
-  // hardware gap
-  const gapNow = G.effGap;
-  if (Math.abs(gapNow - P.pinGap) > 2.5) w('warn', 'Pivot gap differs from the kit', `Side rail to the pivot mounting face is ${f0(gapNow)} mm; the Create-A-Bed queen plan works out to ${P.pinGap} mm (7/16 in). ${P.packer ? 'Change the packer thickness' : 'Add a packer under the cabinet-side plates'} so the pivot pins engage fully.`, 'hardware');
-  if (P.faceOverhang > 0 && P.faceOverhang > gapNow - 5) w('bad', 'Face panel too close to the cabinet sides', `Overhang ${P.faceOverhang} mm leaves ${f0(gapNow - P.faceOverhang)} mm to the ${P.packer ? 'packers and ' : ''}kit plates on the bed-cabinet sides as the bed swings; the kit leaves about 5 (3/16 in). Keep the overhang to ${f0(Math.max(0, gapNow - 5))} or less.`, 'hardware');
+  // across the gap between the side rail and the bed-cabinet side
+  const gapNow = G.effGap, X = gapFacts(P, G), f1 = (v) => (Math.round(v * 10) / 10).toString();
+  if (Math.abs(X.spacer - P.pinGap) > 1) w(X.spacer > P.pinGap + 3 || X.spacer < P.pinGap - 1.5 ? 'bad' : 'warn', X.spacer > P.pinGap ? 'Pivot spacers do not fill the gap' : 'Pivot spacers do not fit',
+    `${f1(X.spacer)} mm from the side rail to the face the kit's cabinet plates screw to. The kit's plastic spacer and male pivot plate fill ${f1(P.pinGap)} (7/16 in) and hold the frame square between spacer and E-clip. ${X.spacer > P.pinGap ? `Here the frame could slide ${f1(X.spacer - P.pinGap)} mm on the bars: ${P.packer ? `make the pads ${f1(P.gapHydr - P.pinGap)} thick` : `turn on ${f1(P.gapHydr - P.pinGap)} mm pads under the cabinet plates`}, or close the gap to ${f1(P.pinGap)}.` : 'Make the pads thinner or the gap wider.'}`, 'hardware');
+  if (X.nut < 2) w(X.nut < 0 ? 'bad' : 'warn', X.nut < 0 ? 'Lower ball-stud nuts hit the cabinet sides' : 'Lower ball-stud nuts close to the cabinet sides',
+    `The nut and stud end on each lower ball-stud plate stand ${f1(P.plateT + P.nutStack)} off the rail (plate ${f1(P.plateT)}, nut ${f1(P.nutStack)}: typical, measure yours) and ${X.nut < 0 ? `would dig ${f1(-X.nut)} mm into` : `pass ${f1(X.nut)} mm from`} the ${X.nutOn} as the bed turns. Measure from the plate's face against the rail to the end of the stud: up to ${f1(G.nutX - G.xFo + X.nut - 1)} passes with 1 mm to spare. More needs a relief routed ${f0(Math.max(1, Math.ceil(2 - X.nut)))} mm deep in the side along the nut's path (radius ${f0(G.springArm)} about the pivot hole, drawn on sheet 5), or a wider gap with pads under the cabinet plates.`, 'hardware');
+  if (X.springSide < 2) w(X.springSide < 0 ? 'bad' : 'warn', X.springSide < 0 ? 'Gas springs hit the cabinet sides' : 'Gas springs close to the cabinet sides',
+    `Each ${f0(P.springD)} mm spring body runs ${f1(X.springSide)} mm from the ${P.packer ? 'pads' : 'bed-cabinet side'} at its top. The ball studs set this (${f1(P.studS)} from plate face to ball centre), not the gap.`, 'hardware');
+  if (X.springPlate < 0.5) w('warn', 'Gas springs rub the upper plates', `The spring body comes ${f1(X.springPlate)} mm from the face of its upper ball-stud plate.`, 'hardware');
+  if (G.stopReach <= 0.5) w('bad', 'Bed stops do not reach the rails', `The ${f1(P.stopH)} mm stop domes stand on a face ${f1(gapNow)} mm from the rails, so the closed bed has nothing to rest on. Pads under the stops (or the kit's 11 mm gap) fix it.`, 'hardware');
+  else if (G.stopReach < 1.5) w('warn', 'Bed stops barely reach the rails', `The ${f1(P.stopH)} mm domes reach only ${f1(G.stopReach)} past the rails' outer face; a rubber dome that gives a millimetre then stops little. Shim the stops ${f1(1.5 - G.stopReach + 0.2)} mm or more off the side${P.packer ? `, or make the pads ${f1(P.gapHydr - P.pinGap)} thick` : ''}.`, 'hardware');
+  else if (Math.abs(G.leanTop) > 2) w('warn', G.leanTop > 0 ? `Closed bed leans back ${f0(G.leanTop)} mm` : `Closed bed stands ${f0(-G.leanTop)} mm proud`,
+    `With the stops ${f1(G.yF - G.stop[0])} back from the face, the rails meet them ${Math.abs(G.closedTh * 180 / Math.PI).toFixed(2)} deg ${G.leanTop > 0 ? 'past' : 'short of'} upright, so the face panel's top sits ${f0(Math.abs(G.leanTop))} mm ${G.leanTop > 0 ? 'behind' : 'in front of'} the flaps. A stop setting of 0 puts them where the bed stands plumb (${f1(G.yF - (G.yRail - G.stopRho))} back).`, 'hardware');
+  if (P.faceOverhang > 0 && P.faceOverhang > gapNow - 5) w('bad', 'Face panel too close to the cabinet sides', `Overhang ${P.faceOverhang} mm leaves ${f0(gapNow - P.faceOverhang)} mm to the ${P.packer ? 'pads and ' : ''}kit plates on the bed-cabinet sides as the bed swings; the kit leaves about 5 (3/16 in). Keep the overhang to ${f0(Math.max(0, gapNow - 5))} or less.`, 'hardware');
+  // the springs through the swing, fitting them, and the legs
+  const sideNames = /^(bed-cabinet side|pivot pad|upper ball-stud pad|bed-stop pad|upper ball-stud plate|male pivot plate)$/;
+  for (const r of G.clear.spring.list) if (r.min < 3 && !(sideNames.test(r.name) && (X.springSide < 2 || X.springPlate < 0.5))) w(r.min < 0 ? 'bad' : 'warn', r.min < 0 ? `Gas springs hit the ${r.name}` : `Gas springs tight past the ${r.name}`, `The spring's ${r.part} comes ${f1(r.min)} mm from the ${r.name} at about ${f0(r.angle)} deg of opening.`, 'swing');
+  const sp = G.clear.spring;
+  if (sp.fitted - sp.open > 0 && (sp.closed - sp.open) / (sp.fitted - sp.open) > 1.001) w('warn', 'Gas springs over-extended when closed', `Ball to ball the springs measure ${f0(sp.closed)} closed but are fitted at ${f0(sp.fitted)}.`, 'hardware');
+  if (G.clear.fit && G.clear.fit.min < 3) w(G.clear.fit.min < 0 ? 'bad' : 'warn', 'No room to fit the gas springs', `The kit fits the springs with the bed pushed 3 in back at the top (${Math.abs(G.clear.fitAngle).toFixed(1)} deg past upright), mattress off and stops out: then the ${G.clear.fit.part} comes ${f1(G.clear.fit.min)} mm from the ${G.clear.fit.name}.`, 'swing');
+  if (G.clear.legs.floorBefore < 0) w('bad', 'Legs hit the floor before the bed is down', `The leg feet reach ${f0(-G.clear.legs.floorBefore)} mm into the floor while the bed is still turning.`, 'swing');
   if (Math.abs(G.bedReveal - P.gap) > 1) {
     const want = P.faceOverhang + G.bedReveal - P.gap, ok = want >= 0 && want <= gapNow - 5;
     w('info', `Reveal beside the bed face is ${f0(G.bedReveal)} mm`, `The other fronts have ${P.gap} mm.${ok ? ` A face panel overhang of ${f0(want)} would match them.` : P.doorHinge === 'inner' ? ' With the doors hinged on the bed side they stop at the tower side, so the bed-cabinet side\'s front edge shows between them and the bed.' : ` The face panel can only grow to ${f0(Math.max(0, gapNow - 5))} past the rails without coming too close to the cabinet sides.`}`, 'layout');
@@ -1008,7 +1307,8 @@ function checks(model) {
   if (P.runnerClear < 12.5 || P.runnerClear > 13.2) w('warn', 'Runner clearance', `${RUNNER_HW.name} needs ${RUNNER_HW.w} each side of the drawer box (up to about 13); it is ${P.runnerClear}.`, 'hardware');
   if (G.runner + RUNNER_HW.kt > G.cD + 0.1) w('bad', 'Runners too long', `${G.runner} runners need ${G.runner + RUNNER_HW.kt} inside the tower; it has ${f0(G.cD)}.`, 'layout');
   else if (!RUNNER_STD.includes(G.runner)) w('warn', 'Runner length', `${RUNNER_HW.name} comes in 250 to 700 in 50s; ${G.runner} is not one of them.`, 'hardware');
-  if (P.doorHinge === 'outer' && P.gap < 10 && P.sideClear + P.gap < 15) w('warn', 'Doors next to the cavity walls', `Each tower door is hinged ${f0(P.gap + 0)} mm from the cavity wall with its face flush with the room wall, so it stops at about 90 deg. Use zero-protrusion hinges, or add 20 mm scribe fillers at the walls.`, 'fronts');
+  if (P.doorHinge === 'outer' && P.gap < hingeGapMin(P.T)) w('warn', 'Doors next to the cavity walls', `Each tower door is hinged ${f0(P.gap)} mm from the cavity wall with its face flush with the room wall; a ${HINGE_HW.short} on a ${P.T} mm door wants about ${hingeGapMin(P.T)} beside its hinge edge to swing clear. Widen the reveals or add scribe fillers at the walls.`, 'fronts');
+  if (P.sideClear < 3) w('warn', 'No room to scribe the towers', `${f0(P.sideClear)} mm between each tower and its cavity wall leaves nothing to plumb and pack it against an out-of-true wall; 5 or more is easier.`, 'install');
   const sideLen = G.zTopB - G.zPl - P.T;
   const maxL = Math.max(...P.sheets.filter(s => s.T === P.T).map(s => s.L - 2 * P.trim), 0);
   if (sideLen > maxL) w('bad', 'Tower sides longer than the sheets', `${f0(sideLen)} needed, ${f0(maxL)} usable.`, 'stock');
@@ -1020,6 +1320,8 @@ function checks(model) {
   // flap lift
   const flapKg = G.flapW * G.flapH * P.T * PLY_DENSITY;
   w('info', `Flaps ${f0(G.flapW)} x ${f0(G.flapH)}, about ${flapKg.toFixed(1)} kg`, `Lift-mechanism power factor (height x weight) about ${f0(G.flapH * flapKg)}. Pick the gas stay or lift fitting from its chart for this, and a push latch that out-pushes the stay. ${f0(G.antClear)} clear behind the flaps for the fittings.`, 'fronts');
+  if (!G.stay.ok) w('warn', 'Flap gas stays', `Mounted as drawn a stay would be ${f0(G.stay.L1)} long open with ${f0(G.stay.stroke)} stroke, ${f0(G.stay.L0)} closed; stock gas stays run to about 500 with a stroke of a quarter of their length or more, and are about 90 longer than their stroke closed. Use a lift fitting for flaps this size.`, 'fronts');
+  if (G.stay.clear < 5) w(G.stay.clear < 0 ? 'bad' : 'warn', 'Flap stays close to the shelf or top', `The stays come ${f0(G.stay.clear)} mm from the shelf or the top as the flaps open.`, 'fronts');
   return out;
 }
 
@@ -1031,7 +1333,12 @@ function reviewNotes(model, S) {
     ['Modules that fit the sheets', `Full-height sides of ${f0(P.H)} do not come out of a 2440 sheet. The wardrobe is two towers on plinths plus a bed cabinet: tower sides ${f0(G.zTopB - G.zPl - P.T)} between a top and bottom, bed-cabinet sides ${f0(G.zBm0)} from the floor to the shelf above the bed and ${f0(G.antClear)} from the shelf to the top. The doubled ${2 * P.T} mm sides of the TikZ stay doubled the full height, one tower side screwed to the bed-cabinet sides, broken only where the shelf and its steel flat pass through; a 6 mm back over the shelf space ties the box together like the towers' backs.`],
     ['Room to fit and scribe', `${P.sideClear} mm each side and ${P.backGap} mm at the back for packers into the studs; the doors still finish ${P.gap} mm off the walls as drawn. The ${f0(P.gapAbove)} header filler is scribed to the ceiling.`],
     ['Bed frame where the kit puts it', `The plan puts the pivot 9 in from the rail's head end and 11-3/4 in off the floor, so the kit's frame sits 2-3/4 in (70) up. Here the face panel still starts at ${f0(P.gapBelow)} in line with the drawers, but the frame starts ${f0(P.faceBelowFrame)} higher, behind it, and the mattress end gaps are ${P.gapMy} mm, not 7. The pivot lands at ${f0(G.pivot[1])}, the legs reach the floor as supplied, and the side rails come out at ${f0(G.frameL)} (kit: 81-1/2 in = 2070).`],
-    ['Side rail to cabinet side', P.packer ? `${f0(P.gapHydr)} mm between the bed frame's side rail and the bed-cabinet side, wider than the 7/16 in (11 mm) the Create-A-Bed hardware is built for, so ${f0(P.Tpacker)} mm packers go under the kit's cabinet plates (pivots, upper ball studs, bed stops) to bring them to ${f0(G.effGap)} mm. Use machine screws ${f0(P.Tpacker)} mm longer than the kit's. Closing the gap to 11 mm needs no packers and gives each tower ${f0(Math.max(0, P.gapHydr - P.pinGap))} mm.` : `${f0(P.gapHydr)} mm between the bed frame's side rail and the bed-cabinet side${Math.abs(P.gapHydr - P.pinGap) < 2.5 ? ", the 7/16 in (11 mm) the Create-A-Bed hardware is built for: the kit's cabinet plates screw straight to the side with the screws supplied, and no packers are needed" : `; the kit is built for 7/16 in (11 mm), so the pivots may not engage properly without packers`}. The gas springs run in this gap, as in the kit.`],
+    ['Side rail to cabinet side', (() => {
+      const X = gapFacts(P, G), r1 = (v) => (Math.round(v * 10) / 10).toString();
+      const gap = P.packer ? `${f0(P.gapHydr)} mm between the bed frame's side rail and the bed-cabinet side, wider than the kit's 7/16 in (11 mm), so ${f0(P.Tpacker)} mm pads under the male pivot plates, upper ball-stud plates and bed stops bring them to ${r1(G.effGap)}, where the kit's plastic spacers fill the gap; use machine screws ${f0(P.Tpacker)} mm longer than the kit's. Closing the gap to 11 mm needs no pads and gives each tower ${f0(Math.max(0, P.gapHydr - P.pinGap))} mm.`
+        : `${r1(P.gapHydr)} mm between the bed frame's side rail and the bed-cabinet side${Math.abs(P.gapHydr - P.pinGap) < 1.5 ? ", the kit's 7/16 in: its plastic spacer and male pivot plate fill it, so the cabinet plates screw straight to the side with the screws supplied, and no pads are needed" : "; the kit's spacers fill 7/16 in (11 mm), so the frame can slide on the pivot bars without pads"}.`;
+      return `${gap} The gas springs do not run in this gap: both ball studs point in, so each spring runs along its rail's top edge, in line with the rail and behind it when the bed is closed, its ${f0(P.springD)} mm body ${r1(X.springSide)} from the ${P.packer ? 'pads' : 'side'}. What does sit in the gap: the plates, the bed stops and the lower ball stud's nut, which passes the ${X.nutOn} ${r1(X.nut)} mm away${X.nut < 2 ? ' (measure yours, sheet 6)' : ''}.`;
+    })()],
     ['Plinths and kick boards', `Each tower sits on a ${f0(G.zPl)} high ladder plinth so it can be levelled; the bed-cabinet sides go to the floor like the kit's verticals. ${G.kickC ? `One kick board runs right across, ${f0(G.kickC)} high because the face panel's bottom edge sweeps down to ${f0(G.clear.minZ)} mm off the floor as the bed turns; the drawers and tower plinths sit ${f0(G.drawerDrop)} lower to match, and the header filler is one piece too.` : 'There is no kick board under the bed, so each tower has its own.'}`],
     ['Headboard', G.head && !G.head.skipped ? `The bed's swing bulges furthest back at pivot height (${f0(G.clear.minY)} from the wall)${G.ledge && !G.ledge.skipped ? `, so the ledge stays below mattress height at ${f0(G.ledge.y)}` : ', so nothing stands below mattress height'}. Above the mattress nothing swings back, so a ${f0(P.headH)} backrest steps out to ${P.headGap} mm behind the open mattress and leans back ${P.headAngle} deg, on three tapered ribs, with a ${f0(G.head.capY - G.yB1)} deep bedside shelf on top at ${f0(G.head.top + P.Thead)}.` : G.ledge && !G.ledge.skipped ? `A ${f0(G.ledge.y - G.yB1)} deep ledge at mattress height fills the gap behind the open mattress.` : 'Turned off: pillows can fall behind the head of the open bed.'],
     ['Shelf above the bed', `It spans ${f0(2 * G.xB)} only ${f0(P.gapHolder)} mm above the closed bed. The centre divider carries it: glued and screwed to the shelf and the top, it turns the shelf into two ${f0(G.xB + P.T / 2)} mm bays held on three sides. ${P.edgeSteel ? `A ${f0(P.steelH)} x ${f0(P.steelT)} steel flat let into the front edge, ${f0(P.steelH - P.T)} mm proud underneath and hidden by the flaps, stiffens the free edge and takes the push latches.` : ''} ${P.upstand > 0 ? `A ${f0(P.upstand)} mm lip runs along the front edge.` : 'The top is flat to the front edge, so boxes slide straight in.'} Worst case, one bay holding 100 kg a square metre: about ${G.shelfSag.toFixed(1)} mm over time.`],
@@ -1044,9 +1351,10 @@ function reviewNotes(model, S) {
     ['Thicknesses that fit your stock', st18 ? `Deck struts in ${P.Tladder} mm, drawer boxes in ${P.Tb} mm and the backrest in ${P.Thead} mm leave the ${P.T} mm parts on ${st18.need} of your ${st18.have} sheets.` : ''],
   ].filter(e => e[1]);
   const open = [
-    ['Hardware positions', `Heights on the bed-cabinet sides match the kit's (pivot ${h5(G.pivot[1])}, upper ball stud ${h5(G.springCab[1])}, stop ${h5(G.stop[1])}), but measure depths from the carcass edge, not the kit's 4-3/4, 10 and 7-3/8 in: here the face stands ${h5(G.yF - G.yC)} mm proud, so they are ${h5(G.yC - G.pivot[0])}, ${h5(G.yC - G.springCab[0])} and ${h5(G.yC - G.stop[0])}. Sheet 5 has them.`],
+    ['Hardware positions', `Heights on the bed-cabinet sides match the kit's (pivot ${h5(G.pivot[1])}, upper ball stud ${h5(G.springCab[1])}, stop ${h5(G.stop[1])}), but measure depths from the carcass edge, not the kit's 4-3/4, 10 and 7-3/8 in: here the face stands ${h5(G.yF - G.yC)} mm proud, so they are ${h5(G.yC - G.pivot[0])}, ${h5(G.yC - G.springCab[0])} and ${h5(G.yC - G.stop[0])}. ${P.stopFront > 0 ? '' : `The stops sit ${h5(G.yC - G.stop[0])} back, not the kit's 7-3/8 in, so the closed bed stands plumb with its face flush with the flaps. `}Drill the stop holes last, after a trial closing, or slot their screw holes: where a dome meets the rail moves with its shape and give, and 2 mm at the stops is ${f0(2 * (G.zF1 - G.pivot[1]) / (G.stop[1] - G.pivot[1]))} at the top of the bed face. Sheet 5 has them.`],
+    ['Measure the kit hardware', `The booklet gives the hardware's positions, not its sizes, and the clearances on sheet 6 rest on typical ones. Measure: the lower ball-stud plate from its face against the rail to the end of its stud (${(Math.round((P.plateT + P.nutStack) * 10) / 10)} used), the ball studs from plate face to ball centre (${P.studS}), the spring's body, rod and sockets (${P.springD}, ${P.springRodD}, ${P.springEndD}) and its length ball to ball fully out (${Math.round(G.clear.spring.fitted)} wanted), the pivot spacer with its plate (${P.pinGap}), and the bed stop domes (${P.stopD} x ${P.stopH}). Enter them under Create-A-Bed hardware.`],
     ['Ventilation', 'A mattress stood on end in a closed bay needs air. Drill the mattress support (for example 25 mm holes at 150) and leave the side gaps open.'],
-    ['Tower doors', P.doorHinge === 'outer' ? `Hinged on the wall side, ${P.gap} mm from the cavity wall with their faces flush with the room wall: they open to about 90 deg. That keeps them clear of the bed when it is down. Zero-protrusion hinges or a 20 mm scribe filler would let them open further.` : `Hinged on the bed side: they open past 90 deg, but an open door stands ${f0(G.doorX[0] - G.xFo)} mm from the edge of the lowered bed.`],
+    ['Tower doors', P.doorHinge === 'outer' ? `Hinged on the wall side, ${P.gap} mm from the cavity wall with their faces flush with the room wall. A 110 deg CLIP top on a ${P.T} mm door wants about ${hingeGapMin(P.T)} mm beside its hinge edge, so they open fully, away from the bed.` : `Hinged on the bed side: they open past 90 deg, but an open door stands ${f0(G.doorX[0] - G.xFo)} mm from the edge of the lowered bed.`],
     ['Lift-up flaps', `About ${(G.flapW * G.flapH * P.T * PLY_DENSITY).toFixed(1)} kg each. Choose the gas stays from their force chart and a push latch strong enough to open against them. ${f0(G.antClear)} clear behind the flaps.`],
     ['Hanging height', `${f0(G.hangClear)} clear suits shirts and jackets, not long coats. Raising the shelf over the hanging space takes height from the ${f0(G.topClear)} top compartment.`],
     ['Mattress', `${P.mW} x ${P.mL} x ${P.mT}. The queen kit is set up for 60 x 80 in (1524 x 2032), at most 12 in thick, 65 to 80 lb (29 to 36 kg); set the spring plates from the booklet's chart for your mattress weight.`],
@@ -1120,7 +1428,7 @@ function hardwareList(model) {
     [`Blum CLIP cruciform plates 37/32, ${G.hingeDoor.H} mm, ${G.hingeDoor.code}`, `${hinges}`, 'on the tower sides, holes 37 back from the front edge'],
     [`Hinges for the flaps, ${HINGE_HW.short}`, '4', `two per flap; ${f0(G.hingeFlap.overlay)} overlay, cups ${G.hingeFlap.B} from the top edge`],
     [`Blum CLIP cruciform plates 37/32, ${G.hingeFlap.H} mm, ${G.hingeFlap.code}`, '4', 'under the top over the bed'],
-    ['Gas stays for the flaps', '4', 'two per flap; size from the flap weight'],
+    ['Gas stays for the flaps', '4', `two per flap, about ${Math.ceil(G.stay.L1 / 5) * 5} long open with at least ${Math.ceil(G.stay.stroke / 10) * 10} stroke, about ${Math.max(20, Math.ceil(G.stay.N / 10) * 10)} N each; mounted as on sheet 5`],
     ['Push latches, 10 mm drill-in', '2', P.upstand >= 25 ? 'drilled into the shelf lip' : P.edgeSteel ? 'drilled through the steel flat into the shelf edge' : 'drilled into the shelf edge'],
     ...(P.edgeSteel ? [[`Bright steel flat ${f0(P.steelH)} x ${f0(P.steelT)}`, '1', `${f0(2 * G.xB)} long, glued and screwed on edge into the shelf's front edge`]] : []),
     ...(P.lockType === 'twin' ? [
@@ -1244,8 +1552,8 @@ function joinery(model) {
           fast: [F('s40', Tb, pf, [0, 0, -1], T, xs.map(x => [x, G.yC - Tp / 2, G.zPl])), F('s40', Tb, pb, [0, 0, -1], T, xs.map(x => [x, G.yB1 + Tp / 2, G.zPl]))],
           setout: 'down through the bottom, over the plinth front and back, between the sides' }] });
       }
-      // ---------- bed-cabinet side, packers, onto the tower
-      const B1 = one(`Bed-cabinet side (${S})`), pk = one(`Pivot packer (${S})`), ps = one(`Bed-stop packer (${S})`);
+      // ---------- bed-cabinet side, pads, onto the tower
+      const B1 = one(`Bed-cabinet side (${S})`), pads = ['Pivot pad', 'Upper ball-stud pad', 'Bed-stop pad'].map(nm => one(`${nm} (${S})`)).filter(Boolean);
       if (B1) {
         const ops2 = [];
         const plates = parts.filter(p => !p.bed && ['PV', 'BS', 'ST'].includes(p.mark) && p.name.indexOf(`(${S})`) >= 0).map(bb);
@@ -1254,27 +1562,22 @@ function joinery(model) {
           return [y, z];
         });
         const pkPts = [];
-        if (pk || ps) {
+        if (pads.length) {
           const f = [];
-          if (pk) {
-            const b = bb(pk), yy = [b[4] - 40, b[1] + 40], zs = spread(b[2], b[5], 40, 250);
-            const pts = clear2(yy.flatMap(y => zs.map(z => [y, z]))).filter(([y, z]) => z > b[2] + 20 && z < b[5] - 20);
-            f.push(F('s30', pk, B1, [s, 0, 0], P.Tpacker, pts.map(([y, z]) => [s * G.xB, y, z]))); pkPts.push(...pts);
+          for (const pd of pads) {
+            const b = bb(pd), pts = clear2([[b[1] + 20, b[2] + 20], [b[4] - 20, b[2] + 20], [b[1] + 20, b[5] - 20], [b[4] - 20, b[5] - 20]]);
+            f.push(F('s30', pd, B1, [s, 0, 0], P.Tpacker, pts.map(([y, z]) => [s * G.xB, y, z]))); pkPts.push(...pts);
           }
-          if (ps) {
-            const b = bb(ps), pts = clear2([[b[1] + 20, b[2] + 20], [b[4] - 20, b[2] + 20], [b[1] + 20, b[5] - 20], [b[4] - 20, b[5] - 20]]);
-            f.push(F('s30', ps, B1, [s, 0, 0], P.Tpacker, pts.map(([y, z]) => [s * G.xB, y, z]))); pkPts.push(...pts);
-          }
-          ops2.push({ title: 'Packers onto the bed-cabinet side', bench: true, add: [pk, ps].filter(Boolean).map(p => [p, [-s * E, 0, 0]]), fast: f,
-            setout: 'glued; screws clear of the kit plates, which bolt through packer and side' });
+          ops2.push({ title: 'Pads onto the bed-cabinet side', bench: true, add: pads.map(p => [p, [-s * E, 0, 0]]), fast: f,
+            setout: 'glued; screws clear of the kit plates, which bolt through pad and side' });
         }
         const avoidZ = [[G.zPl, G.zPl + T + 28], [G.zS1b - 16, G.zS1t + 16], [G.zS2b - 16, G.zS2t + 16], ...(G.runnerZ || []).map(z => [z - 31, z + 31])];
         const rows = [G.yB1 + 35, G.yC - 35]; // off the lines of the carcass screws in the side's ends
         const hingeAvoid = P.doorHinge === 'inner' ? parts.filter(p => p.hinges && p.name.indexOf(`(${S})`) >= 0).flatMap(p => p.hinges.map(z => [z - 40, z + 40])) : [];
-        // each row also steps around the packer screws that meet it inside the side
+        // each row also steps around the pad screws that meet it inside the side
         const pts = rows.flatMap(y => spread(G.zPl + T + 30, G.zBm0 - 40, 0, 300,
           avoidZ.concat(y > G.yC - 80 ? hingeAvoid : [], pkPts.filter(([py]) => Math.abs(py - y) < 14).map(([, pz]) => [pz - 13, pz + 13])), 60).map(z => [s * G.xJ, y, z]));
-        ops2.push({ title: 'Bed-cabinet side against the tower', add: [B1, pk, ps].filter(Boolean).map(p => [p, [-s * E, 0, 0]]),
+        ops2.push({ title: 'Bed-cabinet side against the tower', add: [B1, ...pads].map(p => [p, [-s * E, 0, 0]]),
           fast: [F('s30', T2, B1, [-s, 0, 0], T, pts)], ctx: true,
           setout: `from inside the tower, two rows 35 in from the front and back edges, clear of the runners and shelves` });
         inst('bedSide', { show: S === 'R', side: S, base: [], context: [...tower, pf, pb, eo, ei].filter(Boolean), ops: ops2 });
@@ -1522,7 +1825,7 @@ function assembly(model, sheets) {
     d8: ['Fluted beech dowel 8 x 30, glued', '8 mm: 12 deep in the face (depth stop), 19 deep in the edge'],
     dom: ['Domino 8 x 40 (or No. 20 biscuit), glued', 'divider to the shelf and the top'],
     w75: ['Batten screw 14g x 75 (6.0 x 75), into timber studs', '6.5 clearance in the rail or panel; brick: 8 x 65 sleeve anchors in 10 mm holes'],
-    kit: [`Machine screw for the kit plates, ${P.packer ? f0(P.Tpacker) + ' longer than supplied' : 'as supplied'}`, 'through the side' + (P.packer ? ' and its packer' : '') + ', as the kit plates'],
+    kit: [`Machine screw for the kit plates, ${P.packer ? f0(P.Tpacker) + ' longer than supplied' : 'as supplied'}`, 'through the side' + (P.packer ? ' and its pad' : '') + ', as the kit plates'],
     m4: ['Handle bolt M4 x 25 (18 mm fronts)', '5 through the front'],
     pin: ['Shelf pin 5 mm', '5 x 10 deep holes, 32 apart, 37 in from front and back'],
     brad: ['Brad 40 mm, 16 gauge, glued: header battens', 'no pilot'],
@@ -1564,7 +1867,7 @@ function assembly(model, sheets) {
     text: `Stand each tower up on the floor (its diagonal is ${f0(Math.hypot(G.zTop - G.zPl, G.cD + P.Tback))}), lift it onto its plinth and screw down through the bottom into the plinth from inside. Plumb it, pack the outer side off the wall and screw through the packers into the side-wall studs.` });
   addJ(st, 'towerPlinth'); add(st, 'w75', nTow * 3);
   st = step({ title: 'Bed-cabinet sides and kit plates', h: 2, parts: (p) => ['B1', 'B8', 'B9'].includes(p.mark) || (!p.bed && ['PV', 'BS', 'ST'].includes(p.mark)),
-    text: `${P.packer ? 'Glue and screw the packers to the bed-cabinet sides, then' : 'First'} fit the kit's cabinet plates (pivots, upper ball studs, bed stops) from sheet 5 while the sides are loose. Stand each side against its tower, plumb, and screw through the tower side into it from inside the tower, two rows every 300.` });
+    text: `${P.packer ? 'Glue and screw the pads to the bed-cabinet sides, then' : 'First'} ${gapFacts(P, G).nut < 2 ? 'rout the relief for the lower ball-stud nuts if yours need it (sheets 5 and 6), and ' : ''}fit the kit's cabinet plates (pivots, upper ball studs, bed stops) from sheet 5 while the sides are loose. Stand each side against its tower, plumb, and screw through the tower side into it from inside the tower, two rows every 300.` });
   addJ(st, 'bedSide'); add(st, 'kit', 8);
   const boxParts = ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B10', 'B11', 'SF'];
   st = step({ title: 'Make up the shelf box', h: 3, people: 2, parts: (p) => boxParts.includes(p.mark),
@@ -1579,7 +1882,7 @@ function assembly(model, sheets) {
   add(st, 'h17', 4 * 2); add(st, 'h15', 4 * 2 + 4 * 4); if (G.twin) add(st, 's50', 4);
   const nStrut = parts.filter(p => p.mark === 'F6').length;
   st = step({ title: 'Bed frame and gas springs', h: 4, people: 2, parts: (p) => (p.bed && !p.mattress && p.mark !== 'HD' && p.mark !== 'SP') || p.mark === 'GS', bed: 70,
-    text: `Build the frame to the Create-A-Bed plan: rails, deck struts, mattress support and the face panel in two halves, glued and screwed. Fit the frame plates, legs and lower ball studs, hang the frame on the pivots, and fit the gas springs last with the bed down, as the kit says. Swing it slowly and check the clearances on sheet 3.` });
+    text: `Build the frame to the Create-A-Bed plan: rails, deck struts, mattress support and the face panel in two halves, glued and screwed. Fit the frame plates, legs and lower ball studs, hang the frame on the pivots, and fit the gas springs last with the bed down, as the kit says. Swing it slowly and check the clearances on sheets 3 and 6.` });
   addJ(st, 'frame');
   if (has('H1') || has('H4')) {
     st = step({ title: 'Headboard ledge and backrest', h: 1.5, parts: (p) => /^H[1-6]$/.test(p.mark), bed: 70,
@@ -1931,7 +2234,8 @@ function makeZip(files) { // files: [{name, data: Uint8Array}]
 }
 
 const api = { DEFAULTS, COLORS, SOURCES, HW_ASSUMPTIONS, reviewNotes, assembly, joinery, FAST, TAGS, cyl, box, RUNNER_STD, RUNNER_HW, HINGE_HW, runnerHoles, hingeFit, PLY_DENSITY, normParams, derived, build, cutList, nest, summary, writeSTEP, makeZip, crc32,
-  prismBox, prismCorners, prismVolume, loopPolyline, to3, rot2, rotYZ, rotatePrism, legGeom, legPsi, bedProfile, clearances, hingeZs, springEnds, stayEnds, springSolids, staySolids, linkEnds, linkSolids, rectLoopR01 };
+  prismBox, prismCorners, prismVolume, loopPolyline, to3, rot2, rotYZ, rotatePrism, legGeom, legPsi, bedProfile, clearances, hingeZs, springEnds, stayEnds, springSolids, staySolids, linkEnds, linkSolids, rectLoopR01,
+  KIT_HW, gapFacts, clearanceSchedule, hingeGapMin, springSegs, staySegs, dynSegs, springCaps };
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
 else root.MurphyCore = api;
 })(typeof window !== 'undefined' ? window : globalThis);

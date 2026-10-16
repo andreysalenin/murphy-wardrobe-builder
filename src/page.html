@@ -188,6 +188,15 @@ table.cut td.n { font-family: var(--mono); text-align: right; }
 table.cut th.n { text-align: right; }
 table.cut .chip { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; }
 details.more > summary { cursor: pointer; font-size: 13.5px; color: var(--accent); margin-top: 10px; }
+table.clr { min-width: 620px; }
+table.clr tr.grp td { font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); padding-top: 12px; border-bottom: 1px solid var(--line); }
+table.clr td.id { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+table.clr td.note { color: var(--muted); font-size: 12.5px; }
+table.clr td.r { text-align: right; white-space: nowrap; color: var(--muted); }
+table.clr .st { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 7px; vertical-align: 0; }
+table.clr .st.ok { background: var(--good); } table.clr .st.tight { background: var(--warn); } table.clr .st.clash { background: var(--bad); } table.clr .st.info { background: var(--line); }
+table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(--warn); } table.clr tr.clash td.n { color: var(--bad); }
+#clr-measure { margin-top: 10px; }
 
 .review { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 8px 24px; }
 .review h3 { margin: 0 0 6px; font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
@@ -245,7 +254,7 @@ details.more > summary { cursor: pointer; font-size: 13.5px; color: var(--accent
           <div class="sub-hd"><span>Gaps round the bed</span></div>
           <div class="field"><div><label for="gapMx">Mattress to side rail</label><small>The folded legs live here.</small></div><div class="num"><input id="gapMx" type="number" min="5" max="80" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><div><label for="gapMy">Mattress to head and foot rails</label><small>2 makes the side rails the kit's 81-1/2 in.</small></div><div class="num"><input id="gapMy" type="number" min="0" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <div class="field"><div><label for="gapHydr">Side rail to cabinet side</label><small>Your "gaphydr". The kit is built for 11 (7/16 in); wider needs packers under its plates.</small></div><div class="num"><input id="gapHydr" type="number" min="5" max="80" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="gapHydr">Side rail to cabinet side</label><small>Your "gaphydr". The kit's pivot spacers fill 11 (7/16 in); wider needs pads under its plates. The gas springs run behind the rails, not in this gap.</small></div><div class="num"><input id="gapHydr" type="number" min="5" max="80" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><label for="gapHolder">Bed top to the shelf above</label><div class="num"><input id="gapHolder" type="number" min="0" max="80" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><div><label for="gapBelow">Floor to face panel and first drawer</label><small>The drawer fronts and the bed face line up here.</small></div><div class="num"><input id="gapBelow" type="number" min="0" max="200" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><div><label for="faceBelowFrame">Face panel past the frame's head end</label><small>Lifts the frame so the pivot lands at the kit's 11-3/4 in.</small></div><div class="num"><input id="faceBelowFrame" type="number" min="0" max="60" step="0.5" inputmode="decimal"><span>mm</span></div></div>
@@ -289,7 +298,7 @@ details.more > summary { cursor: pointer; font-size: 13.5px; color: var(--accent
           <div class="field"><label for="Tsup">Mattress support</label><div class="num"><input id="Tsup" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><label for="Tladder">Bed deck struts</label><div class="num"><input id="Tladder" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><label for="Tplinth">Plinths</label><div class="num"><input id="Tplinth" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <div class="field"><label for="Tpacker">Pivot packers</label><div class="num"><input id="Tpacker" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><label for="Tpacker">Pads under the kit plates</label><div class="num"><input id="Tpacker" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><label for="Tledge">Headboard ledge</label><div class="num"><input id="Tledge" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><label for="Thead">Backrest, ribs, bedside shelf</label><div class="num"><input id="Thead" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
         </div>
@@ -303,16 +312,26 @@ details.more > summary { cursor: pointer; font-size: 13.5px; color: var(--accent
           <div class="field"><div><label for="pivotAboveHead">From the rail's head end</label><small><span class="src">p.15: 9 in</span></small></div><div class="num"><input id="pivotAboveHead" type="number" min="30" max="600" step="0.1" inputmode="decimal"><span>mm</span></div></div>
           <div class="field"><div><label for="cabPivotZ">Height in the kit's cabinet</label><small><span class="src">p.22: 11-3/4 in</span> the legs suit this</small></div><div class="num"><input id="cabPivotZ" type="number" min="50" max="600" step="0.1" inputmode="decimal"><span>mm</span></div></div>
           <div class="field"><div><label for="pinGap">Rail to mounting face</label><small><span class="src">p.6: 7/16 in</span> what the pivot bars are made for</small></div><div class="num"><input id="pinGap" type="number" min="0" max="60" step="0.5" inputmode="decimal"><span>mm</span></div></div>
-          <label class="check"><input type="checkbox" id="packer"> <span>Packers under the cabinet-side plates and bed stops (only for a gap wider than 11)</span></label>
-          <div class="field"><label for="packerH">Packer height</label><div class="num"><input id="packerH" type="number" min="200" max="2000" step="10" inputmode="numeric"><span>mm</span></div></div>
-          <div class="field"><label for="packerDepth">Packer depth</label><div class="num"><input id="packerDepth" type="number" min="80" max="600" step="10" inputmode="numeric"><span>mm</span></div></div>
+          <label class="check"><input type="checkbox" id="packer"> <span>Pads under the cabinet-side plates and bed stops (only for a gap wider than 11)</span></label>
           <div class="sub-hd"><span>Gas springs and stops</span></div>
           <div class="field"><div><label for="springLowAlong">Lower stud, pivot toward head end</label><small><span class="src">p.15: 7-1/2 in</span></small></div><div class="num"><input id="springLowAlong" type="number" min="20" max="600" step="0.1" inputmode="decimal"><span>mm</span></div></div>
           <div class="field"><div><label for="springLowOut">Lower stud past the rail's top edge</label><small><span class="src">p.15</span> the plate overhangs</small></div><div class="num"><input id="springLowOut" type="number" min="-100" max="100" step="0.5" inputmode="decimal"><span>mm</span></div></div>
           <div class="field"><div><label for="springUpFront">Upper stud back from the front</label><small><span class="src">p.22: 10 in</span></small></div><div class="num"><input id="springUpFront" type="number" min="50" max="600" step="0.1" inputmode="decimal"><span>mm</span></div></div>
           <div class="field"><div><label for="springUpZ">Upper stud height, kit cabinet</label><small><span class="src">p.22: 30-3/4 in</span></small></div><div class="num"><input id="springUpZ" type="number" min="200" max="1500" step="0.1" inputmode="decimal"><span>mm</span></div></div>
-          <div class="field"><div><label for="stopFront">Bed stop back from the front</label><small><span class="src">p.22: 7-3/8 in</span></small></div><div class="num"><input id="stopFront" type="number" min="50" max="600" step="0.1" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="stopFront">Bed stop back from the face</label><small><span class="src">p.22: 7-3/8 in</span> 0 puts it where the bed closes plumb</small></div><div class="num"><input id="stopFront" type="number" min="0" max="600" step="0.1" inputmode="decimal"><span>mm</span></div></div>
           <div class="field"><div><label for="stopBelowTop">Bed stop below the frame top</label><small><span class="src">p.22: 6 in below the 87-1/8 in vertical</span></small></div><div class="num"><input id="stopBelowTop" type="number" min="10" max="600" step="0.1" inputmode="decimal"><span>mm</span></div></div>
+          <div class="sub-hd"><span>Hardware sizes: measure yours</span></div>
+          <div class="hint">The booklet gives positions, not sizes. The clearances (sheet 6 and the table below the view) rest on these.</div>
+          <div class="field"><div><label for="nutStack">Lower ball-stud nut and stud end</label><small>Standing off the back of the lower plate; plus the plate it has to clear the side</small></div><div class="num"><input id="nutStack" type="number" min="0" max="30" step="0.1" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="plateT">Ball-stud and pivot plates</label><small>Thickness</small></div><div class="num"><input id="plateT" type="number" min="1" max="10" step="0.1" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="studS">Ball stud, plate face to ball centre</label><small><span class="src">p.14</span> about 1/2 in</small></div><div class="num"><input id="studS" type="number" min="4" max="40" step="0.1" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="springD">Gas spring body</label><small>Diameter</small></div><div class="num"><input id="springD" type="number" min="10" max="40" step="0.5" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="springRodD">Gas spring rod</label><small>Diameter</small></div><div class="num"><input id="springRodD" type="number" min="4" max="20" step="0.5" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="springEndD">Gas spring sockets</label><small>The plastic ends on the balls</small></div><div class="num"><input id="springEndD" type="number" min="8" max="40" step="0.5" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="springBodyL">Gas spring body length</label><small>From the upper ball centre</small></div><div class="num"><input id="springBodyL" type="number" min="100" max="700" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="stopD">Bed stop dome</label><small>Diameter</small></div><div class="num"><input id="stopD" type="number" min="8" max="60" step="0.1" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="stopH">Bed stop dome height</label><small>Off the side</small></div><div class="num"><input id="stopH" type="number" min="2" max="40" step="0.1" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="legD">Fold-out leg tube</label><small>Diameter; the arms pass 3/8 in behind the foot rail</small></div><div class="num"><input id="legD" type="number" min="10" max="40" step="0.5" inputmode="decimal"><span>mm</span></div></div>
           <div class="sub-hd"><span>Bed frame</span></div>
           <div class="field"><div><label for="railD">Side rail depth</label><small><span class="src">p.6: 5-7/8 in</span></small></div><div class="num"><input id="railD" type="number" min="60" max="300" step="0.1" inputmode="decimal"><span>mm</span></div></div>
           <div class="field"><div><label for="headRailD">Head rail depth</label><small><span class="src">p.6: 7-7/8 in</span> stands proud as a pillow lip</small></div><div class="num"><input id="headRailD" type="number" min="18" max="300" step="0.1" inputmode="decimal"><span>mm</span></div></div>
@@ -421,6 +440,11 @@ details.more > summary { cursor: pointer; font-size: 13.5px; color: var(--accent
         <details class="more" id="cut-more"><summary>Cut list</summary>
           <div class="tablewrap"><table class="cut" id="cut-table"></table></div>
         </details>
+      </div>
+      <div class="card" id="clear-card">
+        <h2>Clearances <small id="clr-note"></small></h2>
+        <div class="tablewrap"><table class="cut clr" id="clr-table"></table></div>
+        <div class="hint" id="clr-measure"></div>
       </div>
       <div class="card" id="review-card">
         <h2>Design review <small>what changed from murphy_bed.tikz, and what to check before cutting</small></h2>
