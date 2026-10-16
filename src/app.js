@@ -11,7 +11,7 @@ const NUM_FIELDS = ['W', 'H', 'D', 'sideClear', 'backGap', 'frontSetback', 'mW',
   'railD', 'headRailD', 'footRailD', 'railR', 'legFromFoot', 'legFromTop', 'struts', 'ladderW',
   'ledgeClear', 'headAngle', 'headH', 'headGap', 'upstand', 'steelH', 'steelT', 'twinSpacing', 'lockPinX', 'wallRail', 'kerf', 'trim'];
 const SEL_FIELDS = ['kickCentre', 'doorHinge', 'lockType'];
-const CHK_FIELDS = ['topShelf', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain'];
+const CHK_FIELDS = ['topShelf', 'cableHoles', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain'];
 
 const readLS = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } };
 const writeLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage off: settings just aren't remembered */ } };

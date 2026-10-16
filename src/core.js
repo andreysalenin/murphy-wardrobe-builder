@@ -30,6 +30,7 @@ const DEFAULTS = {
   drawers: [180, 180, 180, 180], // botdrawersize x 4 (bottom first)
   hangClear: 972,     // clear hanging height (midcompartment - plythicka)
   topShelf: true,     // extra adjustable shelf halfway up the top compartment
+  cableHoles: true,   // 20 mm holes for the power and lighting cables: headboard space, towers, shelf box (see the notes)
   railDrop: 50,       // hanging rail centre below the shelf above it
   // fronts
   gap: 6,             // gapdraw: reveal between fronts
@@ -198,7 +199,7 @@ function normParams(p) {
   if (!Array.isArray(P.drawers) || !P.drawers.length) P.drawers = DEFAULTS.drawers.slice();
   P.drawers = P.drawers.slice(0, 10).map(h => { const v = Number(h); return isFinite(v) ? Math.min(600, Math.max(80, v)) : 180; });
   if (!['auto', 'full', 'none'].includes(P.kickCentre)) P.kickCentre = 'auto';
-  P.topShelf = !!P.topShelf; P.packer = !!P.packer; P.ledge = !!P.ledge; P.grain = !!P.grain; P.headboard = !!P.headboard; P.edgeSteel = !!P.edgeSteel; P.lockTab = !!P.lockTab;
+  P.topShelf = !!P.topShelf; P.cableHoles = P.cableHoles !== false; P.packer = !!P.packer; P.ledge = !!P.ledge; P.grain = !!P.grain; P.headboard = !!P.headboard; P.edgeSteel = !!P.edgeSteel; P.lockTab = !!P.lockTab;
   if (p && p.lockPins === false && !p.lockType) P.lockType = 'none';
   if (!['twin', 'pins', 'none'].includes(P.lockType)) P.lockType = 'twin';
   delete P.lockPins;
@@ -280,6 +281,52 @@ function rectLoopR00(u0, v0, u1, v1, r) {
   r = Math.min(r, (u1 - u0) - 1, (v1 - v0) - 1);
   return [L2([u0 + r, v0], [u1, v0]), L2([u1, v0], [u1, v1]), L2([u1, v1], [u0, v1]), L2([u0, v1], [u0, v0 + r]),
     A2([u0, v0 + r], [u0 + r, v0], [u0 + r, v0 + r], r, true)];
+}
+
+/* ------------------------------------------------------------------ cable holes
+   One route a side for low-voltage lighting and the reading lamps, from the headboard space (where the power is)
+   up through the tower to the box over the bed. All 20 mm, near the wall, clear of every screw line:
+   a  headboard space -> tower: through the end rib, the bed-cabinet side and the tower side, 60 below the bedside shelf
+   b  up the tower's back corner: through the shelf over the hanging space and the adjustable shelf above it
+   c  top compartment -> bed bay, just under the shelf over the bed: for a strip under the wall rail (wall wash)
+   d  top compartment -> the box over the bed: through the tower side and the upper side, above the adjustable shelf
+   e  the reading lamps: down through the bedside shelf into the headboard space, near its ends */
+const CABLE_D = 20;
+function cableSpec(P, G) {
+  const T = P.T, out = [], yIn = G.yB1 + 85, h = G.head && !G.head.skipped ? G.head : null;
+  const zA = h ? h.top - 60 : Math.min(G.zS1t + 200, G.zS2b - 60);
+  const zC = G.zBm0 - 52, zD = Math.max(G.zBm1 + 60, P.topShelf ? (G.zS2t + G.zTopB) / 2 + T / 2 + 25 : 0);
+  for (const [S, s] of [['R', -1], ['L', 1]]) {
+    out.push({ id: 'a', S, axis: 'x', x: [s * (G.xB - (h ? P.Thead : 0)), s * G.xT2], c: [yIn, zA], what: 'headboard space to the tower' });
+    out.push({ id: 'b', S, axis: 'z', z: [G.zS2b, G.zTopB], c: [s * (G.xT2 + 70), G.yB1 + 29], what: 'up the tower\'s back corner' });
+    out.push({ id: 'c', S, axis: 'x', x: [s * G.xB, s * G.xT2], c: [yIn, zC], what: 'tower to the wall-wash strip' });
+    if (zD + CABLE_D / 2 < G.zTopB - 30) out.push({ id: 'd', S, axis: 'x', x: [s * G.xB, s * G.xT2], c: [yIn, zD], what: 'tower to the box over the bed' });
+    if (h) out.push({ id: 'e', S, axis: 'z', z: [h.top, h.top + P.Thead], c: [s * (G.xB - 64), (G.yB1 + h.capY) / 2], what: 'reading lamp' });
+  }
+  return out;
+}
+function cableHoles(P, G, parts) {
+  const hole = (c) => reverseLoop(circleLoop(c[0], c[1], CABLE_D / 2));
+  G.cables = cableSpec(P, G);
+  for (const q of G.cables) {
+    const lo = q.axis === 'x' ? Math.min(...q.x) : Math.min(...q.z), hi = q.axis === 'x' ? Math.max(...q.x) : Math.max(...q.z);
+    q.parts = [];
+    for (const p of parts) {
+      if (p.hw || p.bed || !p.solids || p.solids.length !== 1) continue;
+      const pr = p.solids[0], b = prismBox(pr);
+      const k = q.axis === 'x' ? 0 : 2, a0 = b[k], a1 = b[k + 3];
+      if (a1 <= lo + 0.5 || a0 >= hi - 0.5) continue;
+      const [cu, cv] = q.c, inUV = q.axis === 'x' ? cu > b[1] + 12 && cu < b[4] - 12 && cv > b[2] + 12 && cv < b[5] - 12 : cu > b[0] + 12 && cu < b[3] - 12 && cv > b[1] + 12 && cv < b[4] - 12;
+      if (!inUV) continue;
+      if (q.axis === 'z') {
+        if (pr.n[2] !== 1 || pr.u[0] !== 1) continue;
+        pr.loops.push(hole(q.c));
+      } else if (pr.n[0] === 1 && pr.u[1] === 1) pr.loops.push(hole(q.c));     // already drawn in (y, z), extruded along x
+      else if (pr.n[2] === 1 && pr.loops.length === 1 && pr.loops[0].length === 4) { const np = yzPrism(b[0], b[3], rectLoop(b[1], b[2], b[4], b[5])); np.loops.push(hole(q.c)); p.solids[0] = np; }
+      else continue;
+      (p.cable = p.cable || []).push(q.id); q.parts.push(p.name);
+    }
+  }
 }
 
 /* ------------------------------------------------------------------ prisms
@@ -852,6 +899,7 @@ function build(params, opts) {
         solids: [box(-G.xB, G.xB, G.yB1, G.head.capY, zr1, zr1 + Th)] });
     } else G.head.skipped = true;
   }
+  if (P.cableHoles) cableHoles(P, G, parts);
   // kick board: one plank across the towers and under the bed (none under the bed: a kick board per tower)
   if (G.kickC) put({ mark: 'K1', name: 'Kick board, one piece', grp: 'fronts-C', kind: 'front', T, L: G.plankL, W: G.kickC, grain: false, band: G.plankL,
     solids: [box(-G.plankL / 2, G.plankL / 2, G.yFb, G.yF, 0, G.kickC)] });
@@ -1357,6 +1405,10 @@ function reviewNotes(model, S) {
   const open = [
     ['Hardware positions', `Heights on the bed-cabinet sides match the kit's (pivot ${h5(G.pivot[1])}, upper ball stud ${h5(G.springCab[1])}, stop ${h5(G.stop[1])}), but measure depths from the carcass edge, not the kit's 4-3/4, 10 and 7-3/8 in: here the face stands ${h5(G.yF - G.yC)} mm proud, so they are ${h5(G.yC - G.pivot[0])}, ${h5(G.yC - G.springCab[0])} and ${h5(G.yC - G.stop[0])}. ${P.stopFront > 0 ? '' : `The stops sit ${h5(G.yC - G.stop[0])} back, not the kit's 7-3/8 in, so the closed bed stands plumb with its face flush with the flaps. `}Drill the stop holes last, after a trial closing, or slot their screw holes: where a dome meets the rail moves with its shape and give, and 2 mm at the stops is ${f0(2 * (G.zF1 - G.pivot[1]) / (G.stop[1] - G.pivot[1]))} at the top of the bed face. Sheet 5 has them.`],
     ['Measure the kit hardware', `The booklet gives the hardware's positions, not its sizes, and the clearances on sheet 6 rest on typical ones. Measure: the lower ball-stud plate from its face against the rail to the end of its stud (${(Math.round((P.plateT + P.nutStack) * 10) / 10)} used), the ball studs from plate face to ball centre (${P.studS}), the spring's body, rod and sockets (${P.springD}, ${P.springRodD}, ${P.springEndD}) and its length ball to ball fully out (${Math.round(G.clear.spring.fitted)} wanted), the pivot spacer with its plate (${P.pinGap}), and the bed stop domes (${P.stopD} x ${P.stopH}). Enter them under Create-A-Bed hardware.`],
+    ['Power and light', P.cableHoles && G.cables ? (() => {
+      const h = G.head && !G.head.skipped ? G.head : null;
+      return `${h ? `The space behind the backrest (about ${f0(h.B1[0] - G.yB1)} to ${f0(h.B0[0] - G.yB1)} deep, ${f0(h.z0)} to ${f0(h.top)} high) is the services void: an outlet on the wall there (an electrician's job), the 24 V supply for the lights, and the leads of two bedside power units set flush in the backrest just under the bedside shelf, about 650 either side of centre. The bedside shelf lifts off to reach it. ` : ''}Nothing may stand further from the wall than ${f0(G.yM0 - 30)} above ${f0(G.pivot[1] + 300)} or so: the closed mattress's face comes to ${f0(G.yM0)}, and the bed swings back toward the wall only near the floor. 20 mm cable holes (sheet 7) take one route a side up through the tower, ${f0(G.cables[0].c[0] - G.yB1)} from the wall, clear of every screw line and the kit plates: headboard space to tower, up its back corner through the shelves, then into the bay just under the shelf for a wall-wash strip under the wall rail, and into the box over the bed. ${h ? 'Two more through the bedside shelf near its ends take the reading lamps. ' : ''}Strips in the towers go under the shelf over the hanging space and under the tower top, at the front; in the box over the bed under the top, at least 80 back from the front, behind the flap hinge plates.`;
+    })() : 'Cable holes are turned off.'],
     ['Ventilation', 'A mattress stood on end in a closed bay needs air. Drill the mattress support (for example 25 mm holes at 150) and leave the side gaps open.'],
     ['Tower doors', P.doorHinge === 'outer' ? `Hinged on the wall side, ${P.gap} mm from the cavity wall with their faces flush with the room wall. A 110 deg CLIP top on a ${P.T} mm door wants about ${hingeGapMin(P.T)} mm beside its hinge edge, so they open fully, away from the bed.` : `Hinged on the bed side: they open past 90 deg, but an open door stands ${f0(G.doorX[0] - G.xFo)} mm from the edge of the lowered bed.`],
     ['Lift-up flaps', `About ${(G.flapW * G.flapH * P.T * PLY_DENSITY).toFixed(1)} kg each. Choose the gas stays from their force chart and a push latch strong enough to open against them. ${f0(G.antClear)} clear behind the flaps.`],
@@ -1442,6 +1494,7 @@ function hardwareList(model) {
       : P.lockType === 'pins' ? [['Drop pins, 10 mm, with hardwood blocks', '2', `into steel bushes in the foot rail, ${P.lockDepth} mm deep`]] : []),
     ['Hanging rail 25 mm + end brackets', '2', `${Math.round(G.towerIn - 4)} long`],
     ['Handles or pulls', `${nDr + 4 + 2}`, 'drawers, doors, two on the bed face (kit: 5 to 6 ft up)'],
+    ...(P.cableHoles && G.cables ? [['Cable grommets, 20 mm', `${2 * G.cables.filter(q => q.axis === 'x').length}`, 'both ends of the holes between spaces (sheet 7)']] : []),
     ['Screws, dowels, wall fixings, glue', '-', 'see the fixings schedule with the build sequence'],
   ];
 }
@@ -1719,7 +1772,8 @@ function joinery(model) {
         const zt = G.head.top, yE = (G.head.B1[0] + G.head.F1[0]) / 2;
         ops.push({ title: 'Bedside shelf on top', add: [[H6, [0, 0, E]]],
           fast: [...ribs.map((p, k) => F('b25', H6, p, [0, 0, -1], Th, spread(G.yB1, G.head.B1[0], 35, 200).map(y => [ribX[k], y, zt]))),
-            F('b25', H6, H4, [0, 0, -1], Th, spread(-G.xB, G.xB, 50, 200, ribAvoid).map(x => [x, yE, zt]))] });
+            F('b25', H6, H4, [0, 0, -1], Th, spread(-G.xB, G.xB, 50, 200, ribAvoid).map(x => [x, yE, zt]))],
+          setout: 'screws only, no glue: it lifts off to reach the power and cables in the space behind the backrest' });
       }
     }
     inst('ledge', { show: true, base: [H2, H3], ops });
@@ -1839,7 +1893,7 @@ function assembly(model, sheets) {
   st = step({ title: 'Edge band, sand, pre-finish', h: Math.round((2 + band * 0.08) * 2) / 2, overnight: true, parts: () => false,
     text: `${band.toFixed(0)} m of banding on the edges the cut list marks. Sand to 180 and put two coats on the insides of the towers, the drawer boxes and the backs of the fronts while they lie flat. Leave it overnight.` });
   st = step({ title: 'Drill everything on the flat', h: 3, parts: () => false,
-    text: `Runner holes on the tower sides (${holes.join(', ')} from the front edge, on the centre lines on sheet 5); hinge-plate holes 37 back and 32 apart at the cup heights; 35 x 13 cups ${G.hingeDoor.cup} in from the door edges and ${G.hingeFlap.cup} below the flaps' top edges; shelf-pin holes; the dowel holes with a jig and the screw clearance holes, from the set-out strips in the assembly details; the kit plates on the bed-cabinet sides from sheet 5.` });
+    text: `Runner holes on the tower sides (${holes.join(', ')} from the front edge, on the centre lines on sheet 5); hinge-plate holes 37 back and 32 apart at the cup heights; 35 x 13 cups ${G.hingeDoor.cup} in from the door edges and ${G.hingeFlap.cup} below the flaps' top edges; shelf-pin holes; the dowel holes with a jig and the screw clearance holes, from the set-out strips in the assembly details; the kit plates on the bed-cabinet sides from sheet 5${P.cableHoles && G.cables ? '; the 20 mm cable holes from the table on sheet 7, each one through all its parts while they are loose, with a backing board so the far face does not splinter' : ''}.` });
 
   st = step({ title: 'Build the plinths', h: 1, parts: (p) => p.mark === 'P1' || p.mark === 'P2',
     text: `Glue and screw each ladder (two screws a corner), check the diagonals, then set it ${f0(P.sideClear)} off the side wall and ${f0(P.backGap)} off the back and level it from the floor's high point with packers under its members.` });
@@ -1873,7 +1927,7 @@ function assembly(model, sheets) {
   addJ(st, 'frame');
   if (has('H1') || has('H4')) {
     st = step({ title: 'Headboard ledge and backrest', h: 1.5, parts: (p) => /^H[1-6]$/.test(p.mark), bed: 70,
-      text: `With the bed down: the ledge's wall cleat into the studs, then its front and top, glued and screwed.${has('H4') ? ' The backrest on its ribs, leaning back over the swing, and the bedside shelf on top.' : ''}` });
+      text: `With the bed down: the ledge's wall cleat into the studs, then its front and top, glued and screwed.${has('H4') ? ` Any power in the space behind the backrest goes in now: an outlet on the wall there is an electrician's job, and the cables through the cable holes are easiest to pull before the backrest closes it. The backrest on its ribs, leaning back over the swing, and the bedside shelf on top${has('H6') ? ', screwed only so it lifts off' : ''}.` : ''}` });
     addJ(st, 'ledge');
     if (has('H1')) add(st, 'w75', 2 * studs(2 * G.xB));
   }

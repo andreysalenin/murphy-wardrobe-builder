@@ -6,7 +6,7 @@
 const C = root.MurphyCore, V = root.MurphyViewer;
 const PW = 420, PH = 297;
 const INK = [27, 29, 33], GREY = [107, 114, 128], LIGHT = [205, 208, 212], FAINT = [240, 238, 233], WHITE = [255, 255, 255];
-const ACC = [176, 98, 10], BAD = [176, 40, 31];
+const ACC = [176, 98, 10], BAD = [176, 40, 31], CABLE = [36, 104, 170];
 const FILL = {
   carcass: [244, 236, 221], front: [252, 249, 243], frame: [235, 220, 196], deck: [240, 228, 207], drawer: [248, 241, 228], back: [236, 228, 214],
   plinth: [230, 220, 203], packer: [222, 199, 166], ledge: [244, 236, 221], mattress: [238, 240, 242], metal: [74, 78, 84], chrome: [190, 194, 199], zinc: [178, 184, 192],
@@ -689,6 +689,15 @@ function pageHardware(doc, M, S, info) {
     s.text(xR, pq[1] - 3, `kit: ${pts[i][2]}`, { size: 5, va: 'middle', color: GREY });
   });
   v.dimAt([0, G.yB1, G.zBm0], [0, yE, G.zBm0], v.P([0, 0, G.zBm0])[1] + 4, 'h', null, { size: 5.4 });
+  // cable holes through this side (20 mm), dimensioned from the back edge
+  (G.cables || []).filter(q => q.S === 'R' && q.axis === 'x' && q.parts.some(n => /^Bed-cabinet side \(R\)/.test(n))).forEach((q, i) => {
+    const [y, z] = q.c, pq = v.Puv([y, z]);
+    s.circle(pq[0], pq[1], 10 / sc, { lw: 0.25, color: CABLE, fill: WHITE });
+    v.dimAt([0, G.yB1, z], [0, y, z], pq[1] - 4, 'h', fh(y - G.yB1), { size: 5.4, color: CABLE });
+    v.dimAt([0, G.yB1, 0], [0, G.yB1, z], v.P([0, G.yB1, 0])[0] - 5 - (3 + i) * 6, 'v', fh(z), { size: 5.4, color: CABLE });
+    s.text(xR, pq[1] + 6.5, `cable hole ${q.id}, 20`, { size: 5.6, va: 'middle', weight: 'bold', color: CABLE });
+    s.text(xR, pq[1] + 3.5, q.what + ' (sheet 7)', { size: 5, va: 'middle', color: GREY });
+  });
   {
     const X = C.gapFacts(P, G), need = X.nut < 2;
     for (const off of need ? [-10, 10] : [0]) s.poly(nutPath(G, v, off), { lw: need ? 0.25 : 0.15, color: need ? BAD : GREY, dash: need ? null : [1, 0.7] });
@@ -942,6 +951,32 @@ function pageClearances(doc, M, M45, M90, S, info) {
   s.finish();
 }
 
+// the 20 mm cable holes, one row per hole (the left-hand side mirrors the right), positions per part as drilled
+function cableTable(s, M, x0, y0) {
+  const { P, G } = M, W = 104;
+  const byName = new Map(M.parts.map(p => [p.name, p]));
+  const rows = G.cables.filter(q => q.S === 'R').map(q => {
+    const pos = q.parts.map(n => {
+      const p = byName.get(n), b = C.prismBox(p.solids[0]), mk = p.mark;
+      if (q.axis === 'x') return `${mk} ${fh(q.c[1] - b[2])} up`;
+      return `${mk} ${fh(Math.min(q.c[0] - b[0], b[3] - q.c[0]))} from the ${mk === 'H6' ? 'end' : 'bed side'}`;
+    });
+    const back = q.axis === 'x' ? q.c[0] - G.yB1 : q.c[1] - G.yB1;
+    return [q.id, q.what, `${pos.join(', ')}; ${fh(back)} from the back edge`];
+  });
+  s.heading(x0, y0, 'CABLE HOLES, 20 mm', 'right-hand side; the left is its mirror image');
+  let y = s.table(x0, y0 - 6, [['', 6, 'center'], ['FOR', 34, 'left'], ['WHERE, FROM EACH PART\'S EDGES', 64, 'left']], rows, { rowH: 6.2, size: 5.2, hsize: 5, boldCol: 0 });
+  const h = G.head && !G.head.skipped;
+  const notes = [
+    `Heights from the part's bottom edge as it stands; ${fh(G.cables[0].c[0] - G.yB1)} from the back clears the screw rows 35 in from the edges.`,
+    h ? 'Power: a wall outlet in the space behind the backrest (an electrician\'s job), two bedside power units flush in the backrest just under the bedside shelf, about 650 either side of centre. The bedside shelf is screwed only: it lifts off.' : 'Power: an outlet near the bed bay, by an electrician.',
+    `Light: one 24 V supply in that space; strips under the shelf over the hanging space and under the tower tops at the front, under the wall rail below the shelf over the bed (wall wash), and under the top of the box over the bed at least 80 back from the front.`,
+    `Keep everything behind the closed mattress: no more than ${f0(G.yM0 - 30)} from the wall above about ${f0(G.pivot[1] + 300)}. Park the reading lamps over the bedside shelf before closing the bed.`,
+  ];
+  y = s.numbered(x0, y - 5, notes, W, { size: 5.2 });
+  return y;
+}
+
 function pageCutList(doc, M, S, info) {
   const { P } = M;
   const s = Sheet(doc, 7, info.total, 'CUT LIST', '-', info);
@@ -963,6 +998,7 @@ function pageCutList(doc, M, S, info) {
   let hy = 270 - (half + 1) * rh - 10;
   s.heading(hx, hy, 'HARDWARE');
   s.table(hx, hy - 6, [['ITEM', 70, 'left'], ['QTY', 14, 'right'], ['NOTE', 90, 'left']], S.hardware, { rowH: 4.4, size: 5.6 });
+  if (M.G.cables && M.G.cables.length) cableTable(s, M, 302, hy);
   s.finish();
 }
 

@@ -112,7 +112,20 @@ function checkJoinery(params, label) {
     if (Math.min(A.a[0], A.b[0]) - 60 > Math.max(Bq.a[0], Bq.b[0]) || Math.min(Bq.a[0], Bq.b[0]) - 60 > Math.max(A.a[0], A.b[0])) continue;
     if (segDist(A.a, A.b, Bq.a, Bq.b) < A.r + Bq.r + 1.5) problems.push(`${label} clash: ${A.where} and ${Bq.where}`);
   }
-  console.log(`${label}: ${n} fixings checked, ${problems.length} problems`);
+  // cable holes: clear of every fixing and of the hardware, and each one through every part it is meant to pass
+  const holeR = 10;
+  for (const q of m.G.cables || []) {
+    const A = q.axis === 'x' ? [q.x[0], q.c[0], q.c[1]] : [q.c[0], q.c[1], q.z[0]], Bq = q.axis === 'x' ? [q.x[1], q.c[0], q.c[1]] : [q.c[0], q.c[1], q.z[1]];
+    for (const g of segs) { const d = segDist(A, Bq, g.a, g.b); if (d < holeR + g.r + 1.5) problems.push(`${label} cable hole ${q.id} ${q.S} meets ${g.where} (${d.toFixed(1)})`); }
+    const lo = A.map((v, k) => Math.min(v, Bq[k]) - holeR), hi = A.map((v, k) => Math.max(v, Bq[k]) + holeR);
+    if (q.axis === 'x') { lo[0] += holeR; hi[0] -= holeR; } else { lo[2] += holeR; hi[2] -= holeR; }
+    for (const p of m.parts.filter(p => p.hw && !p.mattress && !p.bed)) for (const pr of p.solids) {
+      const b = C.prismBox(pr);
+      if (b[0] < hi[0] && b[3] > lo[0] && b[1] < hi[1] && b[4] > lo[1] && b[2] < hi[2] && b[5] > lo[2]) problems.push(`${label} cable hole ${q.id} ${q.S} meets ${p.name}`);
+    }
+    if (!q.parts.length) problems.push(`${label} cable hole ${q.id} ${q.S} goes through nothing`);
+  }
+  console.log(`${label}: ${n} fixings checked, ${(m.G.cables || []).length} cable holes, ${problems.length} problems`);
   for (const p of problems.slice(0, 40)) console.log('   ' + p);
   return problems.length;
 }
