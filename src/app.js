@@ -173,7 +173,7 @@ function renderClearances() {
   $('clr-table').innerHTML = '<thead><tr><th>Id</th><th>Clearance</th><th class="n">Needs</th><th class="n">Here</th><th>Note</th></tr></thead><tbody>' + rows.join('') + '</tbody>';
   const all = S.groups.flatMap(g => g.rows), nt = all.filter(r => r.st === 'tight').length, nc = all.filter(r => r.st === 'clash').length;
   $('clr-note').textContent = nc ? `${nc} where parts meet` : nt ? `${nt} less than ${nt > 1 ? 'they need' : 'it needs'}` : 'all clear';
-  $('clr-measure').innerHTML = '<b>Measure on your kit:</b> ' + S.measure.map(([, what, used]) => `${esc(what.toLowerCase())} (${esc(used)})`).join('; ') + '. Enter them under Create-A-Bed hardware.';
+  $('clr-measure').innerHTML = '<b>Measure on your kit and mattress:</b> ' + S.measure.map(([, what, used]) => `${esc(what.toLowerCase())} (${esc(used)})`).join('; ') + '. Enter the mattress under Mattress and bed, the rest under Create-A-Bed hardware.';
 }
 function renderReview() {
   const R = C.reviewNotes(model, summary);

@@ -1162,6 +1162,8 @@ function clearanceSchedule(model) {
   A.push(row("Bed stop domes past the rail's outer face", '1.5 or more', G.stopReach, G.stopReach < 0.5 ? 'clash' : G.stopReach < 1.5 ? 'tight' : 'ok', 'the rail closes onto them; rubber gives'));
   A.push(row(`Bed face panel edge to the ${P.packer ? 'pads' : 'side'}`, '5 or more', X.face, atLeast(X.face, 5), 'kit 3/16 in'));
   A.push(row('Mattress to the side rail', '20 or more', P.gapMx, atLeast(P.gapMx, 20), 'kit 1 in'));
+  const legIn = 14 + P.legD / 2; // the folded leg tube runs beside the mattress at the foot end, its centre 14 in from the rail
+  A.push(row('Folded legs to the side of the mattress', '3 or more', P.gapMx - legIn, atLeast(P.gapMx - legIn, 3), `tube ${r1(P.legD)}, ${r1(legIn)} in from the rail; a sheet and protector take about 3`));
   A.push(row('Pivot bar end and E-clip to the mattress', '10 or more', X.barEnd, atLeast(X.barEnd, 10)));
   groups.push({ key: 'A', title: 'ACROSS THE GAP BESIDE THE BED', sub: 'side rail to bed-cabinet side, each side', rows: A });
   // B. the gas springs through the swing
@@ -1228,7 +1230,8 @@ function clearanceSchedule(model) {
     ['springLen', 'Gas spring, ball to ball, fully out / fully in', `${Math.round(S.fitted)} / ${Math.round(S.open)} wanted`, 'B1'],
     ['pinGap', 'Pivot: plastic spacer plus male plate', `${r1(P.pinGap)}`, 'A1'],
     ['stopD', 'Bed stop dome: diameter / height', `${r1(P.stopD)} / ${r1(P.stopH)}`, 'A5, C'],
-    ['legD', 'Fold-out leg tube diameter', `${r1(P.legD)}`, 'C'],
+    ['legD', 'Fold-out leg tube diameter', `${r1(P.legD)}`, 'A8, C'],
+    ['mW', 'Mattress width, with its protector and sheet on', `${r1(P.mW)} + about 6`, 'A7, A8'],
   ];
   return { groups, measure };
 }
