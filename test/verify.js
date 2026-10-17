@@ -113,19 +113,19 @@ function checkJoinery(params, label) {
     if (segDist(A.a, A.b, Bq.a, Bq.b) < A.r + Bq.r + 1.5) problems.push(`${label} clash: ${A.where} and ${Bq.where}`);
   }
   // cable holes: clear of every fixing and of the hardware, and each one through every part it is meant to pass
-  const holeR = 10;
-  for (const q of m.G.cables || []) {
+  for (const q of (m.G.cables || []).concat(m.G.boltHoles || [])) {
+    const holeR = (q.d || 20) / 2;
     const A = q.axis === 'x' ? [q.x[0], q.c[0], q.c[1]] : [q.c[0], q.c[1], q.z[0]], Bq = q.axis === 'x' ? [q.x[1], q.c[0], q.c[1]] : [q.c[0], q.c[1], q.z[1]];
     for (const g of segs) { const d = segDist(A, Bq, g.a, g.b); if (d < holeR + g.r + 1.5) problems.push(`${label} cable hole ${q.id} ${q.S} meets ${g.where} (${d.toFixed(1)})`); }
     const lo = A.map((v, k) => Math.min(v, Bq[k]) - holeR), hi = A.map((v, k) => Math.max(v, Bq[k]) + holeR);
     if (q.axis === 'x') { lo[0] += holeR; hi[0] -= holeR; } else { lo[2] += holeR; hi[2] -= holeR; }
-    for (const p of m.parts.filter(p => p.hw && !p.mattress && !p.bed)) for (const pr of p.solids) {
+    for (const p of m.parts.filter(p => p.hw && !p.mattress && !p.bed && !(q.id === 'bolt' && p.mark === 'SB'))) for (const pr of p.solids) {
       const b = C.prismBox(pr);
       if (b[0] < hi[0] && b[3] > lo[0] && b[1] < hi[1] && b[4] > lo[1] && b[2] < hi[2] && b[5] > lo[2]) problems.push(`${label} cable hole ${q.id} ${q.S} meets ${p.name}`);
     }
     if (!q.parts.length) problems.push(`${label} cable hole ${q.id} ${q.S} goes through nothing`);
   }
-  console.log(`${label}: ${n} fixings checked, ${(m.G.cables || []).length} cable holes, ${problems.length} problems`);
+  console.log(`${label}: ${n} fixings checked, ${(m.G.cables || []).length + (m.G.boltHoles || []).length} holes, ${problems.length} problems`);
   for (const p of problems.slice(0, 40)) console.log('   ' + p);
   return problems.length;
 }
@@ -133,6 +133,7 @@ let jp = checkJoinery({}, 'joinery default');
 jp += checkJoinery({ W: 2600, H: 2400, D: 560, drawers: [150, 150, 200, 250, 250], hangClear: 900, sideClear: 0, doorHinge: 'inner' }, 'joinery variant');
 jp += checkJoinery({ mT: 305, gapHydr: 25, kickCentre: 'none', topShelf: false, ledge: false, packer: false, edgeSteel: false, lockType: 'pins', upstand: 40, drawers: [150, 200, 250] }, 'joinery edge');
 jp += checkJoinery({ gapHydr: 30, packer: true, Tpacker: 18 }, 'joinery pads');
+jp += checkJoinery({ lockType: 'bolts', supportOffset: true, faceReveal: true, doorHinge: 'inner' }, 'joinery options');
 if (jp) process.exitCode = 1;
 
 // ---------- solid overlaps (sampled points, not bounding boxes): hardware against plywood and against other hardware,
@@ -152,7 +153,7 @@ if (jp) process.exitCode = 1;
   // the legs and their rail, the rail closing onto the stop domes
   const ALLOW = new Set(['HG D1', 'HG D2', 'HG HG', 'FH D4', 'FH FH', 'LP LP', 'LP B2', 'LP F4', 'PL B2', 'PL SF', 'PV B1', 'PV F2', 'PV PV', 'PV B8', 'BS B1', 'BS B8', 'BS GS', 'GS BS', 'LG LG', 'ST F2', 'SF PL']);
   let bad = 0;
-  const sets = [['default', {}], ['pads', { gapHydr: 30, packer: true, Tpacker: 18 }]].concat(process.env.OVERLAP_PROBE ? [['probe', JSON.parse(process.env.OVERLAP_PROBE)]] : []);
+  const sets = [['default', {}], ['pads', { gapHydr: 30, packer: true, Tpacker: 18 }], ['options', { lockType: 'bolts', supportOffset: true, faceReveal: true }]].concat(process.env.OVERLAP_PROBE ? [['probe', JSON.parse(process.env.OVERLAP_PROBE)]] : []);
   for (const [label, params] of sets) for (const ang of [0, 45, 90]) {
     const m = C.build(params, { bedAngle: ang }), all = [];
     for (const p of m.parts) if (!p.mattress) p.solids.forEach((sl) => all.push({ p, s: sl, box: C.prismBox(sl), polys: sl.loops.map(l => C.loopPolyline(l, 16)) }));

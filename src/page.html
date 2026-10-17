@@ -272,6 +272,8 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="field"><label for="railDrop">Rail centre below the shelf</label><div class="num"><input id="railDrop" type="number" min="25" max="150" step="1" inputmode="numeric"><span>mm</span></div></div>
           <label class="check"><input type="checkbox" id="topShelf"> <span>Extra shelf halfway up the top compartment</span></label>
           <label class="check"><input type="checkbox" id="cableHoles"> <span>20 mm cable holes for power and lighting</span></label>
+          <label class="check"><input type="checkbox" id="supportOffset"> <span>Mattress support cut wide + narrow, its seam off the face joint</span></label>
+          <label class="check"><input type="checkbox" id="faceReveal"> <span>Reveal down the middle of the bed face, in line with the flap joint</span></label>
           <div class="sub-hd"><span>Runners</span></div>
           <div class="field"><div><label for="runnerClear">Runner clearance each side</label><small>Hettich KA 5632, full extension: 12.7.</small></div><div class="num"><input id="runnerClear" type="number" min="0" max="30" step="0.1" inputmode="decimal"><span>mm</span></div></div>
           <div class="field"><div><label for="runnerLen">Runner length</label><small>0 picks the longest that fits: 250 to 700 in 50s, needing 4 more inside the tower.</small></div><div class="num"><input id="runnerLen" type="number" min="0" max="900" step="50" inputmode="numeric"><span>mm</span></div></div>
@@ -354,8 +356,8 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="field"><div><label for="steelH">Steel flat height</label><small>2 mm more than the shelf: it sits proud underneath.</small></div><div class="num"><input id="steelH" type="number" min="10" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><label for="steelT">Steel flat thickness</label><div class="num"><input id="steelT" type="number" min="5" max="20" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><div><label for="upstand">Lip on the shelf's front edge</label><small>0 keeps the shelf flat so boxes slide in.</small></div><div class="num"><input id="upstand" type="number" min="0" max="200" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <div class="field"><div><label for="lockType">Safety lock into the foot rail</label><small>Twin pin: two pins on one bar either side of the divider, one pull.</small></div>
-            <select id="lockType"><option value="twin">Twin pin at the divider</option><option value="pins">Two pins mid-bay</option><option value="none">None</option></select></div>
+          <div class="field"><div><label for="lockType">Safety lock</label><small>Twin pin: two pins on one bar either side of the divider, one pull, behind the flaps. Side bolts: a slim spring bolt in each hanging space, into the bed's side rail.</small></div>
+            <select id="lockType"><option value="twin">Twin pin at the divider</option><option value="pins">Two pins mid-bay</option><option value="bolts">Slim side bolts in the hanging spaces</option><option value="none">None</option></select></div>
           <div class="field"><label for="twinSpacing">Twin pin centres</label><div class="num"><input id="twinSpacing" type="number" min="40" max="90" step="1" inputmode="numeric"><span>mm</span></div></div>
           <label class="check"><input type="checkbox" id="lockTab"> <span>Tab through the flap joint, to unlock without opening a flap</span></label>
           <div class="field"><label for="lockPinX">Mid-bay pins either side of centre</label><div class="num"><input id="lockPinX" type="number" min="50" max="800" step="10" inputmode="numeric"><span>mm</span></div></div>

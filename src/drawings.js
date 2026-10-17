@@ -689,6 +689,13 @@ function pageHardware(doc, M, S, info) {
     s.text(xR, pq[1] - 3, `kit: ${pts[i][2]}`, { size: 5, va: 'middle', color: GREY });
   });
   v.dimAt([0, G.yB1, G.zBm0], [0, yE, G.zBm0], v.P([0, 0, G.zBm0])[1] + 4, 'h', null, { size: 5.4 });
+  if (G.bolt) {
+    const pq = v.Puv([G.bolt.y, G.bolt.z]);
+    s.circle(pq[0], pq[1], G.bolt.hole / 2 / sc, { lw: 0.3, color: INK, fill: WHITE });
+    v.dimAt([0, G.bolt.y, G.bolt.z], [0, yE, G.bolt.z], pq[1] - 4, 'h', fh(yE - G.bolt.y), { size: 5.4 });
+    s.text(xR, pq[1] + 6.5, `safety bolt, ${G.bolt.hole} through, ${fh(G.bolt.z)} up`, { size: 5.6, va: 'middle', weight: 'bold' });
+    s.text(xR, pq[1] + 3.5, 'tower side and this side; detail at the bottom right', { size: 5, va: 'middle', color: GREY });
+  }
   // cable holes through this side (20 mm), dimensioned from the back edge
   (G.cables || []).filter(q => q.S === 'R' && q.axis === 'x' && q.parts.some(n => /^Bed-cabinet side \(R\)/.test(n))).forEach((q, i) => {
     const [y, z] = q.c, pq = v.Puv([y, z]);
@@ -725,7 +732,7 @@ function pageHardware(doc, M, S, info) {
   door(G.topDoor[0], G.topDoor[1], dx + 58, `D1  ${fh(G.doorW)} x ${fh(G.topDoor[1] - G.topDoor[0])}`);
   s.text(dx - 6, 276, 'TOWER DOORS, INSIDE FACE  1:10', { size: 7.5, weight: 'bold' });
   const HD = G.hingeDoor, HF = G.hingeFlap;
-  s.para(dx - 6, 272, s.wrap(`${C.HINGE_HW.name}. 35 mm cups bored 13 deep, centres ${fh(HD.cup)} from the ${P.doorHinge === 'outer' ? 'wall' : 'bed'}-side edge (${fh(HD.B)} mm boring distance), screw holes 45 apart and 9.5 further in. ${HD.H} mm CLIP cruciform plates (${HD.code}) on the side panel, holes 37 back from its front edge and 32 apart, at the cup heights: ${fh(HD.overlay)} overlay. Flaps: ${HF.H} mm plates (${HF.code}) under the top, cups ${fh(HF.cup)} below the top edge. Right-hand tower shown; the left is a mirror image.`, 104, 5.4), { size: 5.4, color: GREY });
+  s.para(dx - 6, 272, s.wrap(`${C.HINGE_HW.name}. 35 mm cups bored 13 deep, centres ${fh(HD.cup)} from the ${P.doorHinge === 'outer' ? 'wall' : 'bed'}-side edge (${fh(HD.B)} mm boring distance), screw holes 45 apart and 9.5 further in. ${HD.H} mm CLIP cruciform plates (${HD.code}) on the side panel, holes 37 back from its front edge and 32 apart, at the cup heights: ${fh(HD.overlay)} overlay. Flaps: ${C.HINGE_FLAP.name}, no spring or damper so the push latches open them, on ${HF.H} mm plates (${HF.code}) under the top, cups ${fh(HF.cup)} below the top edge. Right-hand tower shown; the left is a mirror image.`, 104, 5.4), { size: 5.4, color: GREY });
 
   // 3. runner lines on a tower side, from inside (front edge on the right)
   {
@@ -795,6 +802,24 @@ function pageHardware(doc, M, S, info) {
     vf.dimAt([tw.block[0] / 2, 0, G.zBm1 + tw.block[2] + tw.bar[2]], [tw.block[0] / 2, 0, G.zBm1 + tw.block[2] + tw.bar[2] + tw.lift], vf.P([tw.block[0] / 2, 0, 0])[0] - 4, 'v', `lift ${fh(tw.lift)}`, { size: 5, color: ACC });
     s.text(fx, b[1] + 4, 'cut across both pins', { size: 5.2, color: GREY });
     s.para(qx, a[1] - 5, s.wrap(`Two 10 mm mild-steel pins, ${fh(2 * hs)} apart, nutted through a ${tw.bar.join(' x ')} bar, run in steel bushes through a ${tw.block.join(' x ')} hardwood block and the shelf, ${P.lockDepth} mm into the foot rail (drill it through, 12 mm, with a strike plate). The divider is notched ${tw.notchD} x ${tw.notchH} at its front foot. Lift ${fh(tw.lift)} through either flap before lowering the bed; a spring ball plunger holds it up.${P.lockTab ? ' The 2 mm tab on the bar comes out through the flap joint.' : ''}`, 150, 5), { size: 5, color: GREY });
+  }
+  if (P.lockType === 'bolts' && G.bolt) {
+    const b = G.bolt, sc2 = 2, qx = 266, qy = 60, D = (X, y) => [-X, y, 0];
+    const win = [G.xFi - 25, G.xT2 + 45, -(G.yF + 6), -(G.yRail - 6)];
+    const vb = View(s, 'top', sc2, [qx, qy], [win[0], win[2]]);
+    drawSection(s, vb, sectionAt(M.parts.filter(p => !p.leg && !p.mattress && p.name.indexOf('(L)') < 0), b.z), win);
+    const a0 = vb.Puv([win[0], win[2]]), a1 = vb.Puv([win[1], win[3]]);
+    s.rect(a0[0], a0[1], a1[0] - a0[0], a1[1] - a0[1], { lw: 0.2, dash: [2, 0.8, 0.4, 0.8] });
+    // the pin, thrown: across the gap and into the rail
+    const p0 = vb.P(D(G.xB, b.y + b.pin / 2)), p1 = vb.P(D(G.xFo - b.into, b.y - b.pin / 2));
+    s.rect(Math.min(p0[0], p1[0]), Math.min(p0[1], p1[1]), Math.abs(p1[0] - p0[0]), Math.abs(p1[1] - p0[1]), { lw: 0.25, dash: [1, 0.6], color: INK });
+    const yd = a0[1] - 4;
+    for (const [x0, x1] of [[G.xFo - b.into, G.xFo], [G.xFo, G.xB], [G.xB, G.xT2], [G.xT2, G.xT2 + b.flange[1] + b.knob[1]]]) vb.dimAt(D(x0, G.yF), D(x1, G.yF), yd, 'h', null, { size: 5.2 });
+    vb.dimAt(D(G.xT2 + 40, b.y), D(G.xT2 + 40, G.yC), a1[0] + 4, 'v', null, { size: 5.2 });
+    for (const [x, t] of [[G.xFo - 9, 'rail'], [(G.xFo + G.xB) / 2, 'gap'], [(G.xB + G.xJ) / 2, 'B1'], [(G.xJ + G.xT2) / 2, 'T2'], [G.xT2 + 12, 'knob']]) { const q = vb.P(D(x, G.yF)); s.text(q[0], yd - 5.5, t, { size: 4.8, ha: 'center', color: GREY }); }
+    s.text(a0[0], a1[1] + 8, `SAFETY BOLT, PLAN AT ${f0(b.z)}  1:2`, { size: 7.5, weight: 'bold' });
+    s.text(a0[0], a1[1] + 4, 'right-hand side; room at the bottom; pin thrown (dashed)', { size: 5.2, color: GREY });
+    s.para(a0[0], yd - 11, s.wrap(`Spring index plunger with a rest position (pull and twist to hold it back), M16 body in a ${b.hole} mm hole through the tower side and the bed-cabinet side, flange on the tower side. Its ${b.pin} mm pin crosses the ${fh(P.gapHydr)} gap and goes ${b.into} into a steel bush in the side rail: drill the rail through the hole after a trial closing. ${b.flange[1] + b.knob[1]} proud inside the hanging space; open the hanging doors and pull both before lowering the bed.`, 130, 5.2), { size: 5.2, color: GREY });
   }
   if (P.lockType === 'pins') {
     const sd2 = 2, qx = 262, qy = 52;
@@ -977,6 +1002,24 @@ function cableTable(s, M, x0, y0) {
   return y;
 }
 
+// the mattress support pieces from behind, at 1:30: their cut, the seam and the vent holes (length across the page)
+function supportPlan(s, M, x0, y0) {
+  const { P, G } = M, sc = 30, F7 = M.parts.filter(p => p.mark === 'F7');
+  if (!F7.length) return;
+  const z0 = Math.min(...F7.map(p => C.prismBox(p.solids[0])[2])), xm = Math.max(...F7.map(p => C.prismBox(p.solids[0])[3]));
+  const X = (z) => x0 + (z - z0) / sc, Y = (x) => y0 + (xm - x) / sc;
+  for (const p of F7) {
+    const pr = p.solids[0], pts = C.loopPolyline(pr.loops[0], 4);
+    const zs = pts.map(q => q[0]), xs = pts.map(q => q[1]), za = Math.min(...zs), zb = Math.max(...zs), xa = Math.min(...xs), xb = Math.max(...xs);
+    s.rect(X(za), Y(xb), (zb - za) / sc, (xb - xa) / sc, { fill: FILL.deck || FAINT, lw: 0.25 });
+    for (const lp of pr.loops.slice(1)) { const c = lp[0].c; if (c) s.circle(X(c[0]), Y(c[1]), lp[0].r / sc, { lw: 0.1, fill: WHITE }); }
+    s.text(X(zb) + 2, Y((xa + xb) / 2), `${p.name.replace('Mattress support', '').replace(/^[ ,]+/, '') || 'F7'}, ${Math.round(xb - xa)} x ${Math.round(zb - za)}`, { size: 5, va: 'middle', color: GREY });
+  }
+  const top = Y(-xm) + 4;
+  s.text(x0, top + 4, 'MATTRESS SUPPORT F7  1:30', { size: 7, weight: 'bold' });
+  s.text(x0, top, `from behind, head end on the left; ${G.vents ? G.vents.n + ' vent holes of ' + G.vents.d + ' mm, ' : ''}between the struts`, { size: 5, color: GREY });
+}
+
 function pageCutList(doc, M, S, info) {
   const { P } = M;
   const s = Sheet(doc, 7, info.total, 'CUT LIST', '-', info);
@@ -999,6 +1042,7 @@ function pageCutList(doc, M, S, info) {
   s.heading(hx, hy, 'HARDWARE');
   s.table(hx, hy - 6, [['ITEM', 70, 'left'], ['QTY', 14, 'right'], ['NOTE', 90, 'left']], S.hardware, { rowH: 4.4, size: 5.6 });
   if (M.G.cables && M.G.cables.length) cableTable(s, M, 302, hy);
+  supportPlan(s, M, 14, 14);
   s.finish();
 }
 
