@@ -1036,7 +1036,7 @@ function cableTable(s, M, x0, y0) {
     `Heights from the part's bottom edge as it stands; ${fh(G.cables[0].c[0] - G.yB1)} from the back clears the screw rows 35 in from the edges.`,
     h ? 'Power: a wall outlet in the space behind the backrest (an electrician\'s job), ' + (G.head.gpos && G.head.gpos.length ? `${G.head.gpos.length === 2 ? 'a double power point each side' : 'a double power point'} flush in the bedside shelf (104 x 54 cut-out, ${Math.abs(G.head.gpos[0].x)} from centre, ${G.head.gpos[0].y} from the wall), wired from it.` : 'no power points at the bed.') + (G.head.doors ? ' Open the headboard doors to reach the wiring.' : '') : 'Power: an outlet near the bed bay, by an electrician.',
     `Light: one 24 V supply in that space; strips under the shelf over the hanging space and under the tower tops at the front, under the wall rail below the shelf over the bed (wall wash), and under the top of the box over the bed at least 80 back from the front.`,
-    `Keep everything behind the closed mattress: no more than ${f0(G.yM0 - 30)} from the wall above about ${f0(G.pivot[1] + 300)}. Park the reading lamps over the bedside shelf before closing the bed.`,
+    `Keep everything behind the closed mattress: no more than ${f0(G.yM0 - 30)} from the wall above about ${f0(G.pivot[1] + 300)}.`,
   ];
   y = s.numbered(x0, y - 5, notes, W, { size: 5.2 });
   return y;

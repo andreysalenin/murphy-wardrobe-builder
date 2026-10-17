@@ -1186,7 +1186,7 @@ function rectLoopR00(u0, v0, u1, v1, r) {
    b  up the tower's back corner: through the shelf over the hanging space and the adjustable shelf above it
    c  top compartment -> bed bay, just under the shelf over the bed: for a strip under the wall rail (wall wash)
    d  top compartment -> the box over the bed: through the tower side and the upper side, above the adjustable shelf
-   e  the reading lamps: down through the bedside shelf into the headboard space, near its ends */
+   (nothing through the bedside shelf: reading lamps take their cables from the services zones) */
 const CABLE_D = 20;
 function cableSpec(P, G) {
   const T = P.T, out = [], yIn = G.yB1 + 85, h = G.head && !G.head.skipped ? G.head : null;
@@ -1197,7 +1197,6 @@ function cableSpec(P, G) {
     out.push({ id: 'b', S, axis: 'z', z: [G.zS2b, G.zTopB], c: [s * (G.xT2 + 70), G.yB1 + 29], what: 'up the tower\'s back corner' });
     out.push({ id: 'c', S, axis: 'x', x: [s * G.xB, s * G.xT2], c: [yIn, zC], what: 'tower to the wall-wash strip' });
     if (zD + CABLE_D / 2 < G.zTopB - 30) out.push({ id: 'd', S, axis: 'x', x: [s * G.xB, s * G.xT2], c: [yIn, zD], what: 'tower to the box over the bed' });
-    if (h) out.push({ id: 'e', S, axis: 'z', z: [h.top, h.top + P.Thead], c: h.zone ? [s * (G.xB - (h.zone - 6) / 2), G.yB1 + 22] : [s * (G.xB - 64), (G.yB1 + h.capY) / 2], what: 'reading lamp' });
   }
   return out;
 }
@@ -1870,25 +1869,24 @@ function build(params, opts) {
             solids: [box(lx - 12, lx + 12, q[0] - 46, q[0] - 6, zr1 - 30 - 10, zr1), cyl(10, [lx, q[0] - 6, zr1 - 25], [lx, q[0] - 1, zr1 - 25])] });
         });
         put({ mark: 'H6', name: `Bedside shelf, front mitred ${r1(mitre)} deg`, slant: true, grp: bgrp, kind: 'ledge', T: Th, L: 2 * G.xB, W: r1(O[0]), grain: false, band: 2 * G.xB,
-          solids: [box(-G.xB, G.xB, 0, I[0], zr1, zs), yzPrism(-G.xB, G.xB, ccwLoop([[I[0], zr1], O, [I[0], zs]]))] });
+          solids: [yzPrism(-G.xB, G.xB, ccwLoop([[0, zr1], [I[0], zr1], O, [0, zs]]))] });
       } else {
         put({ mark: 'H4', name: 'Headboard backrest', slant: true, grp: bgrp, kind: 'ledge', T: Th, L: 2 * G.xB, W: H, grain: false, band: 2 * G.xB,
           solids: [yzPrism(-G.xB, G.xB, polyLoop([B0, F0, F1, B1]))] });
         put({ mark: 'H6', name: 'Bedside shelf on the backrest', grp: bgrp, kind: 'ledge', T: Th, L: 2 * G.xB, W: r1(G.head.capY), grain: false, band: 2 * G.xB,
           solids: [box(-G.xB, G.xB, 0, G.head.capY, zr1, zs)] });
       }
-      const shelf = parts.find(p => p.mark === 'H6'), spr = shelf.solids[0];
       // Australian double power points (AS/NZS 3112) flush in the bedside shelf over the services zones, turned so the
       // 116 x 73 plate runs back toward the wall; switches toward the tower, the mechanism hanging under the shelf
       const nG = Math.round(P.headGPO);
       G.head.gpos = [];
       if (nG) {
-        const GL = 116, GW = 73, ph = 8, yc = Math.round(Math.min(G.head.clear - 2 - 54, O[0] - 5 - GL / 2));
+        // centred across the shelf's full depth, wall to front edge
+        const GL = 116, GW = 73, ph = 8, yc = Math.round(G.head.capY / 2);
         for (const [S, s] of sides.filter(([S]) => nG >= 2 || S === 'R')) {
           const xc = s * Math.round(((xe + rv / 2 + Th / 2) + (G.xB - Ts)) / 2); // between the end support and the cleat
           const L = (lu, lv) => [xc + s * lv, yc + lu];     // plate's own frame: u along it, v 'up' toward the tower
           G.head.gpos.push({ S, x: Math.round(xc), y: yc, plate: [GW, GL], cut: [54, 104], body: 32 });
-          spr.loops.push(reverseLoop(rectLoop(xc - 27, yc - 52, xc + 27, yc + 52)));
           const slot = (cu, cv, w, l, du) => { // a slot w wide and l long, its length along (du, 1) in the plate frame
             const dl = Math.hypot(du, 1), ax = [du / dl, 1 / dl], bx = [ax[1], -ax[0]];
             return prism([0, 0, zs + ph], X, Y, 0.4, [ccwLoop([[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([i, j]) => L(cu + bx[0] * i * w / 2 + ax[0] * j * l / 2, cv + bx[1] * i * w / 2 + ax[1] * j * l / 2)))]);
@@ -2438,7 +2436,7 @@ function reviewNotes(model, S) {
     ['Measure the kit hardware', `The booklet gives the hardware's positions, not its sizes, and the clearances on sheet 6 rest on typical ones. Measure: the lower ball-stud plate from its face against the rail to the end of its stud (${(Math.round((P.plateT + P.nutStack) * 10) / 10)} used), the ball studs from plate face to ball centre (${P.studS}), the spring's body, rod and sockets (${P.springD}, ${P.springRodD}, ${P.springEndD}) and its length ball to ball fully out (${Math.round(G.clear.spring.fitted)} wanted), the pivot spacer with its plate (${P.pinGap}), and the bed stop domes (${P.stopD} x ${P.stopH}). Enter them under Create-A-Bed hardware.`],
     ['Power and light', P.cableHoles && G.cables ? (() => {
       const h = G.head && !G.head.skipped ? G.head : null;
-      return `${h ? `The space behind the backrest (about ${f0(h.B1[0] - G.yB1)} to ${f0(h.B0[0] - G.yB1)} deep, ${f0(h.z0)} to ${f0(h.top)} high) is the services void: an outlet on the wall there (an electrician's job), the 24 V supply for the lights, and the wiring to ${h.gpos && h.gpos.length ? `${h.gpos.length === 2 ? 'two' : 'one'} Australian double power point${h.gpos.length === 2 ? 's' : ''} set flush in the bedside shelf, ${Math.abs(h.gpos[0].x)} ${h.gpos.length === 2 ? 'either side of' : 'right of'} centre and ${f0(h.gpos[0].y)} from the wall, switches toward the wall: a 104 x 54 cut-out each, the mechanism hanging ${h.gpos[0].body} into the box` : 'any power at the bed'}. All of it is an electrician's job. ${h.doors ? 'Open the headboard doors to reach it.' : 'Reach it from above before the shelf goes on.'} ` : ''}Nothing may stand further from the wall than ${f0(G.yM0 - 30)} above ${f0(G.pivot[1] + 300)} or so: the closed mattress's face comes to ${f0(G.yM0)}, and the bed swings back toward the wall only near the floor. 20 mm cable holes (sheet 7) take one route a side up through the tower, ${f0(G.cables[0].c[0] - G.yB1)} from the wall, clear of every screw line and the kit plates: headboard space to tower, up its back corner through the shelves, then into the bay just under the shelf for a wall-wash strip under the wall rail, and into the box over the bed. ${h ? 'Two more through the bedside shelf near its ends take the reading lamps. ' : ''}Strips in the towers go under the shelf over the hanging space and under the tower top, at the front; in the box over the bed under the top, at least 80 back from the front, behind the flap hinge plates.`;
+      return `${h ? `The space behind the backrest (about ${f0(h.B1[0] - G.yB1)} to ${f0(h.B0[0] - G.yB1)} deep, ${f0(h.z0)} to ${f0(h.top)} high) is the services void: an outlet on the wall there (an electrician's job), the 24 V supply for the lights, and the wiring to ${h.gpos && h.gpos.length ? `${h.gpos.length === 2 ? 'two' : 'one'} Australian double power point${h.gpos.length === 2 ? 's' : ''} set flush in the bedside shelf, ${Math.abs(h.gpos[0].x)} ${h.gpos.length === 2 ? 'either side of' : 'right of'} centre and ${f0(h.gpos[0].y)} from the wall, switches toward the wall: a 104 x 54 cut-out each, the mechanism hanging ${h.gpos[0].body} into the box` : 'any power at the bed'}. All of it is an electrician's job. ${h.doors ? 'Open the headboard doors to reach it.' : 'Reach it from above before the shelf goes on.'} ` : ''}Nothing may stand further from the wall than ${f0(G.yM0 - 30)} above ${f0(G.pivot[1] + 300)} or so: the closed mattress's face comes to ${f0(G.yM0)}, and the bed swings back toward the wall only near the floor. 20 mm cable holes (sheet 7) take one route a side up through the tower, ${f0(G.cables[0].c[0] - G.yB1)} from the wall, clear of every screw line and the kit plates: headboard space to tower, up its back corner through the shelves, then into the bay just under the shelf for a wall-wash strip under the wall rail, and into the box over the bed. ${h ? '' : ''}Strips in the towers go under the shelf over the hanging space and under the tower top, at the front; in the box over the bed under the top, at least 80 back from the front, behind the flap hinge plates.`;
     })() : 'Cable holes are turned off.'],
     ['Ventilation', `A mattress stood on end in a closed bay needs air: the mattress support has ${G.vents ? G.vents.n : 0} holes of ${G.vents ? G.vents.d : 25} mm between the struts (drill them before it goes on), and the side gaps stay open.`],
     ['Tower doors', P.doorHinge === 'outer' ? `Hinged on the wall side, ${P.gap} mm from the cavity wall with their faces flush with the room wall. A 110 deg CLIP top on a ${P.T} mm door wants about ${hingeGapMin(P.T)} mm beside its hinge edge, so they open fully, away from the bed.` : `Hinged on the bed side: they open past 90 deg, but an open door stands ${f0(G.doorX[0] - G.xFo)} mm from the edge of the lowered bed.`],
@@ -5288,7 +5286,7 @@ function cableTable(s, M, x0, y0) {
     `Heights from the part's bottom edge as it stands; ${fh(G.cables[0].c[0] - G.yB1)} from the back clears the screw rows 35 in from the edges.`,
     h ? 'Power: a wall outlet in the space behind the backrest (an electrician\'s job), ' + (G.head.gpos && G.head.gpos.length ? `${G.head.gpos.length === 2 ? 'a double power point each side' : 'a double power point'} flush in the bedside shelf (104 x 54 cut-out, ${Math.abs(G.head.gpos[0].x)} from centre, ${G.head.gpos[0].y} from the wall), wired from it.` : 'no power points at the bed.') + (G.head.doors ? ' Open the headboard doors to reach the wiring.' : '') : 'Power: an outlet near the bed bay, by an electrician.',
     `Light: one 24 V supply in that space; strips under the shelf over the hanging space and under the tower tops at the front, under the wall rail below the shelf over the bed (wall wash), and under the top of the box over the bed at least 80 back from the front.`,
-    `Keep everything behind the closed mattress: no more than ${f0(G.yM0 - 30)} from the wall above about ${f0(G.pivot[1] + 300)}. Park the reading lamps over the bedside shelf before closing the bed.`,
+    `Keep everything behind the closed mattress: no more than ${f0(G.yM0 - 30)} from the wall above about ${f0(G.pivot[1] + 300)}.`,
   ];
   y = s.numbered(x0, y - 5, notes, W, { size: 5.2 });
   return y;
