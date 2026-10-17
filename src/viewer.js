@@ -12,6 +12,7 @@ const KIND_STYLE = {
   mattress: { color: 0xeeeeea, rough: 0.95, edges: false }, metal: { color: 0x2f3236, rough: 0.45, metal: 0.4 },
   chrome: { color: 0xc9ccd0, rough: 0.38, metal: 0.35 }, zinc: { color: 0xc4ccd6, rough: 0.32, metal: 0.25 },
   block: { color: 0x8c6239, rough: 0.7 }, rubber: { color: 0x1c1c1e, rough: 0.9, edges: false }, strap: { color: 0x3d4c70, rough: 0.9, edges: false },
+  plastic: { color: 0xf3f2ee, rough: 0.45 },
 };
 const T_COL = { 6: 0x7b5cc4, 12: 0x138a7e, 18: 0xc47a12 };
 

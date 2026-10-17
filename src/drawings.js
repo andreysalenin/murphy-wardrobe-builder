@@ -10,7 +10,7 @@ const ACC = [176, 98, 10], BAD = [176, 40, 31], CABLE = [36, 104, 170];
 const FILL = {
   carcass: [244, 236, 221], front: [252, 249, 243], frame: [235, 220, 196], deck: [240, 228, 207], drawer: [248, 241, 228], back: [236, 228, 214],
   plinth: [230, 220, 203], packer: [222, 199, 166], ledge: [244, 236, 221], mattress: [238, 240, 242], metal: [74, 78, 84], chrome: [190, 194, 199], zinc: [178, 184, 192],
-  block: [181, 136, 92], rubber: [40, 40, 42], strap: [70, 86, 124],
+  block: [181, 136, 92], rubber: [40, 40, 42], strap: [70, 86, 124], plastic: [244, 244, 240],
 };
 const CUT = [214, 190, 152], CUT_FRONT = [226, 206, 172];
 const T_RGB = { 6: [123, 92, 196], 12: [19, 138, 126], 18: [196, 122, 18] };
@@ -488,19 +488,22 @@ function pageElevations(doc, M, S, I, info) {
 // the headboard box in section between the ribs, 1:9: the lean, the doors and their mitre, the room for a wall outlet
 function headboardDetail(s, M, ox, oy) {
   const { P, G } = M, H = G.head, sc = 9, D = H.doors;
-  const xc = -(G.xB / 4) - 100; // between the centre and right-middle ribs
+  const xc = H.gpos && H.gpos.length ? H.gpos[0].x + 20 : -(G.xB / 4) - 100; // through the power point, or between ribs
   const win = [-25, Math.max(H.capY, D ? H.y0 + D.H * Math.sin((D.open - P.headAngle) * Math.PI / 180) : 0) + 30, (G.ledge ? G.ledge.top - 60 : H.z0 - 40), H.top + P.Thead + 30];
   const v = View(s, 'side', sc, [ox, oy], [win[0], win[2]]);
-  v.parts(M.parts.filter(p => !p.bed && !p.mattress), { cut: xc, window: win, filter: (p) => /^H[1-6]$/.test(p.mark) || (p.mark === 'PL' && /Headboard/.test(p.name)) });
+  v.parts(M.parts.filter(p => !p.bed && !p.mattress), { cut: xc, window: win, filter: (p) => /^H[1-6]$/.test(p.mark) || p.mark === 'PP' || (p.mark === 'PL' && /Headboard/.test(p.name)) });
   const a = v.Puv([win[0], win[2]]), b = v.Puv([win[1], win[3]]);
   const w0 = v.Puv([0, win[2]]), w1 = v.Puv([0, win[3]]);
   s.line([w0[0], w1[0]], [w0[1], w1[1]], { lw: 0.45 });
   s.text(w0[0] - 1.5, w0[1] + 2, 'wall', { size: 5, ha: 'right', color: GREY });
   // a wall outlet and its plug: the clear depth wanted, at the top of the box
-  const zO = H.top - 40 - 114 / 2, o0 = v.Puv([0, zO - 57]), o1 = v.Puv([P.headClear, zO + 57]);
-  s.rect(o0[0], o0[1], o1[0] - o0[0], o1[1] - o0[1], { lw: 0.2, dash: [0.8, 0.5], color: H.clear >= P.headClear ? [92, 150, 104] : BAD });
-  s.text((o0[0] + o1[0]) / 2, (o0[1] + o1[1]) / 2, `outlet + plug ${f0(P.headClear)}`, { size: 4.6, ha: 'center', va: 'middle', color: GREY });
-  v.dimAt([0, 0, H.top - 6], [0, H.clear, H.top - 6], v.P([0, 0, H.top - 6])[1] - 3, 'h', `${f0(H.clear)} clear`, { size: 5, color: H.clear >= P.headClear ? INK : BAD });
+  { // the double power point in the shelf: plate on top, mechanism below, in the clear depth wanted
+    const g = (H.gpos && H.gpos[0]) || { y: (G.yB1 + H.clear) / 2, body: 32 }, top = H.top + P.Thead;
+    const o0 = v.Puv([g.y - P.headClear / 2, H.top - g.body]), o1 = v.Puv([g.y + P.headClear / 2, top + 8]);
+    s.rect(o0[0], o0[1], o1[0] - o0[0], o1[1] - o0[1], { lw: 0.25, dash: [0.8, 0.5], color: H.clear >= P.headClear ? [92, 150, 104] : BAD });
+    s.leader([(o0[0] + o1[0]) / 2, o0[1]], [o0[0] + 2, o0[1] - 14], `double power point, ${f0(P.headClear)} deep`, { size: 4.6, ha: 'left', color: GREY });
+  }
+  v.dimAt([0, 0, H.top - 60], [0, H.clear, H.top - 60], v.P([0, 0, H.top - 60])[1] - 3, 'h', `${f0(H.clear)} clear`, { size: 5, color: H.clear >= P.headClear ? INK : BAD });
   v.dimAt([0, 0, H.top + P.Thead], [0, H.capY, H.top + P.Thead], v.P([0, 0, H.top + P.Thead])[1] + 4, 'h', null, { size: 5 });
   if (D) {
     // the door tipped open to its stop, about its foot
@@ -517,7 +520,7 @@ function headboardDetail(s, M, ox, oy) {
   }
   s.rect(a[0], a[1], b[0] - a[0], b[1] - a[1], { lw: 0.2, dash: [2, 0.8, 0.4, 0.8] });
   s.text(a[0], b[1] + 15, `HEADBOARD ${D ? 'BOX' : 'SHELF'}  1:${sc}`, { size: 7.5, weight: 'bold' });
-  s.text(a[0], b[1] + 11, `looking at a rib; leaning ${P.headAngle} deg, ${H.maxAngle.toFixed(1)} at most for ${f0(P.headClear)} clear at the top`, { size: 5, color: GREY });
+  s.text(a[0], b[1] + 11, `cut through the power point; leaning ${P.headAngle} deg, ${H.maxAngle.toFixed(1)} at most for ${f0(P.headClear)} clear at the top`, { size: 5, color: GREY });
   if (D) s.para(b[0] + 3, b[1] - 14, s.wrap(`The backrest is two ${f0(D.W)} x ${f0(D.H)} doors. Each stands on tilt-out hinges with a stop at its foot and leans back closed under its own weight. Press the top: a push latch under the shelf pops it ${D.pop} mm proud, and that is the pull. Doors and shelf are both cut at ${(Math.round(D.mitre * 10) / 10)} deg (tilt the saw ${(Math.round((90 - D.mitre) * 10) / 10)}) and meet in a ${D.gap} mm line.`, 36, 5), { size: 5, color: GREY });
 }
 
@@ -1031,7 +1034,7 @@ function cableTable(s, M, x0, y0) {
   const h = G.head && !G.head.skipped;
   const notes = [
     `Heights from the part's bottom edge as it stands; ${fh(G.cables[0].c[0] - G.yB1)} from the back clears the screw rows 35 in from the edges.`,
-    h ? 'Power: a wall outlet in the space behind the backrest (an electrician\'s job), ' + (G.head.doors ? 'two bedside power units flush in the bedside shelf near its ends (not in the doors). Open the headboard doors to reach the outlet.' : 'two bedside power units flush in the backrest just under the bedside shelf, about 650 either side of centre.') : 'Power: an outlet near the bed bay, by an electrician.',
+    h ? 'Power: a wall outlet in the space behind the backrest (an electrician\'s job), ' + (G.head.gpos && G.head.gpos.length ? `${G.head.gpos.length === 2 ? 'a double power point each side' : 'a double power point'} flush in the bedside shelf (104 x 54 cut-out, ${Math.abs(G.head.gpos[0].x)} from centre, ${G.head.gpos[0].y} from the wall), wired from it.` : 'no power points at the bed.') + (G.head.doors ? ' Open the headboard doors to reach the wiring.' : '') : 'Power: an outlet near the bed bay, by an electrician.',
     `Light: one 24 V supply in that space; strips under the shelf over the hanging space and under the tower tops at the front, under the wall rail below the shelf over the bed (wall wash), and under the top of the box over the bed at least 80 back from the front.`,
     `Keep everything behind the closed mattress: no more than ${f0(G.yM0 - 30)} from the wall above about ${f0(G.pivot[1] + 300)}. Park the reading lamps over the bedside shelf before closing the bed.`,
   ];
