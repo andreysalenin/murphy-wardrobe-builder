@@ -106,7 +106,7 @@ class MurphyScene {
     this.bedInner = new THREE.Group(); this.bedInner.position.set(0, -G.pivot[0], -G.pivot[1]); this.bedPivot.add(this.bedInner);
     this.legPivot = new THREE.Group(); this.legPivot.position.set(0, G.legPivot[0], G.legPivot[1]); this.bedInner.add(this.legPivot);
     this.legInner = new THREE.Group(); this.legInner.position.set(0, -G.legPivot[0], -G.legPivot[1]); this.legPivot.add(this.legInner);
-    this.doors = []; this.flaps = []; this.drawers = [];
+    this.doors = []; this.flaps = []; this.tilts = []; this.drawers = [];
     this.dyns = [];
     const unitCyl = new THREE.CylinderGeometry(1, 1, 1, 20, 1); // along +y, centred
     for (const p of model.parts) {
@@ -137,6 +137,9 @@ class MurphyScene {
       } else if (p.anim && p.anim.type === 'flap') {
         const pv = new THREE.Group(); pv.position.set(0, p.anim.axis[0], p.anim.axis[1]); this.root.add(pv);
         grp.position.set(0, -p.anim.axis[0], -p.anim.axis[1]); pv.add(grp); rec.pv = pv; this.flaps.push(rec);
+      } else if (p.anim && p.anim.type === 'tilt') { // tips out about a line along x at its foot (the headboard doors)
+        const pv = new THREE.Group(); pv.position.set(0, p.anim.axis[0], p.anim.axis[1]); this.root.add(pv);
+        grp.position.set(0, -p.anim.axis[0], -p.anim.axis[1]); pv.add(grp); rec.pv = pv; this.tilts.push(rec);
       } else { this.root.add(grp); if (p.anim && p.anim.type === 'drawer') this.drawers.push(rec); }
       this.recs.push(rec);
     }
@@ -182,6 +185,7 @@ class MurphyScene {
     const T = (id) => this.openOf(id);
     for (const r of this.doors) r.pv.rotation.z = -r.part.anim.sign * T(r.part.anim.id) * Math.PI / 2 * 0.95;
     for (const r of this.flaps) r.pv.rotation.x = T(r.part.anim.id) * Math.PI / 2 * 0.92;
+    for (const r of this.tilts) r.pv.rotation.x = -T(r.part.anim.id) * r.part.anim.deg * Math.PI / 180;
     for (const r of this.drawers) r.grp.position.y = T(r.part.anim.id) * r.part.anim.dist * (r.part.anim.k === undefined ? 1 : r.part.anim.k);
     const aim = (mesh, a, b, d) => {
       const va = new THREE.Vector3(...a), vb = new THREE.Vector3(...b), dir = vb.clone().sub(va), L = dir.length();

@@ -485,15 +485,14 @@ function pageElevations(doc, M, S, I, info) {
   s.finish();
 }
 
-// the headboard box in section between the ribs, 1:7: the lean, the lip, the lids, and the room for a wall outlet
+// the headboard box in section between the ribs, 1:9: the lean, the doors and their mitre, the room for a wall outlet
 function headboardDetail(s, M, ox, oy) {
-  const { P, G } = M, H = G.head, sc = 9, st = H.store;
-  const xc = st ? -(st.capW + (G.xB - st.capW) / 2) / 2 - 100 : -300; // between the centre and right-middle ribs
-  const win = [-25, H.capY + 40, (G.ledge ? G.ledge.top - 60 : H.z0 - 40), H.top + P.Thead + 30];
+  const { P, G } = M, H = G.head, sc = 9, D = H.doors;
+  const xc = -(G.xB / 4) - 100; // between the centre and right-middle ribs
+  const win = [-25, Math.max(H.capY, D ? H.y0 + D.H * Math.sin((D.open - P.headAngle) * Math.PI / 180) : 0) + 30, (G.ledge ? G.ledge.top - 60 : H.z0 - 40), H.top + P.Thead + 30];
   const v = View(s, 'side', sc, [ox, oy], [win[0], win[2]]);
-  v.parts(M.parts.filter(p => !p.bed && !p.mattress), { cut: xc, window: win, filter: (p) => /^H[1-7]$/.test(p.mark) || p.mark === 'LH' });
+  v.parts(M.parts.filter(p => !p.bed && !p.mattress), { cut: xc, window: win, filter: (p) => /^H[1-6]$/.test(p.mark) || (p.mark === 'PL' && /Headboard/.test(p.name)) });
   const a = v.Puv([win[0], win[2]]), b = v.Puv([win[1], win[3]]);
-  // the wall
   const w0 = v.Puv([0, win[2]]), w1 = v.Puv([0, win[3]]);
   s.line([w0[0], w1[0]], [w0[1], w1[1]], { lw: 0.45 });
   s.text(w0[0] - 1.5, w0[1] + 2, 'wall', { size: 5, ha: 'right', color: GREY });
@@ -501,14 +500,25 @@ function headboardDetail(s, M, ox, oy) {
   const zO = H.top - 40 - 114 / 2, o0 = v.Puv([0, zO - 57]), o1 = v.Puv([P.headClear, zO + 57]);
   s.rect(o0[0], o0[1], o1[0] - o0[0], o1[1] - o0[1], { lw: 0.2, dash: [0.8, 0.5], color: H.clear >= P.headClear ? [92, 150, 104] : BAD });
   s.text((o0[0] + o1[0]) / 2, (o0[1] + o1[1]) / 2, `outlet + plug ${f0(P.headClear)}`, { size: 4.6, ha: 'center', va: 'middle', color: GREY });
-  v.dimAt([0, 0, H.top - 6], [0, H.B1[0], H.top - 6], v.P([0, 0, H.top - 6])[1] - 3, 'h', `${f0(H.clear)} clear`, { size: 5, color: H.clear >= P.headClear ? INK : BAD });
+  v.dimAt([0, 0, H.top - 6], [0, H.clear, H.top - 6], v.P([0, 0, H.top - 6])[1] - 3, 'h', `${f0(H.clear)} clear`, { size: 5, color: H.clear >= P.headClear ? INK : BAD });
   v.dimAt([0, 0, H.top + P.Thead], [0, H.capY, H.top + P.Thead], v.P([0, 0, H.top + P.Thead])[1] + 4, 'h', null, { size: 5 });
-  if (st) v.dimAt([0, 0, H.top + P.Thead], [0, st.stripY, H.top + P.Thead], v.P([0, 0, H.top + P.Thead])[1] + 9, 'h', `${f0(st.stripY)} strip`, { size: 5 });
-  v.dimAt([0, H.F1[0], H.top + P.Thead + 14], [0, H.capY, H.top + P.Thead + 14], v.P([0, 0, H.top + P.Thead + 14])[1] + 2, 'h', `lip ${f0(P.headLip)}`, { size: 5, side: 'end' });
+  if (D) {
+    // the door tipped open to its stop, about its foot
+    const th = (D.open) * Math.PI / 180, ax = D.axis;
+    const rot = (q) => { const dy = q[0] - ax[0], dz = q[1] - ax[1]; return [ax[0] + dy * Math.cos(th) + dz * Math.sin(th), ax[1] - dy * Math.sin(th) + dz * Math.cos(th)]; };
+    const pts = [H.B0, ax, D.Od, D.Id].map(rot).map(q => v.Puv(q));
+    s.poly(pts.concat([pts[0]]), { lw: 0.25, dash: [1.2, 0.7], color: ACC });
+    const tq = v.Puv(rot(D.Od));
+    s.text(tq[0] + 1.5, tq[1], `open ${f0(D.open)} deg`, { size: 4.8, color: ACC, va: 'middle' });
+    const hq = v.Puv(ax); s.circle(hq[0], hq[1], 0.7, { fill: ACC, lw: 0 });
+    s.text(hq[0] + 1.5, hq[1] - 2.5, 'tilt-out hinge', { size: 4.6, color: GREY });
+    const mq = v.Puv([(D.O[0] + D.I[0]) / 2, (D.O[1] + D.I[1]) / 2]);
+    s.leader(mq, [b[0] + 3, mq[1] + 6], `mitre ${(Math.round(D.mitre * 10) / 10)} deg, ${D.gap} gap`, { size: 4.8, ha: 'left' });
+  }
   s.rect(a[0], a[1], b[0] - a[0], b[1] - a[1], { lw: 0.2, dash: [2, 0.8, 0.4, 0.8] });
-  s.text(a[0], b[1] + 15, `HEADBOARD ${st ? 'BOX' : 'SHELF'}  1:${sc}`, { size: 7.5, weight: 'bold' });
-  s.text(a[0], b[1] + 11, `looking at a rib; backrest leaning ${P.headAngle} deg, ${H.maxAngle.toFixed(1)} at most for ${f0(P.headClear)} clear at the top`, { size: 5, color: GREY });
-  if (st) s.para(b[0] + 4, b[1] - 4, s.wrap(`Two ${f0(st.lidW)} x ${f0(st.lidD)} lids on piano hinges along the back strip, which runs to the wall over the ribs (they stop ${f0(G.yB1)} short of it). Lifted past upright a lid leans back on the wall and stays open. Fixed ends ${st.capW} wide take the reading lamps.`, 46, 5), { size: 5, color: GREY });
+  s.text(a[0], b[1] + 15, `HEADBOARD ${D ? 'BOX' : 'SHELF'}  1:${sc}`, { size: 7.5, weight: 'bold' });
+  s.text(a[0], b[1] + 11, `looking at a rib; leaning ${P.headAngle} deg, ${H.maxAngle.toFixed(1)} at most for ${f0(P.headClear)} clear at the top`, { size: 5, color: GREY });
+  if (D) s.para(b[0] + 3, b[1] - 14, s.wrap(`The backrest is two ${f0(D.W)} x ${f0(D.H)} doors. Each stands on tilt-out hinges with a stop at its foot and leans back closed under its own weight. Press the top: a push latch under the shelf pops it ${D.pop} mm proud, and that is the pull. Doors and shelf are both cut at ${(Math.round(D.mitre * 10) / 10)} deg (tilt the saw ${(Math.round((90 - D.mitre) * 10) / 10)}) and meet in a ${D.gap} mm line.`, 36, 5), { size: 5, color: GREY });
 }
 
 function pageSections(doc, M, M90, M45, S, info) {
@@ -600,7 +610,7 @@ function pageSections(doc, M, M90, M45, S, info) {
     `The ledge is sized from the swing: its front is ${P.ledgeClear} mm clear of the mattress's head corner at its furthest back, at pivot height. Above the mattress nothing swings back, so the backrest steps out to ${P.headGap} mm behind the open mattress.`,
     'The mattress is drawn as a block. A pillow top or a mattress that bulges takes up the clearances shown; keep the straps tight.',
   ], 112, { size: 5.8 });
-  if (G.head && !G.head.skipped) headboardDetail(s, M, 300, 42);
+  if (G.head && !G.head.skipped) headboardDetail(s, M, 286, 42);
   s.finish();
 }
 
@@ -1021,7 +1031,7 @@ function cableTable(s, M, x0, y0) {
   const h = G.head && !G.head.skipped;
   const notes = [
     `Heights from the part's bottom edge as it stands; ${fh(G.cables[0].c[0] - G.yB1)} from the back clears the screw rows 35 in from the edges.`,
-    h ? 'Power: a wall outlet in the space behind the backrest (an electrician\'s job), two bedside power units flush in the backrest just under the bedside shelf, about 650 either side of centre. ' + (G.head.store ? 'Lift a headboard lid to reach them.' : 'The bedside shelf comes off to reach them.') : 'Power: an outlet near the bed bay, by an electrician.',
+    h ? 'Power: a wall outlet in the space behind the backrest (an electrician\'s job), ' + (G.head.doors ? 'two bedside power units flush in the bedside shelf near its ends (not in the doors). Open the headboard doors to reach the outlet.' : 'two bedside power units flush in the backrest just under the bedside shelf, about 650 either side of centre.') : 'Power: an outlet near the bed bay, by an electrician.',
     `Light: one 24 V supply in that space; strips under the shelf over the hanging space and under the tower tops at the front, under the wall rail below the shelf over the bed (wall wash), and under the top of the box over the bed at least 80 back from the front.`,
     `Keep everything behind the closed mattress: no more than ${f0(G.yM0 - 30)} from the wall above about ${f0(G.pivot[1] + 300)}. Park the reading lamps over the bedside shelf before closing the bed.`,
   ];
