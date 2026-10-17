@@ -133,7 +133,8 @@ let jp = checkJoinery({}, 'joinery default');
 jp += checkJoinery({ W: 2600, H: 2400, D: 560, drawers: [150, 150, 200, 250, 250], hangClear: 900, sideClear: 0, doorHinge: 'inner' }, 'joinery variant');
 jp += checkJoinery({ mT: 305, gapHydr: 25, kickCentre: 'none', topShelf: false, ledge: false, packer: false, edgeSteel: false, lockType: 'pins', upstand: 40, drawers: [150, 200, 250] }, 'joinery edge');
 jp += checkJoinery({ gapHydr: 30, packer: true, Tpacker: 18 }, 'joinery pads');
-jp += checkJoinery({ lockType: 'bolts', supportOffset: true, faceReveal: true, doorHinge: 'inner' }, 'joinery options');
+jp += checkJoinery({ lockType: 'bolts', supportOffset: true, faceReveal: true, doorHinge: 'inner', headAngle: 12, headLip: 20 }, 'joinery options');
+jp += checkJoinery({ headStore: false, headAngle: 0 }, 'joinery plain headboard');
 if (jp) process.exitCode = 1;
 
 // ---------- solid overlaps (sampled points, not bounding boxes): hardware against plywood and against other hardware,

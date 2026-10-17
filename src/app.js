@@ -9,9 +9,9 @@ const NUM_FIELDS = ['W', 'H', 'D', 'sideClear', 'backGap', 'frontSetback', 'mW',
   'pivotFromRail', 'pivotAboveHead', 'cabPivotZ', 'pinGap', 'springLowAlong', 'springLowOut', 'springUpFront', 'springUpZ', 'stopFront', 'stopBelowTop',
   'springD', 'springRodD', 'springEndD', 'springBodyL', 'studS', 'plateT', 'nutStack', 'stopD', 'stopH', 'legD',
   'railD', 'headRailD', 'footRailD', 'railR', 'legFromFoot', 'legFromTop', 'struts', 'ladderW',
-  'ledgeClear', 'headAngle', 'headH', 'headGap', 'upstand', 'steelH', 'steelT', 'twinSpacing', 'lockPinX', 'wallRail', 'kerf', 'trim'];
+  'ledgeClear', 'headAngle', 'headH', 'headGap', 'headLip', 'headClear', 'upstand', 'steelH', 'steelT', 'twinSpacing', 'lockPinX', 'wallRail', 'kerf', 'trim'];
 const SEL_FIELDS = ['kickCentre', 'doorHinge', 'lockType'];
-const CHK_FIELDS = ['topShelf', 'cableHoles', 'supportOffset', 'faceReveal', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain'];
+const CHK_FIELDS = ['topShelf', 'cableHoles', 'headStore', 'supportOffset', 'faceReveal', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain'];
 
 const readLS = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } };
 const writeLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage off: settings just aren't remembered */ } };
@@ -28,6 +28,11 @@ if (!readLS(LS_KEY + ':gap11')) {
 if (!readLS(LS_KEY + ':reveal6')) {
   if (params.faceOverhang === 0 && params.gapHydr === 11) params.faceOverhang = 5;
   writeLS(LS_KEY + ':reveal6', 1);
+}
+// the carcass now stands 6 off the back wall (packers of 6 and 12 behind the rails): saved settings on the old 10 follow, once
+if (!readLS(LS_KEY + ':back6')) {
+  if (params.backGap === 10) params.backGap = 6;
+  writeLS(LS_KEY + ':back6', 1);
 }
 // the bed stops now default to where the closed bed stands plumb (0): saved settings still on the kit's 7-3/8 in
 // follow, once
