@@ -8,14 +8,29 @@ function run(params, label) {
     const b = C.prismBox(p.solids[0]);
     const d = [b[3] - b[0], b[4] - b[1], b[5] - b[2]].map(x => Math.round(x * 10) / 10).sort((a, c) => a - c);
     const e = [p.T, p.L, p.W].map(x => Math.round(x * 10) / 10).sort((a, c) => a - c);
+    if (p.slant) { // leaning or mitred: the blank's volume against the solid's
+      const v = p.solids.reduce((acc, pr) => acc + C.prismVolume(pr), 0), r = v / (p.T * p.L * p.W);
+      if (r < 0.85 || r > 1.02) { bad++; console.log(label, 'SIZE', p.mark, p.name, 'volume ratio', r.toFixed(3)); }
+      continue;
+    }
     if (d.some((x, i) => Math.abs(x - e[i]) > 0.15)) { bad++; console.log(label, 'SIZE', p.mark, p.name, 'solid', d.join('x'), 'cut', e.join('x')); }
   }
+  // leaning, mitred and tapered parts: sample one part's solids and look for points well inside the other
+  const inLoopP = (pt, lp) => { let c = false; for (let i = 0, j = lp.length - 1; i < lp.length; j = i++) { const a = lp[i], b = lp[j]; if ((a[1] > pt[1]) !== (b[1] > pt[1]) && pt[0] < (b[0] - a[0]) * (pt[1] - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
+  const insideP = (pr, q, m) => { const d = [q[0] - pr.o[0], q[1] - pr.o[1], q[2] - pr.o[2]], w = d[0] * pr.n[0] + d[1] * pr.n[1] + d[2] * pr.n[2]; if (w < m || w > pr.len - m) return false;
+    const uv = [d[0] * pr.u[0] + d[1] * pr.u[1] + d[2] * pr.u[2], d[0] * pr.v[0] + d[1] * pr.v[1] + d[2] * pr.v[2]], lps = pr.loops.map(l => C.loopPolyline(l, 8));
+    if (!inLoopP(uv, lps[0]) || lps.slice(1).some(l => inLoopP(uv, l))) return false;
+    for (const [du, dv] of [[m, 0], [-m, 0], [0, m], [0, -m]]) if (!inLoopP([uv[0] + du, uv[1] + dv], lps[0])) return false; return true; };
+  const solidsMeet = (A, B) => { for (const pa of A.solids) { const b = C.prismBox(pa); for (let i = 0; i <= 8; i++) for (let j = 0; j <= 8; j++) for (let k = 0; k <= 8; k++) {
+    const q = [b[0] + (b[3] - b[0]) * i / 8, b[1] + (b[4] - b[1]) * j / 8, b[2] + (b[5] - b[2]) * k / 8];
+    if (A.solids.some(pr => insideP(pr, q, 0.3)) && B.solids.some(pr => insideP(pr, q, 0.3))) return true; } } return false; };
   // interference: AABB overlap volume between solids (all parts are boxes except the radiused rails)
   const boxes = m.parts.filter(p => !p.mattress && !p.leg && !p.hw).map(p => ({ p, b: C.prismBox(p.solids[0]) }));
   const hits = [];
   for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
     const a = boxes[i].b, c = boxes[j].b;
     const ox = Math.min(a[3], c[3]) - Math.max(a[0], c[0]), oy = Math.min(a[4], c[4]) - Math.max(a[1], c[1]), oz = Math.min(a[5], c[5]) - Math.max(a[2], c[2]);
+    if (ox > 0.3 && oy > 0.3 && oz > 0.3 && (boxes[i].p.slant || boxes[j].p.slant || boxes[i].p.mark === 'H5' || boxes[j].p.mark === 'H5') && !solidsMeet(boxes[i].p, boxes[j].p)) continue;
     if (ox > 0.3 && oy > 0.3 && oz > 0.3 && boxes[i].p.mark !== 'X3' && boxes[j].p.mark !== 'X3') hits.push(`${boxes[i].p.mark} ${boxes[i].p.name}  x  ${boxes[j].p.mark} ${boxes[j].p.name}  (${ox.toFixed(1)} x ${oy.toFixed(1)} x ${oz.toFixed(1)})`);
   }
   // pieces placed = pieces listed
@@ -30,6 +45,7 @@ function run(params, label) {
       if (ox > -m.P.kerf + 0.01 && oy > -m.P.kerf + 0.01) { ov++; console.log(label, 'OVERLAP/KERF', s.T, A.mark, B.mark, ox.toFixed(2), oy.toFixed(2)); }
     }
   }
+  for (const q of S.sheets) if (isFinite(q.need) && q.need > q.have) { console.log(label, 'STOCK', `${q.T} mm: ${q.need} sheets needed, ${q.have} on hand`); if (label === 'default') process.exitCode = 1; }
   console.log(`${label}: parts ${m.parts.length}, size mismatches ${bad}, interferences ${hits.length}, pieces ${listed}/${placed}, layout problems ${ov}, sheets ${S.sheets.map(s => s.T + ':' + s.need + '/' + s.have).join(' ')}, checks ${m.checks.map(c => c.level[0]).join('')}`);
   hits.slice(0, 30).forEach(h => console.log('   ', h));
 }
