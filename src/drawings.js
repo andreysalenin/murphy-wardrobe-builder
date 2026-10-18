@@ -513,9 +513,9 @@ function headboardDetail(s, M, ox, oy) {
     for (let k = 0; k <= 60; k++) { const q = rot(D.Od, th * k / 60); if (q[0] > win[1] - 3) break; arc.push(v.Puv(q)); }
     if (arc.length > 1) s.poly(arc, { lw: 0.25, dash: [1.2, 0.7], color: ACC, closed: false });
     const tq = arc[arc.length - 1] || v.Puv(D.Od);
-    s.text(b[0] + 3, tq[1] - 2, `tips forward ${f0(D.open)} deg${D.open >= 90 + P.headAngle - 0.5 ? ', onto the mattress' : ''}`, { size: 4.8, color: ACC, ha: 'left', va: 'middle' });
+    s.text(b[0] + 3, tq[1] - 2, `tips forward ${f0(D.open)} deg${D.open >= 90 + P.headAngle - 0.5 ? ', onto the mattress' : D.open >= D.rest - 0.5 ? ', onto the mattress edge' : ''}`, { size: 4.8, color: ACC, ha: 'left', va: 'middle' });
     const hq = v.Puv(ax); s.circle(hq[0], hq[1], 0.7, { fill: ACC, lw: 0 });
-    s.text(hq[0] + 1.5, hq[1] - 2.5, 'piano hinge, knuckle to the front', { size: 4.6, color: GREY });
+    s.text(hq[0] + 1.5, hq[1] - 2.5, D.hinge.front ? 'piano hinge, knuckle to the front' : 'piano hinge, hidden behind the foot', { size: 4.6, color: GREY });
     const mq = v.Puv([(D.O[0] + D.I[0]) / 2, (D.O[1] + D.I[1]) / 2]);
     s.leader(mq, [b[0] + 3, mq[1] + 6], `mitre ${(Math.round(D.mitre * 10) / 10)} deg, ${D.gap} gap`, { size: 4.8, ha: 'left' });
   }
@@ -523,11 +523,11 @@ function headboardDetail(s, M, ox, oy) {
   s.text(a[0], b[1] + 15, `HEADBOARD ${D ? 'BOX' : 'SHELF'}  1:${sc}`, { size: 7.5, weight: 'bold' });
   s.text(a[0], b[1] + 11, `cut through the services zone and its power point; leaning ${P.headAngle} deg, ${H.maxAngle.toFixed(1)} at most for ${f0(P.headClear)} clear at the top`, { size: 5, color: GREY });
   let yPara = b[1] - 14;
-  if (D) yPara = s.para(b[0] + 3, b[1] - 14, s.wrap(`Services zone ${f0(H.zone)} at each tower behind a removable panel, then three ${f0(H.compW)} compartments behind three ${f0(D.W)} x ${f0(D.H)} doors, ${D.reveal} mm reveals over the supports (${P.T} mm between doors, ${P.Thead} at the ends). Each door stands on the box floor on a stainless piano hinge, knuckle along its front bottom edge at mattress height, and leans back closed under its own weight. Press the top: a TIP-ON under the shelf pushes it ${D.pop} mm proud, and that is the pull. It tips forward about the pin ${f0(D.open)} deg, face down onto the mattress. Doors and shelf are both cut at ${(Math.round(D.mitre * 10) / 10)} deg (tilt the saw ${(Math.round((90 - D.mitre) * 10) / 10)}) and meet in a ${D.gap} mm line.`, 36, 5), { size: 5, color: GREY });
+  if (D) yPara = s.para(b[0] + 3, b[1] - 14, s.wrap(`Services zone ${f0(H.zone)} at each tower behind a removable panel, then three ${f0(H.compW)} compartments behind three ${f0(D.W)} x ${f0(D.H)} doors, ${D.reveal} mm reveals over the supports (${P.T} mm between doors, ${P.Thead} at the ends). ${D.hinge.front ? 'Each door stands on the box floor on a stainless piano hinge, knuckle along its front bottom edge at mattress height,' : 'Each door turns on a stainless piano hinge hidden in the corner behind its foot'} and leans back closed under its own weight. Press the top: a TIP-ON under the shelf pushes it ${D.pop} mm proud, and that is the pull. It tips forward about the pin ${f0(D.open)} deg, ${D.hinge.front ? 'face down onto the mattress' : 'onto the mattress\'s head edge'}. Doors and shelf are both cut at ${(Math.round(D.mitre * 10) / 10)} deg (tilt the saw ${(Math.round((90 - D.mitre) * 10) / 10)}) and meet in a ${D.gap} mm line.`, 36, 5), { size: 5, color: GREY });
   // the piano hinge at the foot of a door, full size, cut through the middle door: closed, and tipping (dashed);
   // to the right of the notes
   if (D && D.hinge) {
-    const hg = D.hinge, K = hg.K, w1 = [K[0] - 22, K[0] + 8, K[1] - 12, K[1] + 17];
+    const hg = D.hinge, K = hg.K, w1 = hg.front ? [K[0] - 22, K[0] + 8, K[1] - 12, K[1] + 17] : [K[0] - 11, K[0] + 21, K[1] - 14, K[1] + 15];
     const o1 = [b[0] + 44, b[1] - 20 - (w1[3] - w1[2])];
     const v1 = View(s, 'side', 1, o1, [w1[0], w1[2]]);
     v1.parts(M.parts.filter(p => !p.bed && !p.mattress), { cut: 0.5, window: w1, filter: (p) => ['H1', 'H4', 'HT', 'H5'].includes(p.mark) });
@@ -539,8 +539,8 @@ function headboardDetail(s, M, ox, oy) {
     const gh = [up(D.Bb, 7), D.Bb, D.Fb, up(D.Fb, 7)].map(rot).map(q => v1.Puv(q));
     s.poly(gh, { lw: 0.25, dash: [1, 0.6], color: ACC });
     const kq = v1.Puv(K); s.circle(kq[0], kq[1], 0.45, { fill: ACC, lw: 0 });
-    s.leader(kq, [b[0] + 3, q0[1] - 5], `the pin, at mattress height: 30 x ${hg.t} stainless piano hinge`, { size: 4.2, ha: 'left', color: GREY });
-    const fq = v1.Puv([K[0] - 5, K[1] - 8]); s.leader(fq, [b[0] + 3, q0[1] - 9], 'box floor bevelled 10 underneath, clear of the swing', { size: 4.2, ha: 'left', color: GREY });
+    s.leader(kq, [b[0] + 3, q0[1] - 5], hg.front ? `the pin, at mattress height: 30 x ${hg.t} stainless piano hinge` : `the pin, inside behind the foot: 30 x ${hg.t} stainless piano hinge`, { size: 4.2, ha: 'left', color: GREY });
+    const fq = hg.front ? v1.Puv([K[0] - 5, K[1] - 8]) : v1.Puv([K[0] - 8, K[1] - 6]); s.leader(fq, [b[0] + 3, q0[1] - 9], hg.front ? 'box floor bevelled 10 underneath, clear of the swing' : 'box floor stops behind the doors; their feet swing past it', { size: 4.2, ha: 'left', color: GREY });
     s.text(q0[0], q1[1] + 4, 'PIANO HINGE AT THE FOOT  1:1', { size: 6, weight: 'bold' });
     s.text(q0[0], q1[1] + 1.2, 'cut through a door; tipping 35 deg dashed', { size: 4.4, color: GREY });
   }
