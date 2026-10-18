@@ -395,7 +395,7 @@ function start() {
   fillInputs();
   try {
     viewer = new V.Viewer($('viewer'));
-    viewer.onOrient = (t) => { $('front-tag').textContent = `${t}. Click a door, drawer, flap or the bed to open it.`; };
+    viewer.onOrient = (t) => { $('front-tag').textContent = `${t}. Click a door, drawer, flap or the bed to open it, or a power point switch to flick it.`; };
     viewer.onOpenChange = showOpen;
     viewer.onPickBed = playBed;
   }

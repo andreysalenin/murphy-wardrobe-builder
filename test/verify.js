@@ -172,7 +172,7 @@ if (jp) process.exitCode = 1;
   // [hardware mark, other mark]: cups in doors, pins through block, shelf and foot rail, latches drilled in, the pivot bar
   // in its pocket and bush, the bush through the rail, the upper stud's nut in its hole, balls in the spring sockets,
   // the legs and their rail, the rail closing onto the stop domes
-  const ALLOW = new Set(['HG D1', 'HG D2', 'HG HG', 'FH D4', 'FH FH', 'LP LP', 'LP B2', 'LP F4', 'PL B2', 'PL SF', 'PV B1', 'PV F2', 'PV PV', 'PV B8', 'BS B1', 'BS B8', 'BS GS', 'GS BS', 'LG LG', 'ST F2', 'SF PL', 'SB SB', 'SR SB', 'SB SR']);  // SB, SR: the safety bolt's parts are concentric (bores are not seen by the box test)
+  const ALLOW = new Set(['HG D1', 'HG D2', 'HG HG', 'FH D4', 'FH FH', 'LP LP', 'LP B2', 'LP F4', 'PL B2', 'PL SF', 'PV B1', 'PV F2', 'PV PV', 'PV B8', 'BS B1', 'BS B8', 'BS GS', 'GS BS', 'LG LG', 'ST F2', 'SF PL', 'SB SB', 'SR SB', 'SB SR', 'PP PP']);  // SB, SR: the safety bolt's parts are concentric; PP: the switches sit in pockets in the plate (bores are not seen by the box test)
   let bad = 0;
   const sets = [['default', {}], ['pads', { gapHydr: 30, packer: true, Tpacker: 18 }], ['options', { lockType: 'bolts', supportOffset: true, faceReveal: true }], ['front hinges', { headHinge: 'front' }], ['fronts 18/12/18', { TfDrawer: 18, TfSide: 12, TfTop: 18 }], ['fronts 12/18/12', { TfDrawer: 12, TfSide: 18, TfTop: 12, edgeSteel: true, doorHinge: 'inner' }], ['fronts all 12', { TfDrawer: 12, TfSide: 12, TfTop: 12 }]].concat(process.env.OVERLAP_PROBE ? [['probe', JSON.parse(process.env.OVERLAP_PROBE)]] : []);
   for (const [label, params] of sets) for (const ang of [0, 45, 90]) {

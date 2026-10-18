@@ -12,7 +12,7 @@ const KIND_STYLE = {
   mattress: { color: 0xeeeeea, rough: 0.95, edges: false }, metal: { color: 0x2f3236, rough: 0.45, metal: 0.4 },
   chrome: { color: 0xc9ccd0, rough: 0.38, metal: 0.35 }, zinc: { color: 0xc4ccd6, rough: 0.32, metal: 0.25 },
   block: { color: 0x8c6239, rough: 0.7 }, rubber: { color: 0x1c1c1e, rough: 0.9, edges: false }, strap: { color: 0x3d4c70, rough: 0.9, edges: false },
-  plastic: { color: 0xf3f2ee, rough: 0.45 }, bronze: { color: 0xb88f57, rough: 0.4, metal: 0.4 },
+  plastic: { color: 0xf3f2ee, rough: 0.45 }, indicator: { color: 0xe8541a, rough: 0.45, edges: false }, bronze: { color: 0xb88f57, rough: 0.4, metal: 0.4 },
 };
 const T_COL = { 6: 0x7b5cc4, 12: 0x138a7e, 18: 0xc47a12 };
 
@@ -85,6 +85,7 @@ class MurphyScene {
     this.elements = [];
   }
   openOf(id) { const m = this.openState; return m && m.has(id) ? m.get(id) : (this.opts.open || 0); }
+  switchOf(id) { const m = this.openState; return m && m.has(id) ? m.get(id) : (this.opts.switches || 0); } // power points: 0 off, 1 on
   mat(key, style, clipped) {
     const k = key + (clipped ? '-c' : '');
     if (!this.materials[k]) {
@@ -107,7 +108,7 @@ class MurphyScene {
     this.bedInner = new THREE.Group(); this.bedInner.position.set(0, -G.pivot[0], -G.pivot[1]); this.bedPivot.add(this.bedInner);
     this.legPivot = new THREE.Group(); this.legPivot.position.set(0, G.legPivot[0], G.legPivot[1]); this.bedInner.add(this.legPivot);
     this.legInner = new THREE.Group(); this.legInner.position.set(0, -G.legPivot[0], -G.legPivot[1]); this.legPivot.add(this.legInner);
-    this.doors = []; this.flaps = []; this.tilts = []; this.drawers = [];
+    this.doors = []; this.flaps = []; this.tilts = []; this.drawers = []; this.rockers = [];
     this.dyns = [];
     const unitCyl = new THREE.CylinderGeometry(1, 1, 1, 20, 1); // along +y, centred
     for (const p of model.parts) {
@@ -141,10 +142,14 @@ class MurphyScene {
       } else if (p.anim && p.anim.type === 'tilt') { // tips out about a line along x at its foot (the headboard doors)
         const pv = new THREE.Group(); pv.position.set(0, p.anim.axis[0], p.anim.axis[1]); this.root.add(pv);
         grp.position.set(0, -p.anim.axis[0], -p.anim.axis[1]); pv.add(grp); rec.pv = pv; this.tilts.push(rec);
+      } else if (p.anim && p.anim.type === 'rocker') { // a power point switch rocking about a line along y
+        const pv = new THREE.Group(); pv.position.set(p.anim.axis[0], 0, p.anim.axis[1]); this.root.add(pv);
+        grp.position.set(-p.anim.axis[0], 0, -p.anim.axis[1]); pv.add(grp); rec.pv = pv; this.rockers.push(rec);
       } else { this.root.add(grp); if (p.anim && p.anim.type === 'drawer') this.drawers.push(rec); }
       this.recs.push(rec);
     }
-    this.elements = [...new Set(model.parts.filter(p => p.anim && p.anim.id).map(p => p.anim.id))];
+    // fronts that open (the power point switches toggle on their own, outside 'open all')
+    this.elements = [...new Set(model.parts.filter(p => p.anim && p.anim.id && p.anim.type !== 'rocker').map(p => p.anim.id))];
     // floor and walls of the cavity (context)
     this.room = new THREE.Group();
     const P = model.P;
@@ -190,6 +195,7 @@ class MurphyScene {
     const bedDown = Math.max(0, Math.min(1, ((o.bed || 0) - 80) / 10));
     for (const r of this.tilts) r.pv.rotation.x = -T(r.part.anim.id) * bedDown * r.part.anim.deg * Math.PI / 180;
     for (const r of this.drawers) r.grp.position.y = T(r.part.anim.id) * r.part.anim.dist * (r.part.anim.k === undefined ? 1 : r.part.anim.k);
+    for (const r of this.rockers) r.pv.rotation.y = r.part.anim.sign * this.switchOf(r.part.anim.id) * r.part.anim.deg * Math.PI / 180;
     const aim = (mesh, a, b, d) => {
       const va = new THREE.Vector3(...a), vb = new THREE.Vector3(...b), dir = vb.clone().sub(va), L = dir.length();
       mesh.position.copy(va).addScaledVector(dir, 0.5);
@@ -302,7 +308,7 @@ class Viewer {
       this.openTarget.set(id, to);
       const from = this.ms.openOf(id);
       if (reduce || Math.abs(from - to) < 1e-6) { this.ms.openState.set(id, to); this.openAnims.delete(id); }
-      else this.openAnims.set(id, { from, to, t0: now, dur: 150 + 600 * Math.abs(to - from) });
+      else this.openAnims.set(id, { from, to, t0: now, dur: id.startsWith('gpo-') ? 110 : 150 + 600 * Math.abs(to - from) });
     }
     this.ms.apply(); this.dirty = true; this._openChanged();
   }
@@ -442,7 +448,7 @@ class Viewer {
       if (pts.size === 2 && pinch) {
         const v = [...pts.values()];
         const d = Math.hypot(v[0][0] - v[1][0], v[0][1] - v[1][1]), c = [(v[0][0] + v[1][0]) / 2, (v[0][1] + v[1][1]) / 2];
-        this.sph.r = Math.min(60000, Math.max(500, this.sph.r * pinch.d / Math.max(d, 1)));
+        this.sph.r = Math.min(60000, Math.max(200, this.sph.r * pinch.d / Math.max(d, 1)));
         pan(c[0] - pinch.c[0], c[1] - pinch.c[1]);
         pinch = { d, c }; this.dirty = true; return;
       }
@@ -462,7 +468,7 @@ class Viewer {
     el.addEventListener('pointercancel', (e) => { down = null; end(e); });
     el.addEventListener('pointerleave', () => { hoverEv = null; });
     el.addEventListener('contextmenu', (e) => e.preventDefault());
-    el.addEventListener('wheel', (e) => { e.preventDefault(); this.sph.r = Math.min(60000, Math.max(500, this.sph.r * Math.exp(e.deltaY * 0.0012))); this.dirty = true; }, { passive: false });
+    el.addEventListener('wheel', (e) => { e.preventDefault(); this.sph.r = Math.min(60000, Math.max(200, this.sph.r * Math.exp(e.deltaY * 0.0012))); this.dirty = true; }, { passive: false });
   }
 }
 

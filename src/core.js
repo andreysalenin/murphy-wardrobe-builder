@@ -584,7 +584,7 @@ const COLORS = { // RGB 0..1 for STEP; the viewer has matching styles
   carcass: [0.86, 0.76, 0.59], front: [0.91, 0.84, 0.70], frame: [0.80, 0.66, 0.46], deck: [0.84, 0.72, 0.53],
   drawer: [0.89, 0.80, 0.64], back: [0.80, 0.71, 0.55], plinth: [0.74, 0.63, 0.47], packer: [0.70, 0.55, 0.36],
   ledge: [0.86, 0.76, 0.59], mattress: [0.93, 0.93, 0.91], metal: [0.20, 0.21, 0.23], chrome: [0.78, 0.79, 0.81], zinc: [0.70, 0.73, 0.77],
-  block: [0.55, 0.38, 0.22], rubber: [0.10, 0.10, 0.11], bronze: [0.72, 0.56, 0.34], strap: [0.24, 0.30, 0.44], plastic: [0.95, 0.95, 0.93],
+  block: [0.55, 0.38, 0.22], rubber: [0.10, 0.10, 0.11], bronze: [0.72, 0.56, 0.34], strap: [0.24, 0.30, 0.44], plastic: [0.95, 0.95, 0.93], indicator: [0.91, 0.33, 0.10],
 };
 
 function build(params, opts) {
@@ -1092,16 +1092,35 @@ function build(params, opts) {
             const dl = Math.hypot(du, 1), ax = [du / dl, 1 / dl], bx = [ax[1], -ax[0]];
             return prism([0, 0, zs + ph], X, Y, 0.4, [ccwLoop([[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([i, j]) => L(cu + bx[0] * i * w / 2 + ax[0] * j * l / 2, cv + bx[1] * i * w / 2 + ax[1] * j * l / 2)))]);
           };
-          const faces = [], sw = [];
+          // the plate: a slab, then a raised face with a pocket for each switch, the rocker set down in it
+          const faces = [], zf = zs + 3, pocket = [13, 16], vc = 21, rk = { a: 7, w: 10, t: 3, th: 9, hp: 2.9 }, zp = zf + rk.hp;
+          const hole = (cu) => { const a = L(cu - pocket[0] / 2, vc - pocket[1] / 2), b = L(cu + pocket[0] / 2, vc + pocket[1] / 2);
+            return reverseLoop(rectLoop(Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1]))); };
+          const holes = [-1, 1].map(k => hole(k * 28));
+          const plate = [box(xc - GW / 2, xc + GW / 2, yc - GL / 2, yc + GL / 2, zs, zf),
+            prism([0, 0, zf], X, Y, ph - 2 - (zf - zs), [rectLoop(xc - GW / 2, yc - GL / 2, xc + GW / 2, yc + GL / 2), ...holes]),
+            prism([0, 0, zs + ph - 2], X, Y, 2, [rectLoop(xc - GW / 2 + 2, yc - GL / 2 + 2, xc + GW / 2 - 2, yc + GL / 2 - 2), ...holes])];
+          G.head.gpos[G.head.gpos.length - 1].switches = [];
           for (const k of [-1, 1]) {
             const cu = k * 28;
             faces.push(slot(cu - 3.5, -5, 1.8, 7, Math.tan(Math.PI / 6)), slot(cu + 3.5, -5, 1.8, 7, -Math.tan(Math.PI / 6)), slot(cu, -17, 1.8, 7, 0));
-            const a1 = L(cu - 6, 14), a2 = L(cu + 6, 28);
-            sw.push(box(Math.min(a1[0], a2[0]), Math.max(a1[0], a2[0]), Math.min(a1[1], a2[1]), Math.max(a1[1], a2[1]), zs + ph, zs + ph + 2));
+            // the rocker, drawn off: tipped so its dot end (toward the socket) stands up flush with the face; on, that end
+            // is pressed down into the pocket. Its section in (v, w), w up from the pivot, turned by phi
+            const phi = -rk.th * Math.PI / 180, cs = Math.cos(phi), sn = Math.sin(phi);
+            const tv = (v, w) => [v * cs - w * sn, v * sn + w * cs];
+            const W = (v, w) => { const q = tv(v, w); return [zp + q[1], xc + s * (vc + q[0])]; }; // (z, x) for a prism along +y
+            const sec = [[-rk.a, -rk.t / 2], [rk.a, -rk.t / 2], [rk.a, rk.t / 2], [-rk.a, rk.t / 2]].map(([v, w]) => W(v, w));
+            const y0 = yc + cu - rk.w / 2, id = `gpo-${S}-${k < 0 ? 1 : 2}`;
+            const anim = { type: 'rocker', id, axis: [xc + s * vc, zp], sign: -s, deg: 2 * rk.th };
+            put({ mark: 'PP', name: `Power point switch (${S}) ${k < 0 ? 1 : 2}`, grp: 'hardware', kind: 'plastic', hw: true, anim,
+              solids: [prism([0, y0, 0], Z, X, rk.w, [ccwLoop(sec)])] });
+            const top = tv(-rk.a / 2, rk.t / 2), nrm = tv(0, 1), d0 = [xc + s * (vc + top[0]), yc + cu, zp + top[1]];
+            put({ mark: 'PP', name: `Power point switch (${S}) ${k < 0 ? 1 : 2}, on dot`, grp: 'hardware', kind: 'indicator', hw: true, anim,
+              solids: [cyl(3.6, d0, [d0[0] + s * nrm[0] * 0.4, d0[1], d0[2] + nrm[1] * 0.4])] });
+            G.head.gpos[G.head.gpos.length - 1].switches.push(id);
           }
           put({ mark: 'PP', name: `Double power point (${S}), flush in the bedside shelf`, grp: 'hardware', kind: 'plastic', hw: true,
-            solids: [box(xc - GW / 2, xc + GW / 2, yc - GL / 2, yc + GL / 2, zs, zs + ph - 2), box(xc - GW / 2 + 2, xc + GW / 2 - 2, yc - GL / 2 + 2, yc + GL / 2 - 2, zs + ph - 2, zs + ph), ...sw,
-              box(xc - 25, xc + 25, yc - 50, yc + 50, zr1 - 32, zr1)] });
+            solids: [...plate, box(xc - 25, xc + 25, yc - 50, yc + 50, zr1 - 32, zr1)] });
           put({ mark: 'PP', name: `Double power point (${S}), socket faces`, grp: 'hardware', kind: 'rubber', hw: true, solids: faces });
         }
       }
