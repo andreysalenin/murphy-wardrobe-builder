@@ -278,9 +278,9 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="field" data-when="ledge headboard headStore"><div><label for="headGPO">Power points in the bedside shelf</label><small>Australian doubles, flush: 0, 1 (right) or 2 (one each side).</small></div><div class="num"><input id="headGPO" type="number" min="0" max="2" step="1" inputmode="numeric"><span>no.</span></div></div>
           <div class="field" data-when="ledge"><label for="ledgeClear">Ledge clear of the swing</label><div class="num"><input id="ledgeClear" type="number" min="0" max="100" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field" data-when="ledge headboard !headStore"><div><label for="headLip">Bedside shelf lip</label><small>Fixed backrest only: past its top front edge (the doors meet the shelf in a mitre instead).</small></div><div class="num"><input id="headLip" type="number" min="0" max="60" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <div class="field" data-when="ledge headboard headStore"><div><label for="headZone">Services zone at each tower</label><small>Power points and wiring, behind a removable panel; the doors start here. A power point's body needs about 121.</small></div><div class="num"><input id="headZone" type="number" min="60" max="250" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <div class="field" data-when="ledge headboard headStore"><div><label for="headWell">Compartments sunk into the ledge</label><small>Extra depth below the doors' sill, in the hollow ledge: room to stand a pillow up. The floor becomes a sill that carries the hinges.</small></div>
-            <select id="headWell"><option value="0">None</option><option value="50">50 mm</option><option value="75">75 mm</option><option value="100">100 mm</option><option value="125">125 mm</option><option value="150">150 mm</option></select></div>
+          <div class="field" data-when="ledge headboard headStore"><div><label for="headZone">Services zone at each tower</label><small>Power points and wiring, behind a removable panel; the doors start here. A power point's body needs about 81.</small></div><div class="num"><input id="headZone" type="number" min="60" max="250" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="ledge headboard headStore"><div><label for="headWell">Compartments sunk into the ledge</label><small>0, or 50 to 150 below the doors' sill, in the hollow ledge: room to stand a pillow up (yours want 120). The floor becomes a sill that carries the hinges.</small></div>
+            <div class="num"><input id="headWell" type="number" min="0" max="150" step="5" inputmode="numeric"><span>mm</span></div></div>
           <div class="field" data-when="ledge headboard headStore"><div><label for="headDoorOpen">Headboard doors open</label><small>About their piano hinges, until they meet the open mattress. Less needs a strap.</small></div><div class="num"><input id="headDoorOpen" type="number" min="10" max="110" step="1" inputmode="numeric"><span>deg</span></div></div>
           <div class="field" data-when="ledge headboard"><div><label for="headClear">Clear depth inside the box, at the top</label><small>Wall to the backrest: room for a wall outlet and its plug, and the power points' bodies under the shelf.</small></div><div class="num"><input id="headClear" type="number" min="0" max="200" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field" data-when="ledge headboard"><label for="headH">Backrest height</label><div class="num"><input id="headH" type="number" min="150" max="1200" step="10" inputmode="numeric"><span>mm</span></div></div>
@@ -1022,9 +1022,9 @@ const DEFAULTS = {
   headStore: true,      // the backrest is three doors on a storage box, on piano hinges at their feet: push to release, mitred to the bedside shelf
   headHinge: 'inside',  // the headboard doors' piano hinges: 'inside' the box behind the doors' feet (hidden; the doors rest on the
                         // mattress's head edge), or 'front', the knuckle along the doors' front bottom edge (they lie flat on the mattress)
-  headWell: 0,          // headboard compartments sunk into the hollow ledge below the doors' sill: 0, or 50 to 150
+  headWell: 120,        // headboard compartments sunk into the hollow ledge below the doors' sill: 0, or 50 to 150
   headDoorOpen: 110,    // how far the headboard doors tip forward, deg: the hinges' 110, or flat on the open mattress if that comes first
-  headZone: 125,        // services zone at each tower: power points, lamp cables, the hole into the tower (a power point's body, 100 long across it, needs about 121)
+  headZone: 125,        // services zone at each tower: power points, lamp cables, the hole into the tower (a power point's body, 50 across it, needs about 81)
   headGPO: 2,           // Australian double power points flush in the bedside shelf: 0, 1 (right-hand side) or 2 (one each side)
   headClear: 110,       // clear depth wanted inside the box at its top, wall to backrest: a power point's mechanism (100) turned to run back
   Thead: 12,            // backrest, ribs and cap shelf
@@ -1163,7 +1163,7 @@ function normParams(p) {
   num('stopFront', 0, 600); if (P.stopFront > 0 && P.stopFront < 50) P.stopFront = 50; num('stopBelowTop', 10, 600);
   num('springD', 10, 40); num('springRodD', 4, 20); num('springEndD', 8, 40); num('springBodyL', 100, 700);
   num('studS', 4, 40); num('plateT', 1, 10); num('nutStack', 0, 30); num('stopD', 8, 60); num('stopH', 2, 40); num('legD', 10, 40);
-  P.headWell = [0, 50, 75, 100, 125, 150].reduce((b, v) => Math.abs(v - (Number(P.headWell) || 0)) < Math.abs(b - (Number(P.headWell) || 0)) ? v : b, 0); num('headAngle', 0, 30); num('headLip', 0, 60); num('headDoorOpen', 10, 110); num('headGPO', 0, 2); num('headZone', 60, 250); num('headClear', 0, 200); num('headH', 150, 1200); num('headGap', 0, 80); num('lockPinX', 50, 800); num('lockDepth', 5, 40);
+  { const w = Math.round(Number(P.headWell) || 0); P.headWell = w < 25 ? 0 : Math.max(50, Math.min(150, w)); } num('headAngle', 0, 30); num('headLip', 0, 60); num('headDoorOpen', 10, 110); num('headGPO', 0, 2); num('headZone', 60, 250); num('headClear', 0, 200); num('headH', 150, 1200); num('headGap', 0, 80); num('lockPinX', 50, 800); num('lockDepth', 5, 40);
   delete P.packerH; delete P.packerDepth;
   num('ledgeClear', 0, 100); num('upstand', 0, 200); num('wallRail', 40, 200);
   num('steelH', 10, 40); num('steelT', 5, 20); num('twinSpacing', 40, 90);
@@ -1538,10 +1538,10 @@ function bedding(P, G) {
   B.onBed.push({ kind: 'doona', door: 'headdoor-2', y0: head + 30 + PL.W + 15, y1: head + P.mL + 26, x: Math.min(P.mW / 2 + 22, G.xFi - 8), top: top + 36, drop: Math.max(40, Math.min(150, top - railTop - 6)), fold: 260 });
   const H = G.head, D = H && !H.skipped && H.doors, L = G.ledge && !G.ledge.skipped ? G.ledge : null;
   if (D && H.doorX) {
-    const zf = L && L.well ? L.wellTop : H.z0, inside = H.top - zf, h = Math.min(PL.L, inside - 5);
+    const zf = L && L.well ? L.wellTop : H.z0, inside = H.top - zf, h = Math.min(PL.L, inside - 1);
     const back = (z) => H.B0[0] + (H.B1[0] - H.B0[0]) * (z - H.B0[1]) / (H.B1[1] - H.B0[1]); // the doors' back face
     const cx = H.doorX.map(([a, b]) => (a + b) / 2), cw = H.compW;
-    B.inside = inside; B.squeezed = h < PL.L;
+    B.inside = inside; B.squeezed = inside < PL.L;
     B.stored.push({ kind: 'pillow', door: 'headdoor-1', at: [cx[0], G.yB1 + 2, zf + 2], h }, { kind: 'pillow', door: 'headdoor-3', at: [cx[2], G.yB1 + 2, zf + 2], h });
     // the doona folded into the middle one, filling it like a soft block: on the well floor and behind the sill, then out
     // to just behind the door, below the push latch
@@ -2058,18 +2058,19 @@ function build(params, opts) {
           solids: [box(-G.xB, G.xB, 0, G.head.capY, zr1, zs)] });
       }
       // Australian double power points (AS/NZS 3112) flush in the bedside shelf over the services zones: a horizontal
-      // double, its 116 length along the shelf, switches toward the wall so plug packs hang off the front edge away
-      // from them; the mechanism (about 100 x 50) hangs under the shelf between the end support and the bed-cabinet side
+      // double, its 116 length running back from the shelf's front edge, the switches toward the tower and the earth
+      // pins toward the bed's centre line, so plug packs hang toward the bed, away from the switches; the mechanism
+      // (about 50 x 100) hangs under the shelf between the end support and the cleat on the bed-cabinet side
       const nG = Math.round(P.headGPO);
       G.head.gpos = [];
       if (nG) {
         // centred across the shelf's full depth, wall to front edge
         const GL = 116, GW = 73, yc = Math.round(G.head.capY / 2);
         for (const [S, s] of sides.filter(([S]) => nG >= 2 || S === 'R')) {
-          const supO = xe + rv / 2 + Th / 2, xa = Math.min(G.xB - 2 - GL / 2, (supO + G.xB) / 2), xc = s * Math.round(xa);
-          // the plate's own frame: u along it, v 'up' toward the wall (seen from the room: u to the left, v away)
-          const L = (lu, lv) => [xc - lu, yc - lv];
-          G.head.gpos.push({ S, x: Math.round(xc), y: yc, plate: [GL, GW], cut: [104, 54], body: 32, switches: [], fit: Math.round(xa - 50 - supO), zoneNeed: Math.ceil(112 + rv / 2 + Th / 2) });
+          const supO = xe + rv / 2 + Th / 2, xa = (supO + G.xB - Ts) / 2, xc = s * Math.round(xa); // between the end support and the cleat
+          // the plate's own frame: u along it (back toward the wall on the left, forward on the right), v 'up' toward the tower
+          const L = (lu, lv) => [xc + s * lv, yc - s * lu];
+          G.head.gpos.push({ S, x: Math.round(xc), y: yc, plate: [GW, GL], cut: [54, 104], body: 32, switches: [], fit: Math.round(xa - 25 - supO), zoneNeed: Math.ceil(54 + Ts + rv / 2 + Th / 2) });
           // a rounded rectangle given in the plate frame, as a world loop; a slot w wide, l long, along (du, 1)
           const rr = (u0, v0, u1, v1, r) => { const a = L(u0, v0), b = L(u1, v1); return rrLoop(Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1]), r); };
           const slotPts = (cu, cv, w, l, du) => { const dl = Math.hypot(du, 1), ax = [du / dl, 1 / dl], bx = [ax[1], -ax[0]];
@@ -2092,12 +2093,14 @@ function build(params, opts) {
             // the rocker, drawn off: its socket end stands up and the far end is pressed in. On (down is on), the socket
             // end goes in and the far end rises, showing the red mark on its end face
             const th = rk.th * Math.PI / 180, cs = Math.cos(-th), sn = Math.sin(-th);
-            // v runs to -y: the rocker tips in the y-z plane about a line along x
-            const A = [0, -cs, sn], Nw = [0, sn, cs], piv = [xc - cu, yc - vc, zp];
-            const at = (v, w) => [piv[0], piv[1] + v * A[1] + w * Nw[1], piv[2] + v * A[2] + w * Nw[2]];
-            const rocker = prism(at(0, -rk.t / 2), A, X, rk.t, [rrLoop(-rk.a, -rk.w / 2, rk.a, rk.w / 2, 2.5)]);
-            const bt = 0.25, mark = prism(at(rk.a, rk.t / 2 - 1.7), X, Nw, bt, [rectLoop(-2.2, 0, 2.2, 1)]); // n = cross(X, Nw) = A, outward
-            const n = k < 0 ? 1 : 2, id = `gpo-${S}-${n}`, anim = { type: 'rocker', id, axis: [piv[1], zp], sign: -1, deg: 2 * rk.th };
+            // v runs to s x (toward the tower): the rocker tips in the x-z plane about a line along y
+            const A = [s * cs, 0, sn], Nw = [-s * sn, 0, cs], piv = [xc + s * vc, yc - s * cu, zp];
+            const at = (v, w) => [piv[0] + v * A[0] + w * Nw[0], piv[1], piv[2] + v * A[2] + w * Nw[2]];
+            const ob = at(0, -rk.t / 2);
+            const rocker = s > 0 ? prism(ob, A, Y, rk.t, [rrLoop(-rk.a, -rk.w / 2, rk.a, rk.w / 2, 2.5)]) : prism(ob, Y, A, rk.t, [rrLoop(-rk.w / 2, -rk.a, rk.w / 2, rk.a, 2.5)]);
+            const bt = 0.25, out = s > 0; // cross(Y, Nw) is +A on the left, -A on the right
+            const mark = prism(at(rk.a + (out ? 0 : bt), rk.t / 2 - 1.7), Y, Nw, bt, [rectLoop(-2.2, 0, 2.2, 1)]);
+            const n = k < 0 ? 1 : 2, id = `gpo-${S}-${n}`, anim = { type: 'rocker', id, axis: [piv[0], zp], along: 'y', sign: -s, deg: 2 * rk.th };
             put({ mark: 'PP', name: `Power point switch (${S}) ${n}`, grp: 'hardware', kind: 'plastic', hw: true, anim, solids: [rocker] });
             put({ mark: 'PP', name: `Power point switch (${S}) ${n}, on mark`, grp: 'hardware', kind: 'indicator', hw: true, anim, solids: [mark] });
             G.head.gpos[G.head.gpos.length - 1].switches.push(id);
@@ -2107,7 +2110,7 @@ function build(params, opts) {
             solids: [prism([0, 0, zs], X, Y, zf - zs, [outer]),
               prism([0, 0, zf], X, Y, zr - zf, [outer, hole(rr(-GL / 2 + mu, -GW / 2 + mv, GL / 2 - mu, GW / 2 - mv, 5))]),
               prism([0, 0, zf], X, Y, zi - zf, [grid, ...holesLo]), prism([0, 0, zi], X, Y, zt - zi, [grid, ...holesHi]),
-              box(xc - 50, xc + 50, yc - 25, yc + 25, zr1 - 32, zr1)] });
+              box(xc - 25, xc + 25, yc - 50, yc + 50, zr1 - 32, zr1)] });
           put({ mark: 'PP', name: `Double power point (${S}), socket holes`, grp: 'hardware', kind: 'rubber', hw: true, solids: floors });
         }
       }
@@ -2608,9 +2611,9 @@ function checks(model) {
     `The pivot sits ${f0(G.pivot[1])} above the floor; the kit's legs suit ${f0(P.cabPivotZ)} (11-3/4 in). Set "face panel past the frame's head end" to ${(P.faceBelowFrame - G.deckDelta).toFixed(0)} to put the frame where the kit has it${G.deckDelta > 0 ? ', or pad the leg feet' : ''}.`, 'hardware');
   if (G.pinY < G.yFb - P.footRailD + 5 || G.pinY > G.yFb - 5) w('warn', 'Safety pins miss the foot rail', `Pins at ${f0(G.yF - G.pinY)} from the front; the foot rail is ${f0(P.footRailD)} deep.`, 'hardware');
   if (G.bedding && G.bedding.squeezed) w('warn', 'Pillows do not stand up in the headboard',
-    `Your ${PILLOW.L / 10} x ${PILLOW.W / 10} x ${PILLOW.T / 10} cm pillows want ${PILLOW.L + 5} inside to stand up; the compartments are ${f0(G.bedding.inside)}. Sink them ${Math.min(150, Math.max(50, Math.ceil((PILLOW.L + 5 - G.bedding.inside + (G.ledge && G.ledge.well || 0)) / 25) * 25))} into the ledge (Compartments sunk into the ledge), or they go in squashed or bent.`, 'layout');
+    `Your ${PILLOW.L / 10} x ${PILLOW.W / 10} x ${PILLOW.T / 10} cm pillows want ${PILLOW.L} inside to stand up; the compartments are ${Math.floor(G.bedding.inside)}. Sink them ${Math.min(150, Math.max(50, Math.ceil((PILLOW.L - G.bedding.inside + (G.ledge && G.ledge.well || 0)) / 5) * 5))} into the ledge (Compartments sunk into the ledge), or they go in squashed or bent.`, 'layout');
   if (G.head && G.head.gpos && G.head.gpos.length && G.head.gpos[0].fit < 2) w('bad', 'Power points do not fit the services zone',
-    `A double power point's body (about 100 x 50 under the shelf, along it) needs ${G.head.gpos[0].zoneNeed} mm of services zone to clear the end support; it is ${f0(P.headZone)}. Widen the services zone.`, 'layout');
+    `A double power point's body (about 50 x 100 under the shelf, running back) needs ${G.head.gpos[0].zoneNeed} mm of services zone between the end support and the cleat on the bed-cabinet side; it is ${f0(P.headZone)}. Widen the services zone.`, 'layout');
   if (G.head && !G.head.skipped && G.head.clear < P.headClear) w('warn', 'Headboard box too shallow at the top',
     `Leaning back ${P.headAngle} deg brings the backrest's inside face to ${f0(G.head.clear)} mm from the wall at the top of the box, under the ${f0(P.headClear)} wanted for a wall outlet and its plug. More lean means less room inside: ${G.head.maxAngle.toFixed(1)} deg or less keeps ${f0(P.headClear)}.`, 'layout');
   if (G.head && !G.head.skipped) w('info', `Backrest face ${f0(G.head.y0)} from the wall`, `It starts at mattress height (${f0(G.head.z0)}) ${P.headGap} mm behind the open mattress and leans back ${P.headAngle} deg to a bedside shelf at ${f0(G.head.top + P.Thead)}. Below mattress height the bed swings back to ${f0(G.clear.minY)} from the wall, so the ledge under it stays at ${G.ledge ? f0(G.ledge.y) : '-'}.`, 'layout');
@@ -2691,7 +2694,7 @@ function reviewNotes(model, S) {
     ['Measure the kit hardware', `The booklet gives the hardware's positions, not its sizes, and the clearances on sheet 6 rest on typical ones. Measure: the lower ball-stud plate from its face against the rail to the end of its stud (${(Math.round((P.plateT + P.nutStack) * 10) / 10)} used), the ball studs from plate face to ball centre (${P.studS}), the spring's body, rod and sockets (${P.springD}, ${P.springRodD}, ${P.springEndD}) and its length ball to ball fully out (${Math.round(G.clear.spring.fitted)} wanted), the pivot spacer with its plate (${P.pinGap}), and the bed stop domes (${P.stopD} x ${P.stopH}). Enter them under Create-A-Bed hardware.`],
     ['Power and light', P.cableHoles && G.cables ? (() => {
       const h = G.head && !G.head.skipped ? G.head : null;
-      return `${h ? `The space behind the backrest (about ${f0(h.B1[0] - G.yB1)} to ${f0(h.B0[0] - G.yB1)} deep, ${f0(h.z0)} to ${f0(h.top)} high) is the services void: an outlet on the wall there (an electrician's job), the 24 V supply for the lights, and the wiring to ${h.gpos && h.gpos.length ? `${h.gpos.length === 2 ? 'two' : 'one'} Australian double power point${h.gpos.length === 2 ? 's' : ''} set flush in the bedside shelf, ${Math.abs(h.gpos[0].x)} ${h.gpos.length === 2 ? 'either side of' : 'right of'} centre and ${f0(h.gpos[0].y)} from the wall, switches toward the wall: a 104 x 54 cut-out each, the mechanism hanging ${h.gpos[0].body} into the box` : 'any power at the bed'}. All of it is an electrician's job. ${h.doors ? 'Open the headboard doors to reach it.' : 'Reach it from above before the shelf goes on.'} ` : ''}Nothing may stand further from the wall than ${f0(G.yM0 - 30)} above ${f0(G.pivot[1] + 300)} or so: the closed mattress's face comes to ${f0(G.yM0)}, and the bed swings back toward the wall only near the floor. 20 mm cable holes (sheet 7) take one route a side up through the tower, ${f0(G.cables[0].c[0] - G.yB1)} from the wall, clear of every screw line and the kit plates: headboard space to tower, up its back corner through the shelves, then into the bay just under the shelf for a wall-wash strip under the wall rail, and into the box over the bed. ${h ? '' : ''}Strips in the towers go under the shelf over the hanging space and under the tower top, at the front; in the box over the bed under the top, at least 80 back from the front, behind the flap hinge plates.`;
+      return `${h ? `The space behind the backrest (about ${f0(h.B1[0] - G.yB1)} to ${f0(h.B0[0] - G.yB1)} deep, ${f0(h.z0)} to ${f0(h.top)} high) is the services void: an outlet on the wall there (an electrician's job), the 24 V supply for the lights, and the wiring to ${h.gpos && h.gpos.length ? `${h.gpos.length === 2 ? 'two' : 'one'} Australian double power point${h.gpos.length === 2 ? 's' : ''} set flush in the bedside shelf, ${Math.abs(h.gpos[0].x)} ${h.gpos.length === 2 ? 'either side of' : 'right of'} centre and ${f0(h.gpos[0].y)} from the wall, switches toward the tower and earth pins toward the bed's centre line: a 104 x 54 cut-out each, the mechanism hanging ${h.gpos[0].body} into the box` : 'any power at the bed'}. All of it is an electrician's job. ${h.doors ? 'Open the headboard doors to reach it.' : 'Reach it from above before the shelf goes on.'} ` : ''}Nothing may stand further from the wall than ${f0(G.yM0 - 30)} above ${f0(G.pivot[1] + 300)} or so: the closed mattress's face comes to ${f0(G.yM0)}, and the bed swings back toward the wall only near the floor. 20 mm cable holes (sheet 7) take one route a side up through the tower, ${f0(G.cables[0].c[0] - G.yB1)} from the wall, clear of every screw line and the kit plates: headboard space to tower, up its back corner through the shelves, then into the bay just under the shelf for a wall-wash strip under the wall rail, and into the box over the bed. ${h ? '' : ''}Strips in the towers go under the shelf over the hanging space and under the tower top, at the front; in the box over the bed under the top, at least 80 back from the front, behind the flap hinge plates.`;
     })() : 'Cable holes are turned off.'],
     ['Ventilation', `A mattress stood on end in a closed bay needs air: the mattress support has ${G.vents ? G.vents.n : 0} holes of ${G.vents ? G.vents.d : 25} mm between the struts (drill them before it goes on), and the side gaps stay open.`],
     ['Front thicknesses', (() => { const k = [['drawer fronts', 'drawer'], ['tower doors', 'side'], ['flaps', 'top']]; const thin = k.filter(([, z]) => G.thin[z]).map(([n]) => n), thick = k.filter(([, z]) => !G.thin[z]).map(([n]) => n);
@@ -2790,7 +2793,7 @@ function hardwareList(model) {
         ['Nitrile O-ring 9 x 2.5', '2 (and spares)', 'in the 14 bore at the joint between the sides: drag and a soft stop']] : []),
     ['Hanging rail 25 mm + end brackets', '2', `${Math.round(G.towerIn - 4)} long`],
     ['Handles or pulls', `${nDr + 4 + 2}`, 'drawers, doors, two on the bed face (kit: 5 to 6 ft up)'],
-    ...(G.head && G.head.gpos && G.head.gpos.length ? [['Double power points (Australian GPO), with flush-mount brackets', `${G.head.gpos.length}`, 'in the bedside shelf, 104 x 54 cut-outs along the shelf, switches to the wall; fitted and wired by an electrician']] : []),
+    ...(G.head && G.head.gpos && G.head.gpos.length ? [['Double power points (Australian GPO), with flush-mount brackets', `${G.head.gpos.length}`, 'in the bedside shelf, 104 x 54 cut-outs running back from the front edge, switches toward the tower, earth pins toward the bed; fitted and wired by an electrician']] : []),
     ...(G.head && G.head.doors ? [[`${HINGE_HEAD.name}, ${HINGE_HEAD.stock} long`, '1', (() => { const L = model.parts.filter(p => p.hingeSpan && /floor leaf/.test(p.name)).map(p => p.hingeSpan[1] - p.hingeSpan[0]); return G.head.doors.hinge.front ? `headboard doors: cut ${L.length} x ${f0(Math.max(...L))}, one under each door, ${HINGE_HEAD.inset} in from its edges; leaves under the door's bottom edge and on the box floor, knuckle to the front; 3.5 x 15 countersunk screws (${TAGS.h15}) every ${HINGE_HEAD.pitch} or so, staggered` : `headboard doors: cut ${L.length} x ${f0(Math.max(...L))}, one inside each door's foot, ${HINGE_HEAD.inset} in from its edges; one leaf on the door's back face (3.5 x 10, ${TAGS.r10}: the door is 12), the other on the box floor (3.5 x 15, ${TAGS.h15}), every ${HINGE_HEAD.pitch} or so, staggered`; })()], [`${TIPON.name}, ${TIPON.code}, on adapter plate ${TIPON.plate}`, `${G.head.doors.n}`, `one per headboard door, on a block under the bedside shelf behind the top centre; pushes the top about ${G.head.doors.pop} out; magnet catch plate on the door`], ['Push-fit panel fittings (Keku type), sets', '8', 'four per services panel: two on the cleat, two on the first support']] : []),
     ['Wall packers, ply offcuts about 90 x 60', `${2 * Math.max(2, Math.floor(2 * G.xB / STUDS) + 1) + 2 * 2 * Math.max(2, Math.floor((G.xB - P.T / 2) / STUDS) + 1)}`, `at every stud, stacked from 6 and 12 offcuts: ${f0(G.yB1)} behind the rail under the shelf and the headboard cleat, ${f0(P.backGap)} behind the two rails over the back`],
     ...(P.cableHoles && G.cables ? [['Cable grommets, 20 mm', `${2 * G.cables.filter(q => q.axis === 'x').length}`, 'both ends of the holes between spaces (sheet 7)']] : []),
@@ -3817,9 +3820,10 @@ class MurphyScene {
       } else if (p.anim && p.anim.type === 'tilt') { // tips out about a line along x at its foot (the headboard doors)
         const pv = new THREE.Group(); pv.position.set(0, p.anim.axis[0], p.anim.axis[1]); this.root.add(pv);
         grp.position.set(0, -p.anim.axis[0], -p.anim.axis[1]); pv.add(grp); rec.pv = pv; this.tilts.push(rec);
-      } else if (p.anim && p.anim.type === 'rocker') { // a power point switch rocking about a line along x, at (y, z)
-        const pv = new THREE.Group(); pv.position.set(0, p.anim.axis[0], p.anim.axis[1]); this.root.add(pv);
-        grp.position.set(0, -p.anim.axis[0], -p.anim.axis[1]); pv.add(grp); rec.pv = pv; this.rockers.push(rec);
+      } else if (p.anim && p.anim.type === 'rocker') { // a power point switch rocking about a line along y (at x, z) or x (at y, z)
+        const pv = new THREE.Group(), ax = p.anim.axis, alongY = p.anim.along === 'y'; this.root.add(pv);
+        if (alongY) { pv.position.set(ax[0], 0, ax[1]); grp.position.set(-ax[0], 0, -ax[1]); } else { pv.position.set(0, ax[0], ax[1]); grp.position.set(0, -ax[0], -ax[1]); }
+        pv.add(grp); rec.pv = pv; this.rockers.push(rec);
       } else { this.root.add(grp); if (p.anim && p.anim.type === 'drawer') this.drawers.push(rec); }
       this.recs.push(rec);
     }
@@ -3914,7 +3918,7 @@ class MurphyScene {
     const bedDown = Math.max(0, Math.min(1, ((o.bed || 0) - 80) / 10));
     for (const r of this.tilts) r.pv.rotation.x = -T(r.part.anim.id) * bedDown * r.part.anim.deg * Math.PI / 180;
     for (const r of this.drawers) r.grp.position.y = T(r.part.anim.id) * r.part.anim.dist * (r.part.anim.k === undefined ? 1 : r.part.anim.k);
-    for (const r of this.rockers) r.pv.rotation.x = r.part.anim.sign * this.switchOf(r.part.anim.id) * r.part.anim.deg * Math.PI / 180;
+    for (const r of this.rockers) r.pv.rotation[r.part.anim.along === 'y' ? 'y' : 'x'] = r.part.anim.sign * this.switchOf(r.part.anim.id) * r.part.anim.deg * Math.PI / 180;
     // bedding: made up on the bed once it is (nearly) down; each piece goes into its compartment as its door opens
     const bedFade = Math.max(0, Math.min(1, ((o.bed || 0) - 70) / 20));
     for (const b of this.bedding || []) {
@@ -7229,6 +7233,11 @@ if (!readLS(LS_KEY + ':fronts18')) {
 if (!readLS(LS_KEY + ':zone125')) {
   if (Number(params.headZone) === 100) params.headZone = 125;
   writeLS(LS_KEY + ':zone125', 1);
+}
+// the headboard compartments now sink 120 into the ledge by default (your pillows stand up): saved settings on 0 follow, once
+if (!readLS(LS_KEY + ':well120')) {
+  if (!Number(params.headWell)) params.headWell = 120;
+  writeLS(LS_KEY + ':well120', 1);
 }
 // the carcass now stands 6 off the back wall (packers of 6 and 12 behind the rails): saved settings on the old 10 follow, once
 if (!readLS(LS_KEY + ':back6')) {

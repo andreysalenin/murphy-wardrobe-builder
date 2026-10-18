@@ -50,6 +50,11 @@ if (!readLS(LS_KEY + ':zone125')) {
   if (Number(params.headZone) === 100) params.headZone = 125;
   writeLS(LS_KEY + ':zone125', 1);
 }
+// the headboard compartments now sink 120 into the ledge by default (your pillows stand up): saved settings on 0 follow, once
+if (!readLS(LS_KEY + ':well120')) {
+  if (!Number(params.headWell)) params.headWell = 120;
+  writeLS(LS_KEY + ':well120', 1);
+}
 // the carcass now stands 6 off the back wall (packers of 6 and 12 behind the rails): saved settings on the old 10 follow, once
 if (!readLS(LS_KEY + ':back6')) {
   if (params.backGap === 10) params.backGap = 6;

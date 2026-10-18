@@ -171,9 +171,10 @@ class MurphyScene {
       } else if (p.anim && p.anim.type === 'tilt') { // tips out about a line along x at its foot (the headboard doors)
         const pv = new THREE.Group(); pv.position.set(0, p.anim.axis[0], p.anim.axis[1]); this.root.add(pv);
         grp.position.set(0, -p.anim.axis[0], -p.anim.axis[1]); pv.add(grp); rec.pv = pv; this.tilts.push(rec);
-      } else if (p.anim && p.anim.type === 'rocker') { // a power point switch rocking about a line along x, at (y, z)
-        const pv = new THREE.Group(); pv.position.set(0, p.anim.axis[0], p.anim.axis[1]); this.root.add(pv);
-        grp.position.set(0, -p.anim.axis[0], -p.anim.axis[1]); pv.add(grp); rec.pv = pv; this.rockers.push(rec);
+      } else if (p.anim && p.anim.type === 'rocker') { // a power point switch rocking about a line along y (at x, z) or x (at y, z)
+        const pv = new THREE.Group(), ax = p.anim.axis, alongY = p.anim.along === 'y'; this.root.add(pv);
+        if (alongY) { pv.position.set(ax[0], 0, ax[1]); grp.position.set(-ax[0], 0, -ax[1]); } else { pv.position.set(0, ax[0], ax[1]); grp.position.set(0, -ax[0], -ax[1]); }
+        pv.add(grp); rec.pv = pv; this.rockers.push(rec);
       } else { this.root.add(grp); if (p.anim && p.anim.type === 'drawer') this.drawers.push(rec); }
       this.recs.push(rec);
     }
@@ -268,7 +269,7 @@ class MurphyScene {
     const bedDown = Math.max(0, Math.min(1, ((o.bed || 0) - 80) / 10));
     for (const r of this.tilts) r.pv.rotation.x = -T(r.part.anim.id) * bedDown * r.part.anim.deg * Math.PI / 180;
     for (const r of this.drawers) r.grp.position.y = T(r.part.anim.id) * r.part.anim.dist * (r.part.anim.k === undefined ? 1 : r.part.anim.k);
-    for (const r of this.rockers) r.pv.rotation.x = r.part.anim.sign * this.switchOf(r.part.anim.id) * r.part.anim.deg * Math.PI / 180;
+    for (const r of this.rockers) r.pv.rotation[r.part.anim.along === 'y' ? 'y' : 'x'] = r.part.anim.sign * this.switchOf(r.part.anim.id) * r.part.anim.deg * Math.PI / 180;
     // bedding: made up on the bed once it is (nearly) down; each piece goes into its compartment as its door opens
     const bedFade = Math.max(0, Math.min(1, ((o.bed || 0) - 70) / 20));
     for (const b of this.bedding || []) {
