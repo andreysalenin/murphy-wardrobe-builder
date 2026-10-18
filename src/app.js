@@ -63,7 +63,7 @@ if (!readLS(LS_KEY + ':stopPlumb')) {
 }
 params = C.normParams(params);
 let model = null, summary = null, viewer = null, timer = null;
-let viewOpts = Object.assign({ fronts: true, mattress: true, hw: true, section: false, bySheet: false }, readLS(LS_VIEW) || {});
+let viewOpts = Object.assign({ fronts: true, mattress: true, bedding: false, hw: true, section: false, bySheet: false }, readLS(LS_VIEW) || {});
 const f0 = (v) => Math.abs(v - Math.round(v)) < 0.05 ? String(Math.round(v)) : v.toFixed(1);
 
 /* ---------------------------------------------------------------- theme */
@@ -227,7 +227,7 @@ function renderReview() {
 /* ---------------------------------------------------------------- bed slider */
 let bedAngle = 0, playing = null;
 function viewState() {
-  return { fronts: viewOpts.fronts, mattress: viewOpts.mattress, hw: viewOpts.hw, section: viewOpts.section, bySheet: viewOpts.bySheet, bed: bedAngle };
+  return { fronts: viewOpts.fronts, mattress: viewOpts.mattress, bedding: !!viewOpts.bedding, hw: viewOpts.hw, section: viewOpts.section, bySheet: viewOpts.bySheet, bed: bedAngle };
 }
 function updateBedNote() {
   if (!model) return;
@@ -357,14 +357,14 @@ function bind() {
     if (viewer) viewer.view(b.dataset.view);
   }));
   const vopts = () => {
-    viewOpts = { fronts: $('v-fronts').checked, mattress: $('v-mattress').checked, hw: $('v-hw').checked, section: $('v-section').checked, bySheet: $('v-sheet').checked };
+    viewOpts = { fronts: $('v-fronts').checked, mattress: $('v-mattress').checked, bedding: $('v-bedding').checked, hw: $('v-hw').checked, section: $('v-section').checked, bySheet: $('v-sheet').checked };
     writeLS(LS_VIEW, viewOpts);
     document.querySelector('.viewer').classList.toggle('by-sheet', viewOpts.bySheet);
     if (viewer) viewer.set(viewState());
   };
-  $('v-fronts').checked = viewOpts.fronts !== false; $('v-mattress').checked = viewOpts.mattress !== false; $('v-hw').checked = viewOpts.hw !== false;
+  $('v-fronts').checked = viewOpts.fronts !== false; $('v-mattress').checked = viewOpts.mattress !== false; $('v-bedding').checked = !!viewOpts.bedding; $('v-hw').checked = viewOpts.hw !== false;
   $('v-section').checked = !!viewOpts.section; $('v-sheet').checked = !!viewOpts.bySheet;
-  ['v-fronts', 'v-mattress', 'v-hw', 'v-sheet'].forEach(id => $(id).addEventListener('change', vopts));
+  ['v-fronts', 'v-mattress', 'v-bedding', 'v-hw', 'v-sheet'].forEach(id => $(id).addEventListener('change', vopts));
   $('v-section').addEventListener('change', () => {
     vopts();
     if ($('v-section').checked && viewer) { document.querySelectorAll('.tools [data-view]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.view === 'side'))); viewer.view('side'); }

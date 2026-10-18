@@ -49,6 +49,35 @@ function prismGeometry(pr) {
   g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
   return g;
 }
+// a pillow lying flat: L along x, W along y, centred on the origin with its bottom flat at z = 0; the top bulges to T
+// in the middle and is pinched to a seam `edge` high all round; the plan is a rounded rectangle (a superellipse)
+function pillowGeometry(L, W, T, edge) {
+  const NR = 16, NT = 72, n = 5, pos = [], idx = [];
+  const plan = (th) => { const c = Math.cos(th), s = Math.sin(th); return [L / 2 * Math.sign(c) * Math.pow(Math.abs(c), 2 / n), W / 2 * Math.sign(s) * Math.pow(Math.abs(s), 2 / n)]; };
+  const rr = (i) => 1 - Math.pow(1 - i / NR, 1.6);                     // rings closer together toward the seam
+  const top = (r) => edge + (T - edge) * Math.pow(Math.max(0, 1 - Math.pow(r, 3.2)), 0.5);
+  const grid = (zf) => { const b = pos.length / 3; for (let i = 0; i <= NR; i++) for (let j = 0; j < NT; j++) { const q = plan(2 * Math.PI * j / NT), r = rr(i); pos.push(q[0] * r, q[1] * r, zf(r)); } return b; };
+  const v = (b, i, j) => b + i * NT + ((j + NT) % NT);
+  const t0 = grid(top), b0 = grid(() => 0);
+  for (let i = 0; i < NR; i++) for (let j = 0; j < NT; j++) {
+    idx.push(v(t0, i, j), v(t0, i + 1, j), v(t0, i + 1, j + 1), v(t0, i, j), v(t0, i + 1, j + 1), v(t0, i, j + 1));
+    idx.push(v(b0, i, j), v(b0, i + 1, j + 1), v(b0, i + 1, j), v(b0, i, j), v(b0, i, j + 1), v(b0, i + 1, j + 1));
+  }
+  const s0 = pos.length / 3; // the seam band, its own vertices so the edge stays crisp
+  for (let j = 0; j < NT; j++) { const q = plan(2 * Math.PI * j / NT); pos.push(q[0], q[1], 0, q[0], q[1], edge); }
+  for (let j = 0; j < NT; j++) { const a = s0 + 2 * j, b = s0 + 2 * ((j + 1) % NT); idx.push(a, b, b + 1, a, b + 1, a + 1); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  return g;
+}
+// a soft extrusion: a 2D outline (u, v) pushed `depth` along w, its edges rounded; m maps (u, v, w) to the world
+function softExtrude(pts, depth, bevel, m) {
+  const sh = new THREE.Shape(pts.map(([u, v]) => new THREE.Vector2(u, v)));
+  // the bevel rounds inward (bevelOffset), so the outline stays where it is drawn; the ends gain `bevel` each
+  const g = new THREE.ExtrudeGeometry(sh, { depth: Math.max(1, depth - 2 * bevel), bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelOffset: -bevel, bevelSegments: 4, curveSegments: 6 });
+  g.translate(0, 0, bevel);
+  g.applyMatrix4(m); g.computeVertexNormals(); return g;
+}
 function mergeGeoms(list) {
   if (list.length === 1) return list[0];
   let n = 0; for (const g of list) n += g.attributes.position.count;
@@ -150,6 +179,7 @@ class MurphyScene {
     }
     // fronts that open (the power point switches toggle on their own, outside 'open all')
     this.elements = [...new Set(model.parts.filter(p => p.anim && p.anim.id && p.anim.type !== 'rocker').map(p => p.anim.id))];
+    this.makeBedding(G);
     // floor and walls of the cavity (context)
     this.room = new THREE.Group();
     const P = model.P;
@@ -181,6 +211,49 @@ class MurphyScene {
     this.clip.constant = xs;
     this.apply();
   }
+  // pillows and the doona: on the made bed (in the open bed's frame, turned with the bed) and standing in the headboard
+  // compartments; each pair fades from one place to the other as its compartment's door opens
+  makeBedding(G) {
+    this.bedding = [];
+    const B = G.bedding; if (!B) return;
+    const PL = B.pillow, colPillow = 0xf2f0ea, colDoona = 0x22398a;
+    const openFrame = new THREE.Group(), inner = new THREE.Group();   // open-bed coordinates, inside the turning bed
+    openFrame.position.set(0, G.pivot[0], G.pivot[1]); openFrame.rotation.x = Math.PI / 2;
+    inner.position.set(0, -G.pivot[0], -G.pivot[1]); openFrame.add(inner); this.bedInner.add(openFrame);
+    const add = (geom, col, rough, parent, door, where, store) => {
+      const mat = new THREE.MeshStandardMaterial({ color: srgb(col), roughness: rough, metalness: 0, transparent: true, opacity: 0, depthWrite: false });
+      const mesh = new THREE.Mesh(geom, mat); mesh.visible = false; parent.add(mesh);
+      const rec = { mesh, mat, door, where, store }; mesh.userData.bedding = rec; this.bedding.push(rec);
+    };
+    const stored = new Set(B.stored.map(b => b.door));
+    const XZ = new THREE.Matrix4().set(1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1);  // outline (x, z), pushed along -y
+    for (const b of B.onBed) {
+      if (b.kind === 'pillow') {
+        const g = pillowGeometry(PL.L, PL.W, b.T || PL.T, PL.edge); g.translate(b.at[0], b.at[1], b.at[2]);
+        add(g, colPillow, 0.9, inner, b.door, 'bed', stored.has(b.door));
+      } else {
+        // over the mattress and down its sides and foot, the head end folded back
+        const m = B.matt, X = b.x, t = b.top, r = 22, zb = m.z1 - b.drop, xi = m.x + 4, zi = m.z1 + 4;
+        const arc = (cx, cz, a0, a1) => Array.from({ length: 7 }, (_, k) => { const a = a0 + (a1 - a0) * k / 6; return [cx + r * Math.cos(a), cz + r * Math.sin(a)]; });
+        const sec = [[-X, zb], ...arc(-X + r, t - r, Math.PI, Math.PI / 2), ...arc(X - r, t - r, Math.PI / 2, 0), [X, zb], [xi, zb], [xi, zi], [-xi, zi], [-xi, zb]];
+        const body = softExtrude(sec, b.y1 - b.y0, 10, XZ); body.translate(0, b.y1, 0);
+        const fold = softExtrude([[-X + 6, t - 4], [X - 6, t - 4], [X - 6, t + 20], [-X + 6, t + 20]], b.fold, 10, XZ); fold.translate(0, b.y0 + b.fold, 0);
+        const foot = softExtrude([[-X, zb], [X, zb], [X, t - 4], [-X, t - 4]], 24, 10, XZ); foot.translate(0, b.y1 + 22, 0);
+        for (const g of [body, fold, foot]) add(g, colDoona, 0.95, inner, b.door, 'bed', stored.has(b.door));
+      }
+    }
+    const UP = new THREE.Matrix4().set(0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1);   // lying pillow stood on its end
+    const YZ = new THREE.Matrix4().set(0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1);  // outline (y, z), pushed along x
+    for (const b of B.stored) {
+      if (b.kind === 'pillow') {
+        const g = pillowGeometry(PL.L, PL.W, PL.T, PL.edge); g.scale(b.h / PL.L, 1, 1); g.applyMatrix4(UP); g.translate(b.at[0], b.at[1], b.at[2] + b.h / 2);
+        add(g, colPillow, 0.9, this.root, b.door, 'store', true);
+      } else {
+        const g = softExtrude(b.sec, b.x[1] - b.x[0], 16, YZ); g.translate(b.x[0], 0, 0);
+        add(g, colDoona, 0.95, this.root, b.door, 'store', true);
+      }
+    }
+  }
   set(o) { Object.assign(this.opts, o); this.apply(); }
   apply() {
     if (!this.model) return;
@@ -196,6 +269,15 @@ class MurphyScene {
     for (const r of this.tilts) r.pv.rotation.x = -T(r.part.anim.id) * bedDown * r.part.anim.deg * Math.PI / 180;
     for (const r of this.drawers) r.grp.position.y = T(r.part.anim.id) * r.part.anim.dist * (r.part.anim.k === undefined ? 1 : r.part.anim.k);
     for (const r of this.rockers) r.pv.rotation.x = r.part.anim.sign * this.switchOf(r.part.anim.id) * r.part.anim.deg * Math.PI / 180;
+    // bedding: made up on the bed once it is (nearly) down; each piece goes into its compartment as its door opens
+    const bedFade = Math.max(0, Math.min(1, ((o.bed || 0) - 70) / 20));
+    for (const b of this.bedding || []) {
+      const onBed = (1 - (b.store ? T(b.door) * bedDown : 0)) * bedFade;
+      const a = !o.bedding ? 0 : b.where === 'bed' ? onBed : 1 - onBed, tr = a < 0.999;
+      if (b.mat.transparent !== tr) { b.mat.transparent = tr; b.mat.needsUpdate = true; }
+      b.mat.opacity = a; b.mat.depthWrite = a > 0.6; b.mesh.visible = a > 0.01;
+      const cl = !!o.section; if (b.clipOn !== cl) { b.clipOn = cl; b.mat.clippingPlanes = cl ? [this.clip] : null; b.mat.needsUpdate = true; }
+    }
     const aim = (mesh, a, b, d) => {
       const va = new THREE.Vector3(...a), vb = new THREE.Vector3(...b), dir = vb.clone().sub(va), L = dir.length();
       mesh.position.copy(va).addScaledVector(dir, 0.5);
@@ -247,9 +329,11 @@ class MurphyScene {
   pick(ray) {
     const meshes = [];
     for (const r of this.recs) if (this.isVisible(r.grp)) meshes.push(...(r.meshes || [r.mesh]));
+    for (const b of this.bedding || []) if (b.mesh.visible && b.mat.opacity > 0.5 && this.isVisible(b.mesh)) meshes.push(b.mesh);
     this.scene.updateMatrixWorld(true);
     for (const h of ray.intersectObjects(meshes, false)) {
       if (this.opts.section && this.clip.distanceToPoint(h.point) < 0) continue;
+      const bd = h.object.userData.bedding; if (bd) return bd.store ? bd.door : 'bed'; // a pillow or the doona: its compartment
       const p = h.object.userData.rec.part;
       if (p.bed) return 'bed';
       return (p.anim && p.anim.id) || (p.dyn && p.dyn.id) || p.pick || null;

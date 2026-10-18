@@ -185,6 +185,9 @@ const TIPON = { name: 'Blum TIP-ON for doors, long version with magnet', code: '
 const HINGE_FLAP = Object.assign({}, HINGE_HW, { name: 'Blum CLIP top 110\u00b0 full overlay, unsprung (for push-to-open), 70T3550', short: 'Blum 70T3550, unsprung' });
 // for 12 mm fronts: Blum's CLIP top for thin fronts (8 to 14 mm, EXPANDO T). No cup: a boss on the door's back, held by
 // two 10 mm expanding dowels 6 deep, 32 apart; the same CLIP plates. Its boss is drawn just inside the carcass side.
+// your pillows (memory foam, 71 x 39 x 14 cm, the faces bulging, pinched to a seam at the edge) and the doona,
+// for the made bed in the viewer and to check they stand up in the headboard compartments
+const PILLOW = { L: 710, W: 390, T: 140, edge: 22 };
 const HINGE_THIN = Object.assign({}, HINGE_HW, { name: 'Blum CLIP top BLUMOTION 110\u00b0 for thin fronts (EXPANDO T), 71B453T', short: 'Blum 71B453T', boss: { flange: [44, 22, 2.2], d: 24, proud: 9 }, dowels: [10, 6, 32] });
 const HINGE_FLAP_THIN = Object.assign({}, HINGE_THIN, { name: 'Blum CLIP top 110\u00b0 for thin fronts (EXPANDO T), unsprung (for push-to-open), 70T453T.TL', short: 'Blum 70T453T.TL, unsprung' });
 // plate and boring distance for an overlay: the plate that puts B nearest 5 mm
@@ -595,6 +598,35 @@ const COLORS = { // RGB 0..1 for STEP; the viewer has matching styles
   block: [0.55, 0.38, 0.22], rubber: [0.10, 0.10, 0.11], bronze: [0.72, 0.56, 0.34], strap: [0.24, 0.30, 0.44], plastic: [0.95, 0.95, 0.93], indicator: [0.91, 0.33, 0.10],
 };
 
+// the made bed and where its bedding goes: two pillows at the head and a doona, in the open bed's frame (the viewer
+// turns them with the bed); the same three standing in the headboard compartments, pillow | doona | pillow, each
+// tied to its compartment's door
+function bedding(P, G) {
+  const o = G.clear.open, top = o.mattTop, head = o.mattHead, PL = PILLOW;
+  const B = { pillow: PL, matt: { x: P.mW / 2, y0: head, y1: head + P.mL, z0: top - P.mT, z1: top }, onBed: [], stored: [] };
+  const py = head + 30 + PL.W / 2, px = P.mW / 4 + 4;
+  B.onBed.push({ kind: 'pillow', door: 'headdoor-1', at: [-px, py, top], T: PL.T - 15 }, { kind: 'pillow', door: 'headdoor-3', at: [px, py, top], T: PL.T - 15 });
+  // the doona from just below the pillows to past the foot, over the mattress and down its sides to just above the
+  // frame's side rails (it stays inside them)
+  const railTop = o.faceUnder + P.T + P.railD;
+  B.onBed.push({ kind: 'doona', door: 'headdoor-2', y0: head + 30 + PL.W + 15, y1: head + P.mL + 26, x: Math.min(P.mW / 2 + 22, G.xFi - 8), top: top + 36, drop: Math.max(40, Math.min(150, top - railTop - 6)), fold: 260 });
+  const H = G.head, D = H && !H.skipped && H.doors, L = G.ledge && !G.ledge.skipped ? G.ledge : null;
+  if (D && H.doorX) {
+    const zf = L && L.well ? L.wellTop : H.z0, inside = H.top - zf, h = Math.min(PL.L, inside - 5);
+    const back = (z) => H.B0[0] + (H.B1[0] - H.B0[0]) * (z - H.B0[1]) / (H.B1[1] - H.B0[1]); // the doors' back face
+    const cx = H.doorX.map(([a, b]) => (a + b) / 2), cw = H.compW;
+    B.inside = inside; B.squeezed = h < PL.L;
+    B.stored.push({ kind: 'pillow', door: 'headdoor-1', at: [cx[0], G.yB1 + 2, zf + 2], h }, { kind: 'pillow', door: 'headdoor-3', at: [cx[2], G.yB1 + 2, zf + 2], h });
+    // the doona folded into the middle one, filling it like a soft block: on the well floor and behind the sill, then out
+    // to just behind the door, below the push latch
+    const y0 = G.yB1 + 3, zt = H.top - 48, zs = H.z0 + 6, sec = [[y0, zf + 3]];
+    if (L && L.well) sec.push([L.ySill - 6, zf + 3], [L.ySill - 6, zs]); else sec.push([back(zs) - 14, zs]);
+    if (L && L.well) sec.push([back(zs) - 14, zs]);
+    sec.push([back(zt) - 12, zt], [y0, zt]);
+    B.stored.push({ kind: 'doona', door: 'headdoor-2', x: [cx[1] - cw / 2 + 18, cx[1] + cw / 2 - 18], sec });
+  }
+  return B;
+}
 function build(params, opts) {
   opts = opts || {};
   const P = normParams(params), G = derived(P), T = P.T, g = P.gap;
@@ -1068,7 +1100,7 @@ function build(params, opts) {
         // the services panels, one each side, between the bed-cabinet side and the first reveal
         for (const [S, s] of sides) put({ mark: 'H7', name: `Headboard services panel (${S}), removable`, slant: true, grp: bgrp, kind: 'front', T: Th, L: r1(doorH), W: r1(zone - rv - 1), grain: false, band: r1(doorH),
           solids: [yzPrism(s > 0 ? xe + rv : -G.xB + 1, s > 0 ? G.xB - 1 : -(xe + rv), prof)] });
-        const doorX = [[-xe, -xe + pw], [-pw / 2, pw / 2], [xe - pw, xe]], ov = (t) => (t - rv) / 2;
+        const doorX = G.head.doorX = [[-xe, -xe + pw], [-pw / 2, pw / 2], [xe - pw, xe]], ov = (t) => (t - rv) / 2;
         G.head.compW = r1(pw + rv - (Ts + Th) / 2);
         doorX.forEach(([x0, x1], k) => {
           const id = `headdoor-${k + 1}`, anim = { type: 'tilt', id, axis: K, deg: openDeg }, nm = ['right', 'middle', 'left'][k];
@@ -1208,6 +1240,7 @@ function build(params, opts) {
     if (p.bed) p.solids = p.leg ? legSolids(G, p.solids[0].o[0], bedTh, true) : p.solids.map(q => rotatePrism(q, G.pivot, bedTh));
     else if (p.dyn && p.dyn.type === 'pin') p.solids = p.solids.map(q => Object.assign({}, q, { o: add(q.o, [0, 0, p.dyn.lift]) }));
   }
+  G.bedding = bedding(P, G);
   const model = { P, G, parts, bedAngle: opts.bedAngle || 0 };
   model.checks = checks(model);
   return model;
@@ -1648,6 +1681,8 @@ function checks(model) {
   if (Math.abs(G.deckDelta) > 3) w('warn', G.deckDelta > 0 ? `Legs ${f0(G.deckDelta)} mm short` : `Legs ${f0(-G.deckDelta)} mm long`,
     `The pivot sits ${f0(G.pivot[1])} above the floor; the kit's legs suit ${f0(P.cabPivotZ)} (11-3/4 in). Set "face panel past the frame's head end" to ${(P.faceBelowFrame - G.deckDelta).toFixed(0)} to put the frame where the kit has it${G.deckDelta > 0 ? ', or pad the leg feet' : ''}.`, 'hardware');
   if (G.pinY < G.yFb - P.footRailD + 5 || G.pinY > G.yFb - 5) w('warn', 'Safety pins miss the foot rail', `Pins at ${f0(G.yF - G.pinY)} from the front; the foot rail is ${f0(P.footRailD)} deep.`, 'hardware');
+  if (G.bedding && G.bedding.squeezed) w('warn', 'Pillows do not stand up in the headboard',
+    `Your ${PILLOW.L / 10} x ${PILLOW.W / 10} x ${PILLOW.T / 10} cm pillows want ${PILLOW.L + 5} inside to stand up; the compartments are ${f0(G.bedding.inside)}. Sink them ${Math.min(150, Math.max(50, Math.ceil((PILLOW.L + 5 - G.bedding.inside + (G.ledge && G.ledge.well || 0)) / 25) * 25))} into the ledge (Compartments sunk into the ledge), or they go in squashed or bent.`, 'layout');
   if (G.head && G.head.gpos && G.head.gpos.length && G.head.gpos[0].fit < 2) w('bad', 'Power points do not fit the services zone',
     `A double power point's body (about 100 x 50 under the shelf, along it) needs ${G.head.gpos[0].zoneNeed} mm of services zone to clear the end support; it is ${f0(P.headZone)}. Widen the services zone.`, 'layout');
   if (G.head && !G.head.skipped && G.head.clear < P.headClear) w('warn', 'Headboard box too shallow at the top',
@@ -2674,7 +2709,7 @@ function makeZip(files) { // files: [{name, data: Uint8Array}]
   return out;
 }
 
-const api = { DEFAULTS, COLORS, SOURCES, HW_ASSUMPTIONS, reviewNotes, assembly, joinery, FAST, TAGS, cyl, box, RUNNER_STD, RUNNER_HW, HINGE_HW, HINGE_FLAP, HINGE_THIN, HINGE_FLAP_THIN, runnerHoles, hingeFit, PLY_DENSITY, normParams, derived, build, cutList, nest, summary, writeSTEP, makeZip, crc32,
+const api = { PILLOW, DEFAULTS, COLORS, SOURCES, HW_ASSUMPTIONS, reviewNotes, assembly, joinery, FAST, TAGS, cyl, box, RUNNER_STD, RUNNER_HW, HINGE_HW, HINGE_FLAP, HINGE_THIN, HINGE_FLAP_THIN, runnerHoles, hingeFit, PLY_DENSITY, normParams, derived, build, cutList, nest, summary, writeSTEP, makeZip, crc32,
   prismBox, prismCorners, prismVolume, loopPolyline, to3, rot2, rotYZ, rotatePrism, legGeom, legPsi, bedProfile, clearances, hingeZs, springEnds, stayEnds, springSolids, staySolids, linkEnds, linkSolids, rectLoopR01,
   KIT_HW, gapFacts, clearanceSchedule, hingeGapMin, springSegs, staySegs, dynSegs, springCaps };
 if (typeof module !== 'undefined' && module.exports) module.exports = api;

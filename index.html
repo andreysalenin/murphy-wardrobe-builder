@@ -450,6 +450,7 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
             <label><input type="checkbox" id="v-open"> Open fronts</label>
             <label><input type="checkbox" id="v-section"> Cut at the bed</label>
             <label><input type="checkbox" id="v-mattress" checked> Mattress</label>
+            <label><input type="checkbox" id="v-bedding"> Pillows + doona</label>
             <label><input type="checkbox" id="v-hw" checked> Hardware</label>
             <label><input type="checkbox" id="v-sheet"> By thickness</label>
           </div>
@@ -1110,6 +1111,9 @@ const TIPON = { name: 'Blum TIP-ON for doors, long version with magnet', code: '
 const HINGE_FLAP = Object.assign({}, HINGE_HW, { name: 'Blum CLIP top 110\u00b0 full overlay, unsprung (for push-to-open), 70T3550', short: 'Blum 70T3550, unsprung' });
 // for 12 mm fronts: Blum's CLIP top for thin fronts (8 to 14 mm, EXPANDO T). No cup: a boss on the door's back, held by
 // two 10 mm expanding dowels 6 deep, 32 apart; the same CLIP plates. Its boss is drawn just inside the carcass side.
+// your pillows (memory foam, 71 x 39 x 14 cm, the faces bulging, pinched to a seam at the edge) and the doona,
+// for the made bed in the viewer and to check they stand up in the headboard compartments
+const PILLOW = { L: 710, W: 390, T: 140, edge: 22 };
 const HINGE_THIN = Object.assign({}, HINGE_HW, { name: 'Blum CLIP top BLUMOTION 110\u00b0 for thin fronts (EXPANDO T), 71B453T', short: 'Blum 71B453T', boss: { flange: [44, 22, 2.2], d: 24, proud: 9 }, dowels: [10, 6, 32] });
 const HINGE_FLAP_THIN = Object.assign({}, HINGE_THIN, { name: 'Blum CLIP top 110\u00b0 for thin fronts (EXPANDO T), unsprung (for push-to-open), 70T453T.TL', short: 'Blum 70T453T.TL, unsprung' });
 // plate and boring distance for an overlay: the plate that puts B nearest 5 mm
@@ -1520,6 +1524,35 @@ const COLORS = { // RGB 0..1 for STEP; the viewer has matching styles
   block: [0.55, 0.38, 0.22], rubber: [0.10, 0.10, 0.11], bronze: [0.72, 0.56, 0.34], strap: [0.24, 0.30, 0.44], plastic: [0.95, 0.95, 0.93], indicator: [0.91, 0.33, 0.10],
 };
 
+// the made bed and where its bedding goes: two pillows at the head and a doona, in the open bed's frame (the viewer
+// turns them with the bed); the same three standing in the headboard compartments, pillow | doona | pillow, each
+// tied to its compartment's door
+function bedding(P, G) {
+  const o = G.clear.open, top = o.mattTop, head = o.mattHead, PL = PILLOW;
+  const B = { pillow: PL, matt: { x: P.mW / 2, y0: head, y1: head + P.mL, z0: top - P.mT, z1: top }, onBed: [], stored: [] };
+  const py = head + 30 + PL.W / 2, px = P.mW / 4 + 4;
+  B.onBed.push({ kind: 'pillow', door: 'headdoor-1', at: [-px, py, top], T: PL.T - 15 }, { kind: 'pillow', door: 'headdoor-3', at: [px, py, top], T: PL.T - 15 });
+  // the doona from just below the pillows to past the foot, over the mattress and down its sides to just above the
+  // frame's side rails (it stays inside them)
+  const railTop = o.faceUnder + P.T + P.railD;
+  B.onBed.push({ kind: 'doona', door: 'headdoor-2', y0: head + 30 + PL.W + 15, y1: head + P.mL + 26, x: Math.min(P.mW / 2 + 22, G.xFi - 8), top: top + 36, drop: Math.max(40, Math.min(150, top - railTop - 6)), fold: 260 });
+  const H = G.head, D = H && !H.skipped && H.doors, L = G.ledge && !G.ledge.skipped ? G.ledge : null;
+  if (D && H.doorX) {
+    const zf = L && L.well ? L.wellTop : H.z0, inside = H.top - zf, h = Math.min(PL.L, inside - 5);
+    const back = (z) => H.B0[0] + (H.B1[0] - H.B0[0]) * (z - H.B0[1]) / (H.B1[1] - H.B0[1]); // the doors' back face
+    const cx = H.doorX.map(([a, b]) => (a + b) / 2), cw = H.compW;
+    B.inside = inside; B.squeezed = h < PL.L;
+    B.stored.push({ kind: 'pillow', door: 'headdoor-1', at: [cx[0], G.yB1 + 2, zf + 2], h }, { kind: 'pillow', door: 'headdoor-3', at: [cx[2], G.yB1 + 2, zf + 2], h });
+    // the doona folded into the middle one, filling it like a soft block: on the well floor and behind the sill, then out
+    // to just behind the door, below the push latch
+    const y0 = G.yB1 + 3, zt = H.top - 48, zs = H.z0 + 6, sec = [[y0, zf + 3]];
+    if (L && L.well) sec.push([L.ySill - 6, zf + 3], [L.ySill - 6, zs]); else sec.push([back(zs) - 14, zs]);
+    if (L && L.well) sec.push([back(zs) - 14, zs]);
+    sec.push([back(zt) - 12, zt], [y0, zt]);
+    B.stored.push({ kind: 'doona', door: 'headdoor-2', x: [cx[1] - cw / 2 + 18, cx[1] + cw / 2 - 18], sec });
+  }
+  return B;
+}
 function build(params, opts) {
   opts = opts || {};
   const P = normParams(params), G = derived(P), T = P.T, g = P.gap;
@@ -1993,7 +2026,7 @@ function build(params, opts) {
         // the services panels, one each side, between the bed-cabinet side and the first reveal
         for (const [S, s] of sides) put({ mark: 'H7', name: `Headboard services panel (${S}), removable`, slant: true, grp: bgrp, kind: 'front', T: Th, L: r1(doorH), W: r1(zone - rv - 1), grain: false, band: r1(doorH),
           solids: [yzPrism(s > 0 ? xe + rv : -G.xB + 1, s > 0 ? G.xB - 1 : -(xe + rv), prof)] });
-        const doorX = [[-xe, -xe + pw], [-pw / 2, pw / 2], [xe - pw, xe]], ov = (t) => (t - rv) / 2;
+        const doorX = G.head.doorX = [[-xe, -xe + pw], [-pw / 2, pw / 2], [xe - pw, xe]], ov = (t) => (t - rv) / 2;
         G.head.compW = r1(pw + rv - (Ts + Th) / 2);
         doorX.forEach(([x0, x1], k) => {
           const id = `headdoor-${k + 1}`, anim = { type: 'tilt', id, axis: K, deg: openDeg }, nm = ['right', 'middle', 'left'][k];
@@ -2133,6 +2166,7 @@ function build(params, opts) {
     if (p.bed) p.solids = p.leg ? legSolids(G, p.solids[0].o[0], bedTh, true) : p.solids.map(q => rotatePrism(q, G.pivot, bedTh));
     else if (p.dyn && p.dyn.type === 'pin') p.solids = p.solids.map(q => Object.assign({}, q, { o: add(q.o, [0, 0, p.dyn.lift]) }));
   }
+  G.bedding = bedding(P, G);
   const model = { P, G, parts, bedAngle: opts.bedAngle || 0 };
   model.checks = checks(model);
   return model;
@@ -2573,6 +2607,8 @@ function checks(model) {
   if (Math.abs(G.deckDelta) > 3) w('warn', G.deckDelta > 0 ? `Legs ${f0(G.deckDelta)} mm short` : `Legs ${f0(-G.deckDelta)} mm long`,
     `The pivot sits ${f0(G.pivot[1])} above the floor; the kit's legs suit ${f0(P.cabPivotZ)} (11-3/4 in). Set "face panel past the frame's head end" to ${(P.faceBelowFrame - G.deckDelta).toFixed(0)} to put the frame where the kit has it${G.deckDelta > 0 ? ', or pad the leg feet' : ''}.`, 'hardware');
   if (G.pinY < G.yFb - P.footRailD + 5 || G.pinY > G.yFb - 5) w('warn', 'Safety pins miss the foot rail', `Pins at ${f0(G.yF - G.pinY)} from the front; the foot rail is ${f0(P.footRailD)} deep.`, 'hardware');
+  if (G.bedding && G.bedding.squeezed) w('warn', 'Pillows do not stand up in the headboard',
+    `Your ${PILLOW.L / 10} x ${PILLOW.W / 10} x ${PILLOW.T / 10} cm pillows want ${PILLOW.L + 5} inside to stand up; the compartments are ${f0(G.bedding.inside)}. Sink them ${Math.min(150, Math.max(50, Math.ceil((PILLOW.L + 5 - G.bedding.inside + (G.ledge && G.ledge.well || 0)) / 25) * 25))} into the ledge (Compartments sunk into the ledge), or they go in squashed or bent.`, 'layout');
   if (G.head && G.head.gpos && G.head.gpos.length && G.head.gpos[0].fit < 2) w('bad', 'Power points do not fit the services zone',
     `A double power point's body (about 100 x 50 under the shelf, along it) needs ${G.head.gpos[0].zoneNeed} mm of services zone to clear the end support; it is ${f0(P.headZone)}. Widen the services zone.`, 'layout');
   if (G.head && !G.head.skipped && G.head.clear < P.headClear) w('warn', 'Headboard box too shallow at the top',
@@ -3599,7 +3635,7 @@ function makeZip(files) { // files: [{name, data: Uint8Array}]
   return out;
 }
 
-const api = { DEFAULTS, COLORS, SOURCES, HW_ASSUMPTIONS, reviewNotes, assembly, joinery, FAST, TAGS, cyl, box, RUNNER_STD, RUNNER_HW, HINGE_HW, HINGE_FLAP, HINGE_THIN, HINGE_FLAP_THIN, runnerHoles, hingeFit, PLY_DENSITY, normParams, derived, build, cutList, nest, summary, writeSTEP, makeZip, crc32,
+const api = { PILLOW, DEFAULTS, COLORS, SOURCES, HW_ASSUMPTIONS, reviewNotes, assembly, joinery, FAST, TAGS, cyl, box, RUNNER_STD, RUNNER_HW, HINGE_HW, HINGE_FLAP, HINGE_THIN, HINGE_FLAP_THIN, runnerHoles, hingeFit, PLY_DENSITY, normParams, derived, build, cutList, nest, summary, writeSTEP, makeZip, crc32,
   prismBox, prismCorners, prismVolume, loopPolyline, to3, rot2, rotYZ, rotatePrism, legGeom, legPsi, bedProfile, clearances, hingeZs, springEnds, stayEnds, springSolids, staySolids, linkEnds, linkSolids, rectLoopR01,
   KIT_HW, gapFacts, clearanceSchedule, hingeGapMin, springSegs, staySegs, dynSegs, springCaps };
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
@@ -3658,6 +3694,35 @@ function prismGeometry(pr) {
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
   return g;
+}
+// a pillow lying flat: L along x, W along y, centred on the origin with its bottom flat at z = 0; the top bulges to T
+// in the middle and is pinched to a seam `edge` high all round; the plan is a rounded rectangle (a superellipse)
+function pillowGeometry(L, W, T, edge) {
+  const NR = 16, NT = 72, n = 5, pos = [], idx = [];
+  const plan = (th) => { const c = Math.cos(th), s = Math.sin(th); return [L / 2 * Math.sign(c) * Math.pow(Math.abs(c), 2 / n), W / 2 * Math.sign(s) * Math.pow(Math.abs(s), 2 / n)]; };
+  const rr = (i) => 1 - Math.pow(1 - i / NR, 1.6);                     // rings closer together toward the seam
+  const top = (r) => edge + (T - edge) * Math.pow(Math.max(0, 1 - Math.pow(r, 3.2)), 0.5);
+  const grid = (zf) => { const b = pos.length / 3; for (let i = 0; i <= NR; i++) for (let j = 0; j < NT; j++) { const q = plan(2 * Math.PI * j / NT), r = rr(i); pos.push(q[0] * r, q[1] * r, zf(r)); } return b; };
+  const v = (b, i, j) => b + i * NT + ((j + NT) % NT);
+  const t0 = grid(top), b0 = grid(() => 0);
+  for (let i = 0; i < NR; i++) for (let j = 0; j < NT; j++) {
+    idx.push(v(t0, i, j), v(t0, i + 1, j), v(t0, i + 1, j + 1), v(t0, i, j), v(t0, i + 1, j + 1), v(t0, i, j + 1));
+    idx.push(v(b0, i, j), v(b0, i + 1, j + 1), v(b0, i + 1, j), v(b0, i, j), v(b0, i, j + 1), v(b0, i + 1, j + 1));
+  }
+  const s0 = pos.length / 3; // the seam band, its own vertices so the edge stays crisp
+  for (let j = 0; j < NT; j++) { const q = plan(2 * Math.PI * j / NT); pos.push(q[0], q[1], 0, q[0], q[1], edge); }
+  for (let j = 0; j < NT; j++) { const a = s0 + 2 * j, b = s0 + 2 * ((j + 1) % NT); idx.push(a, b, b + 1, a, b + 1, a + 1); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  return g;
+}
+// a soft extrusion: a 2D outline (u, v) pushed `depth` along w, its edges rounded; m maps (u, v, w) to the world
+function softExtrude(pts, depth, bevel, m) {
+  const sh = new THREE.Shape(pts.map(([u, v]) => new THREE.Vector2(u, v)));
+  // the bevel rounds inward (bevelOffset), so the outline stays where it is drawn; the ends gain `bevel` each
+  const g = new THREE.ExtrudeGeometry(sh, { depth: Math.max(1, depth - 2 * bevel), bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelOffset: -bevel, bevelSegments: 4, curveSegments: 6 });
+  g.translate(0, 0, bevel);
+  g.applyMatrix4(m); g.computeVertexNormals(); return g;
 }
 function mergeGeoms(list) {
   if (list.length === 1) return list[0];
@@ -3760,6 +3825,7 @@ class MurphyScene {
     }
     // fronts that open (the power point switches toggle on their own, outside 'open all')
     this.elements = [...new Set(model.parts.filter(p => p.anim && p.anim.id && p.anim.type !== 'rocker').map(p => p.anim.id))];
+    this.makeBedding(G);
     // floor and walls of the cavity (context)
     this.room = new THREE.Group();
     const P = model.P;
@@ -3791,6 +3857,49 @@ class MurphyScene {
     this.clip.constant = xs;
     this.apply();
   }
+  // pillows and the doona: on the made bed (in the open bed's frame, turned with the bed) and standing in the headboard
+  // compartments; each pair fades from one place to the other as its compartment's door opens
+  makeBedding(G) {
+    this.bedding = [];
+    const B = G.bedding; if (!B) return;
+    const PL = B.pillow, colPillow = 0xf2f0ea, colDoona = 0x22398a;
+    const openFrame = new THREE.Group(), inner = new THREE.Group();   // open-bed coordinates, inside the turning bed
+    openFrame.position.set(0, G.pivot[0], G.pivot[1]); openFrame.rotation.x = Math.PI / 2;
+    inner.position.set(0, -G.pivot[0], -G.pivot[1]); openFrame.add(inner); this.bedInner.add(openFrame);
+    const add = (geom, col, rough, parent, door, where, store) => {
+      const mat = new THREE.MeshStandardMaterial({ color: srgb(col), roughness: rough, metalness: 0, transparent: true, opacity: 0, depthWrite: false });
+      const mesh = new THREE.Mesh(geom, mat); mesh.visible = false; parent.add(mesh);
+      const rec = { mesh, mat, door, where, store }; mesh.userData.bedding = rec; this.bedding.push(rec);
+    };
+    const stored = new Set(B.stored.map(b => b.door));
+    const XZ = new THREE.Matrix4().set(1, 0, 0, 0, 0, 0, -1, 0, 0, 1, 0, 0, 0, 0, 0, 1);  // outline (x, z), pushed along -y
+    for (const b of B.onBed) {
+      if (b.kind === 'pillow') {
+        const g = pillowGeometry(PL.L, PL.W, b.T || PL.T, PL.edge); g.translate(b.at[0], b.at[1], b.at[2]);
+        add(g, colPillow, 0.9, inner, b.door, 'bed', stored.has(b.door));
+      } else {
+        // over the mattress and down its sides and foot, the head end folded back
+        const m = B.matt, X = b.x, t = b.top, r = 22, zb = m.z1 - b.drop, xi = m.x + 4, zi = m.z1 + 4;
+        const arc = (cx, cz, a0, a1) => Array.from({ length: 7 }, (_, k) => { const a = a0 + (a1 - a0) * k / 6; return [cx + r * Math.cos(a), cz + r * Math.sin(a)]; });
+        const sec = [[-X, zb], ...arc(-X + r, t - r, Math.PI, Math.PI / 2), ...arc(X - r, t - r, Math.PI / 2, 0), [X, zb], [xi, zb], [xi, zi], [-xi, zi], [-xi, zb]];
+        const body = softExtrude(sec, b.y1 - b.y0, 10, XZ); body.translate(0, b.y1, 0);
+        const fold = softExtrude([[-X + 6, t - 4], [X - 6, t - 4], [X - 6, t + 20], [-X + 6, t + 20]], b.fold, 10, XZ); fold.translate(0, b.y0 + b.fold, 0);
+        const foot = softExtrude([[-X, zb], [X, zb], [X, t - 4], [-X, t - 4]], 24, 10, XZ); foot.translate(0, b.y1 + 22, 0);
+        for (const g of [body, fold, foot]) add(g, colDoona, 0.95, inner, b.door, 'bed', stored.has(b.door));
+      }
+    }
+    const UP = new THREE.Matrix4().set(0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1);   // lying pillow stood on its end
+    const YZ = new THREE.Matrix4().set(0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1);  // outline (y, z), pushed along x
+    for (const b of B.stored) {
+      if (b.kind === 'pillow') {
+        const g = pillowGeometry(PL.L, PL.W, PL.T, PL.edge); g.scale(b.h / PL.L, 1, 1); g.applyMatrix4(UP); g.translate(b.at[0], b.at[1], b.at[2] + b.h / 2);
+        add(g, colPillow, 0.9, this.root, b.door, 'store', true);
+      } else {
+        const g = softExtrude(b.sec, b.x[1] - b.x[0], 16, YZ); g.translate(b.x[0], 0, 0);
+        add(g, colDoona, 0.95, this.root, b.door, 'store', true);
+      }
+    }
+  }
   set(o) { Object.assign(this.opts, o); this.apply(); }
   apply() {
     if (!this.model) return;
@@ -3806,6 +3915,15 @@ class MurphyScene {
     for (const r of this.tilts) r.pv.rotation.x = -T(r.part.anim.id) * bedDown * r.part.anim.deg * Math.PI / 180;
     for (const r of this.drawers) r.grp.position.y = T(r.part.anim.id) * r.part.anim.dist * (r.part.anim.k === undefined ? 1 : r.part.anim.k);
     for (const r of this.rockers) r.pv.rotation.x = r.part.anim.sign * this.switchOf(r.part.anim.id) * r.part.anim.deg * Math.PI / 180;
+    // bedding: made up on the bed once it is (nearly) down; each piece goes into its compartment as its door opens
+    const bedFade = Math.max(0, Math.min(1, ((o.bed || 0) - 70) / 20));
+    for (const b of this.bedding || []) {
+      const onBed = (1 - (b.store ? T(b.door) * bedDown : 0)) * bedFade;
+      const a = !o.bedding ? 0 : b.where === 'bed' ? onBed : 1 - onBed, tr = a < 0.999;
+      if (b.mat.transparent !== tr) { b.mat.transparent = tr; b.mat.needsUpdate = true; }
+      b.mat.opacity = a; b.mat.depthWrite = a > 0.6; b.mesh.visible = a > 0.01;
+      const cl = !!o.section; if (b.clipOn !== cl) { b.clipOn = cl; b.mat.clippingPlanes = cl ? [this.clip] : null; b.mat.needsUpdate = true; }
+    }
     const aim = (mesh, a, b, d) => {
       const va = new THREE.Vector3(...a), vb = new THREE.Vector3(...b), dir = vb.clone().sub(va), L = dir.length();
       mesh.position.copy(va).addScaledVector(dir, 0.5);
@@ -3857,9 +3975,11 @@ class MurphyScene {
   pick(ray) {
     const meshes = [];
     for (const r of this.recs) if (this.isVisible(r.grp)) meshes.push(...(r.meshes || [r.mesh]));
+    for (const b of this.bedding || []) if (b.mesh.visible && b.mat.opacity > 0.5 && this.isVisible(b.mesh)) meshes.push(b.mesh);
     this.scene.updateMatrixWorld(true);
     for (const h of ray.intersectObjects(meshes, false)) {
       if (this.opts.section && this.clip.distanceToPoint(h.point) < 0) continue;
+      const bd = h.object.userData.bedding; if (bd) return bd.store ? bd.door : 'bed'; // a pillow or the doona: its compartment
       const p = h.object.userData.rec.part;
       if (p.bed) return 'bed';
       return (p.anim && p.anim.id) || (p.dyn && p.dyn.id) || p.pick || null;
@@ -7123,7 +7243,7 @@ if (!readLS(LS_KEY + ':stopPlumb')) {
 }
 params = C.normParams(params);
 let model = null, summary = null, viewer = null, timer = null;
-let viewOpts = Object.assign({ fronts: true, mattress: true, hw: true, section: false, bySheet: false }, readLS(LS_VIEW) || {});
+let viewOpts = Object.assign({ fronts: true, mattress: true, bedding: false, hw: true, section: false, bySheet: false }, readLS(LS_VIEW) || {});
 const f0 = (v) => Math.abs(v - Math.round(v)) < 0.05 ? String(Math.round(v)) : v.toFixed(1);
 
 /* ---------------------------------------------------------------- theme */
@@ -7287,7 +7407,7 @@ function renderReview() {
 /* ---------------------------------------------------------------- bed slider */
 let bedAngle = 0, playing = null;
 function viewState() {
-  return { fronts: viewOpts.fronts, mattress: viewOpts.mattress, hw: viewOpts.hw, section: viewOpts.section, bySheet: viewOpts.bySheet, bed: bedAngle };
+  return { fronts: viewOpts.fronts, mattress: viewOpts.mattress, bedding: !!viewOpts.bedding, hw: viewOpts.hw, section: viewOpts.section, bySheet: viewOpts.bySheet, bed: bedAngle };
 }
 function updateBedNote() {
   if (!model) return;
@@ -7417,14 +7537,14 @@ function bind() {
     if (viewer) viewer.view(b.dataset.view);
   }));
   const vopts = () => {
-    viewOpts = { fronts: $('v-fronts').checked, mattress: $('v-mattress').checked, hw: $('v-hw').checked, section: $('v-section').checked, bySheet: $('v-sheet').checked };
+    viewOpts = { fronts: $('v-fronts').checked, mattress: $('v-mattress').checked, bedding: $('v-bedding').checked, hw: $('v-hw').checked, section: $('v-section').checked, bySheet: $('v-sheet').checked };
     writeLS(LS_VIEW, viewOpts);
     document.querySelector('.viewer').classList.toggle('by-sheet', viewOpts.bySheet);
     if (viewer) viewer.set(viewState());
   };
-  $('v-fronts').checked = viewOpts.fronts !== false; $('v-mattress').checked = viewOpts.mattress !== false; $('v-hw').checked = viewOpts.hw !== false;
+  $('v-fronts').checked = viewOpts.fronts !== false; $('v-mattress').checked = viewOpts.mattress !== false; $('v-bedding').checked = !!viewOpts.bedding; $('v-hw').checked = viewOpts.hw !== false;
   $('v-section').checked = !!viewOpts.section; $('v-sheet').checked = !!viewOpts.bySheet;
-  ['v-fronts', 'v-mattress', 'v-hw', 'v-sheet'].forEach(id => $(id).addEventListener('change', vopts));
+  ['v-fronts', 'v-mattress', 'v-bedding', 'v-hw', 'v-sheet'].forEach(id => $(id).addEventListener('change', vopts));
   $('v-section').addEventListener('change', () => {
     vopts();
     if ($('v-section').checked && viewer) { document.querySelectorAll('.tools [data-view]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.view === 'side'))); viewer.view('side'); }
