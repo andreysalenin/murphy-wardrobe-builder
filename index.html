@@ -275,7 +275,7 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="field" data-when="ledge"><label for="ledgeClear">Ledge clear of the swing</label><div class="num"><input id="ledgeClear" type="number" min="0" max="100" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field" data-when="ledge headboard !headStore"><div><label for="headLip">Bedside shelf lip</label><small>Fixed backrest only: past its top front edge (the doors meet the shelf in a mitre instead).</small></div><div class="num"><input id="headLip" type="number" min="0" max="60" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field" data-when="ledge headboard headStore"><div><label for="headZone">Services zone at each tower</label><small>Power points and wiring, behind a removable panel; the doors start here.</small></div><div class="num"><input id="headZone" type="number" min="60" max="250" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <div class="field" data-when="ledge headboard headStore"><div><label for="headDoorOpen">Headboard doors open</label><small>Tilt to the hinges' stop.</small></div><div class="num"><input id="headDoorOpen" type="number" min="10" max="60" step="1" inputmode="numeric"><span>deg</span></div></div>
+          <div class="field" data-when="ledge headboard headStore"><div><label for="headDoorOpen">Headboard doors open</label><small>The hinges go to 110; past 90 + the lean the door lies on the open mattress. Less needs a strap.</small></div><div class="num"><input id="headDoorOpen" type="number" min="10" max="110" step="1" inputmode="numeric"><span>deg</span></div></div>
           <div class="field" data-when="ledge headboard"><div><label for="headClear">Clear depth inside the box, at the top</label><small>Wall to the backrest: room for a power point's mechanism under the shelf, turned to run back (about 100 long).</small></div><div class="num"><input id="headClear" type="number" min="0" max="200" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field" data-when="ledge headboard"><label for="headH">Backrest height</label><div class="num"><input id="headH" type="number" min="150" max="1200" step="10" inputmode="numeric"><span>mm</span></div></div>
           <div class="field" data-when="ledge headboard"><div><label for="headGap">Backrest to the open mattress</label><small>How close the pillows get.</small></div><div class="num"><input id="headGap" type="number" min="0" max="80" step="1" inputmode="numeric"><span>mm</span></div></div>
@@ -995,12 +995,12 @@ const DEFAULTS = {
   ledge: true,          // headboard ledge at the back of the bed bay
   ledgeClear: 15,       // ledge front to the bed's swept envelope
   headboard: true,      // reclined backrest stepping out over the swing, just behind the pillows
-  headAngle: 5,         // backrest lean, deg from vertical
+  headAngle: 10,         // backrest lean, deg from vertical
   headH: 600,           // backrest height
   headGap: 12,          // backrest to the open mattress's head end
   headLip: 12,          // bedside shelf past the backrest's top front edge
   headStore: true,      // the backrest is two tilt-out doors on a storage box: push to release, mitred to the bedside shelf
-  headDoorOpen: 30,     // how far the headboard doors tilt out, deg
+  headDoorOpen: 110,    // how far the headboard doors tip forward, deg: the hinges' 110, or flat on the open mattress if that comes first
   headZone: 100,        // services zone at each tower: power points, lamp cables, the hole into the tower
   headGPO: 2,           // Australian double power points flush in the bedside shelf: 0, 1 (right-hand side) or 2 (one each side)
   headClear: 110,       // clear depth wanted inside the box at its top, wall to backrest: a power point's mechanism (100) turned to run back
@@ -1064,6 +1064,12 @@ const HINGE_HW = {
 };
 // the flaps open with push latches against gas stays, so their hinges have no spring and no damper: the same CLIP top
 // geometry (cup, boring, plates) in the unsprung version Blum makes for TIP-ON
+// the headboard doors: 12 mm fronts on Blum's concealed hinge for thin fronts (8 to 14 mm), unsprung so the TIP-ON
+// can push them; plates on the box floor's top, full overlay on its front edge
+const HINGE_HEAD = { name: 'Blum CLIP top 110\u00b0 EXPANDO T, unsprung', code: '70T453T.TL', open: 110, inset: 70 };
+// Blum TIP-ON for doors, long version with magnet, on its straight adapter plate: about 17 mm ejection on overlay
+// fronts with unsprung hinges (Blum catalogue)
+const TIPON = { name: 'Blum TIP-ON for doors, long version with magnet', code: '956A1004', plate: '956A1201', pop: 17 };
 const HINGE_FLAP = Object.assign({}, HINGE_HW, { name: 'Blum CLIP top 110\u00b0 full overlay, unsprung (for push-to-open), 70T3550', short: 'Blum 70T3550, unsprung' });
 // plate and boring distance for an overlay: the plate that puts B nearest 5 mm
 function hingeFit(overlay) {
@@ -1111,7 +1117,7 @@ function normParams(p) {
   num('stopFront', 0, 600); if (P.stopFront > 0 && P.stopFront < 50) P.stopFront = 50; num('stopBelowTop', 10, 600);
   num('springD', 10, 40); num('springRodD', 4, 20); num('springEndD', 8, 40); num('springBodyL', 100, 700);
   num('studS', 4, 40); num('plateT', 1, 10); num('nutStack', 0, 30); num('stopD', 8, 60); num('stopH', 2, 40); num('legD', 10, 40);
-  num('headAngle', 0, 30); num('headLip', 0, 60); num('headDoorOpen', 10, 60); num('headGPO', 0, 2); num('headZone', 60, 250); num('headClear', 0, 200); num('headH', 150, 1200); num('headGap', 0, 80); num('lockPinX', 50, 800); num('lockDepth', 5, 40);
+  num('headAngle', 0, 30); num('headLip', 0, 60); num('headDoorOpen', 10, 110); num('headGPO', 0, 2); num('headZone', 60, 250); num('headClear', 0, 200); num('headH', 150, 1200); num('headGap', 0, 80); num('lockPinX', 50, 800); num('lockDepth', 5, 40);
   delete P.packerH; delete P.packerDepth;
   num('ledgeClear', 0, 100); num('upstand', 0, 200); num('wallRail', 40, 200);
   num('steelH', 10, 40); num('steelT', 5, 20); num('twinSpacing', 40, 90);
@@ -1855,7 +1861,7 @@ function build(params, opts) {
       // thinner stock; the middle two, under the joints between doors, are full thickness
       const supT = supX.map((_, k) => k === 0 || k === 3 ? Th : Ts);
       G.head.supT = supT;
-      supX.forEach((xc, k) => put({ mark: 'H5', name: `Headboard support ${k + 1}, tapered${k === 0 || k === 3 ? ', end' : ''}`, grp: bgrp, kind: 'ledge', T: supT[k], L: r1(zr1 - zr0), W: Math.round(yb(zr0) - G.yB1), grain: false,
+      supX.forEach((xc, k) => put({ mark: 'H5', name: `Headboard support ${k + 1}, tapered${k === 0 || k === 3 ? ', end' : ''}`, grp: bgrp, kind: 'ledge', T: supT[k], L: r1(zr1 - zr0), W: r1(yb(zr0) - G.yB1), grain: false,
         solids: [yzPrism(xc - supT[k] / 2, xc + supT[k] / 2, rib)] }));
       // cleats on the bed-cabinet sides carry the services panels
       for (const [S, s] of sides) put({ mark: 'H8', name: `Headboard cleat on the bed-cabinet side (${S})`, slant: true, grp: bgrp, kind: 'ledge', T: Ts, L: r1(zr1 - zr0), W: 30, grain: false,
@@ -1872,24 +1878,35 @@ function build(params, opts) {
           const det = u[0] * -dn[1] - u[1] * -dn[0], rx = P0[0] - p[0], ry = P0[1] - p[1];
           const t = (rx * -dn[1] - ry * -dn[0]) / det; return [p[0] + u[0] * t, p[1] + u[1] * t];
         };
-        const Od = meet(F0), Id = meet(B0), mitre = (90 + P.headAngle) / 2, prof = ccwLoop([B0, F0, Od, Id]);
-        const doorH = Math.hypot(Od[0] - F0[0], Od[1] - F0[1]);
-        G.head.doors = { O, I, Od, Id, mitre, gap: gp, reveal: rv, pop: 5, open: P.headDoorOpen, H: doorH, W: r1(pw), n: 3, axis: F0 };
+        // the doors and services panels reach down over the box floor's front edge, 2 short of its underside: the
+        // concealed hinges' plates screw to the floor's top, so the doors are full overlay on it
+        const dz = G.ledge && !G.ledge.skipped ? P.Tledge - 2 : 0, F0d = onLine(F0, z0 - dz), B0d = onLine(B0, z0 - dz);
+        const Od = meet(F0), Id = meet(B0), mitre = (90 + P.headAngle) / 2, prof = ccwLoop([B0d, F0d, Od, Id]);
+        const doorH = Math.hypot(Od[0] - F0d[0], Od[1] - F0d[1]);
+        // they tip forward to the hinges' 110 deg, or until they lie on the open mattress (front face down, flat)
+        const openDeg = Math.min(P.headDoorOpen, HINGE_HEAD.open, 90 + P.headAngle);
+        G.head.doors = { O, I, Od, Id, F0d, B0d, drop: dz, mitre, gap: gp, reveal: rv, pop: TIPON.pop, open: openDeg, H: doorH, W: r1(pw), n: 3, axis: F0 };
         // the services panels, one each side, between the bed-cabinet side and the first reveal
         for (const [S, s] of sides) put({ mark: 'H7', name: `Headboard services panel (${S}), removable`, slant: true, grp: bgrp, kind: 'front', T: Th, L: r1(doorH), W: r1(zone - rv - 1), grain: false, band: r1(doorH),
           solids: [yzPrism(s > 0 ? xe + rv : -G.xB + 1, s > 0 ? G.xB - 1 : -(xe + rv), prof)] });
         const doorX = [[-xe, -xe + pw], [-pw / 2, pw / 2], [xe - pw, xe]], ov = (t) => (t - rv) / 2;
         G.head.compW = r1(pw + rv - (Ts + Th) / 2);
         doorX.forEach(([x0, x1], k) => {
-          const id = `headdoor-${k + 1}`, anim = { type: 'tilt', id, axis: F0, deg: P.headDoorOpen }, nm = ['right', 'middle', 'left'][k];
+          const id = `headdoor-${k + 1}`, anim = { type: 'tilt', id, axis: F0, deg: openDeg }, nm = ['right', 'middle', 'left'][k];
           put({ mark: 'H4', name: `Headboard door, ${nm}, top mitred ${r1(mitre)} deg`, slant: true, grp: bgrp, kind: 'front', T: Th, L: r1(doorH), W: r1(pw), grain: false, band: r1(2 * doorH + 2 * pw),
             solids: [yzPrism(x0, x1, prof)], anim });
-          // tilt-out hinges with a stop at the foot of each side, on the supports, and a push latch under the shelf
-          for (const [xa, nmH] of [[x0 + ov(supT[k]) + 14, 'right-hand'], [x1 - ov(supT[k + 1]) - 14, 'left-hand']])
-            put({ mark: 'HT', name: `Headboard door hinge, ${nm} door, ${nmH}`, grp: 'hardware', kind: 'chrome', hw: true, anim,
-              solids: [box(xa - 8, xa + 8, onLine(B0, z0 + 68)[0] - 2.5, onLine(B0, z0 + 68)[0] - 0.5, z0 + 8, z0 + 68), cyl(8, [xa - 8, F0[0] - 4, z0 - 4.5], [xa + 8, F0[0] - 4, z0 - 4.5])] });
-          const lx = (x0 + x1) / 2, q = onLine(B0, zr1 - 30);
-          put({ mark: 'PL', name: `Headboard door push latch, ${nm}`, grp: 'hardware', kind: 'metal', hw: true,
+          // two concealed hinges for thin fronts at the foot (cups in the door's back, plates on the box floor's top),
+          // and a TIP-ON under the bedside shelf behind the top
+          const pAt = (t, w) => [B0d[0] + u[0] * t - n[0] * w, B0d[1] + u[1] * t - n[1] * w];   // t up the back face, w proud of it toward the wall
+          const yFl = G.ledge && !G.ledge.skipped ? G.ledge.yFloor : Math.floor(B0[0] - 2);
+          for (const [xa, nmH] of [[x0 + HINGE_HEAD.inset, 'right'], [x1 - HINGE_HEAD.inset, 'left']]) {
+            put({ mark: 'HT', name: `Headboard door hinge, ${nm} door, ${nmH}, cup`, grp: 'hardware', kind: 'chrome', hw: true, anim,
+              solids: [yzPrism(xa - 17, xa + 17, ccwLoop([pAt(dz + 3, -0.01), pAt(dz + 43, -0.01), pAt(dz + 43, -2.5), pAt(dz + 3, -2.5)].map(q => [q[0], q[1]])))] });
+            put({ mark: 'HT', name: `Headboard door hinge, ${nm} door, ${nmH}, arm and plate`, grp: 'hardware', kind: 'chrome', hw: true,
+              solids: [box(xa - 8, xa + 8, yFl - 48, yFl - 4, z0, z0 + 11), box(xa - 18, xa + 18, yFl - 44, yFl - 26, z0, z0 + 2.5)] });
+          }
+          const lx = (x0 + x1) / 2, q = onLine(B0, zr1 - 25);
+          put({ mark: 'PL', name: `Headboard door TIP-ON, ${nm}`, grp: 'hardware', kind: 'metal', hw: true,
             solids: [box(lx - 12, lx + 12, q[0] - 46, q[0] - 6, zr1 - 30 - 10, zr1), cyl(10, [lx, q[0] - 6, zr1 - 25], [lx, q[0] - 1, zr1 - 25])] });
         });
         put({ mark: 'H6', name: `Bedside shelf, front mitred ${r1(mitre)} deg`, slant: true, grp: bgrp, kind: 'ledge', T: Th, L: 2 * G.xB, W: r1(O[0]), grain: false, band: 2 * G.xB,
@@ -2468,7 +2485,7 @@ function reviewNotes(model, S) {
       return `${gap} The gas springs do not run in this gap: both ball studs point in, so each spring runs along its rail's top edge, in line with the rail and behind it when the bed is closed, its ${f0(P.springD)} mm body ${r1(X.springSide)} from the ${P.packer ? 'pads' : 'side'}. What does sit in the gap: the plates, the bed stops and the lower ball stud's nut, which passes the ${X.nutOn} ${r1(X.nut)} mm away${X.nut < 2 ? ' (measure yours, sheet 6)' : ''}.`;
     })()],
     ['Plinths and kick boards', `Each tower sits on a ${f0(G.zPl)} high ladder plinth so it can be levelled; the bed-cabinet sides go to the floor like the kit's verticals. ${G.kickC ? `One kick board runs right across, ${f0(G.kickC)} high because the face panel's bottom edge sweeps down to ${f0(G.clear.minZ)} mm off the floor as the bed turns; the drawers and tower plinths sit ${f0(G.drawerDrop)} lower to match, and the header filler is one piece too.` : 'There is no kick board under the bed, so each tower has its own.'}`],
-    ['Headboard', G.head && !G.head.skipped ? `The bed's swing bulges furthest back at pivot height (${f0(G.clear.minY)} from the wall)${G.ledge && !G.ledge.skipped ? `, so the ledge stays below mattress height at ${f0(G.ledge.y)}` : ', so nothing stands below mattress height'}. Above the mattress nothing swings back, so a ${f0(P.headH)} backrest steps out to ${P.headGap} mm behind the open mattress and leans back ${P.headAngle} deg. ${G.head.doors ? `It closes a storage unit ${f0(G.head.clear)} to ${f0(G.head.B0[0])} deep from the wall and ${f0(G.head.top - G.head.z0)} tall, on the ledge top run forward as its floor, with a 6 mm back ${f0(G.yB1 - P.Tback)} off the wall: a ${f0(G.head.zone)} services zone at each tower (power points, lamp cables, the hole into the tower), then three ${f0(G.head.compW)} compartments (a pillow, the doona, a pillow) on four tapered supports, ${P.T} mm under the joints between doors and ${P.Thead} mm at the ends. The backrest is three ${f0(G.head.doors.W)} x ${f0(G.head.doors.H)} doors and two removable services panels, with ${G.head.doors.reveal} mm reveals centred on the supports, so the panels overlap the middle supports by ${f0((P.T - G.head.doors.reveal) / 2)} and the end ones by ${f0((P.Thead - G.head.doors.reveal) / 2)}. Each door stands on tilt-out hinges at its foot and tips out ${f0(G.head.doors.open)} deg to a stop; leaning back, it rests closed under its own weight. Press the top and a push latch under the shelf pops it ${G.head.doors.pop} mm proud: that is the pull. The doors' top edges and the bedside shelf's front edge are both cut at ${(Math.round(G.head.doors.mitre * 10) / 10)} deg, half of 90 plus the lean, and meet in a ${G.head.doors.gap} mm line at the corner. The shelf, ${f0(G.head.capY)} deep at ${f0(G.head.top + P.Thead)}, runs back to the wall. Open the doors with the bed down: closed, the bed is in front of them.` : `A ${f0(G.head.capY)} deep bedside shelf on top at ${f0(G.head.top + P.Thead)} runs to the wall, its front edge ${f0(P.headLip)} past the backrest's top, so its depth follows the lean.`}` : G.ledge && !G.ledge.skipped ? `A ${f0(G.ledge.y - G.yB1)} deep ledge at mattress height fills the gap behind the open mattress.` : 'Turned off: pillows can fall behind the head of the open bed.'],
+    ['Headboard', G.head && !G.head.skipped ? `The bed's swing bulges furthest back at pivot height (${f0(G.clear.minY)} from the wall)${G.ledge && !G.ledge.skipped ? `, so the ledge stays below mattress height at ${f0(G.ledge.y)}` : ', so nothing stands below mattress height'}. Above the mattress nothing swings back, so a ${f0(P.headH)} backrest steps out to ${P.headGap} mm behind the open mattress and leans back ${P.headAngle} deg. ${G.head.doors ? `It closes a storage unit ${f0(G.head.clear)} to ${f0(G.head.B0[0])} deep from the wall and ${f0(G.head.top - G.head.z0)} tall, on the ledge top run forward as its floor, with a 6 mm back ${f0(G.yB1 - P.Tback)} off the wall: a ${f0(G.head.zone)} services zone at each tower (power points, lamp cables, the hole into the tower), then three ${f0(G.head.compW)} compartments (a pillow, the doona, a pillow) on four tapered supports, ${P.T} mm under the joints between doors and ${P.Thead} mm at the ends. The backrest is three ${f0(G.head.doors.W)} x ${f0(G.head.doors.H)} doors and two removable services panels, with ${G.head.doors.reveal} mm reveals centred on the supports, so the panels overlap the middle supports by ${f0((P.T - G.head.doors.reveal) / 2)} and the end ones by ${f0((P.Thead - G.head.doors.reveal) / 2)}. Each door hangs on two ${HINGE_HEAD.name} concealed hinges at its foot, their plates on the box floor, and tips forward ${f0(G.head.doors.open)} deg${G.head.doors.open >= 90 + P.headAngle - 0.5 ? ', face down on the open mattress' : ''}; leaning back, it rests closed under its own weight. Press the top and the TIP-ON under the shelf pushes it about ${G.head.doors.pop} mm proud and holds it there: that is the pull. Tip it past upright and it lowers onto the pillows; a strap from the support to the door limits it if you'd rather it stopped short. The doors' top edges and the bedside shelf's front edge are both cut at ${(Math.round(G.head.doors.mitre * 10) / 10)} deg, half of 90 plus the lean, and meet in a ${G.head.doors.gap} mm line at the corner. The shelf, ${f0(G.head.capY)} deep at ${f0(G.head.top + P.Thead)}, runs back to the wall. Open the doors with the bed down: closed, the bed is in front of them.` : `A ${f0(G.head.capY)} deep bedside shelf on top at ${f0(G.head.top + P.Thead)} runs to the wall, its front edge ${f0(P.headLip)} past the backrest's top, so its depth follows the lean.`}` : G.ledge && !G.ledge.skipped ? `A ${f0(G.ledge.y - G.yB1)} deep ledge at mattress height fills the gap behind the open mattress.` : 'Turned off: pillows can fall behind the head of the open bed.'],
     ['Shelf above the bed', `It spans ${f0(2 * G.xB)} only ${f0(P.gapHolder)} mm above the closed bed. The centre divider carries it: glued and screwed to the shelf and the top, it turns the shelf into two ${f0(G.xB + P.T / 2)} mm bays held on three sides. ${P.edgeSteel ? `A ${f0(P.steelH)} x ${f0(P.steelT)} steel flat let into the front edge, ${f0(P.steelH - P.T)} mm proud underneath and hidden by the flaps, stiffens the free edge and takes the push latches.` : ''} ${P.upstand > 0 ? `A ${f0(P.upstand)} mm lip runs along the front edge.` : 'The top is flat to the front edge, so boxes slide straight in.'} Worst case, one bay holding 100 kg a square metre: about ${G.shelfSag.toFixed(1)} mm over time.`],
     ['Shelf fixings', 'The divider only works if it cannot rack: glue it with 8 mm dowels and screws along each edge, like the upper sides (no deep housing). Make the shelf, upper sides, divider, top, wall rails and the 6 mm back up as one box on the floor, slide it in onto the bed-cabinet sides, screw it down and through the tower sides, and screw the rails into the studs; the build sequence sheets have the steps and screws.'],
     ['Safety lock', P.lockType === 'twin' ? `A twin pin straddles the centre divider behind the flap joint: two 10 mm pins ${f0(P.twinSpacing)} apart, nutted through one steel bar, run through a hardwood block in the divider's front notch and go ${P.lockDepth} mm into the foot rail. One pull through either flap lifts both 30 mm; a spring ball plunger holds them up while the bed is down.${P.lockTab ? ' A 2 mm tab on the bar pokes out through the flap joint, so it can be lifted without opening a flap, and shows whether it is locked.' : ''}`
@@ -2580,7 +2597,7 @@ function hardwareList(model) {
     ['Hanging rail 25 mm + end brackets', '2', `${Math.round(G.towerIn - 4)} long`],
     ['Handles or pulls', `${nDr + 4 + 2}`, 'drawers, doors, two on the bed face (kit: 5 to 6 ft up)'],
     ...(G.head && G.head.gpos && G.head.gpos.length ? [['Double power points (Australian GPO), with flush-mount brackets', `${G.head.gpos.length}`, 'in the bedside shelf, 104 x 54 cut-outs; fitted and wired by an electrician']] : []),
-    ...(G.head && G.head.doors ? [['Tilt-out hinges with a stop, pairs', `${G.head.doors.n}`, `headboard doors: at the foot of each side, on the supports, set to stop at ${f0(G.head.doors.open)} deg`], ['Push-to-open latches, magnetic, short throw', `${G.head.doors.n}`, `under the bedside shelf, one per headboard door; set to pop the top about ${G.head.doors.pop} out`], ['Push-fit panel fittings (Keku type), sets', '8', 'four per services panel: two on the cleat, two on the first support']] : []),
+    ...(G.head && G.head.doors ? [[`Hinges for the headboard doors, ${HINGE_HEAD.name}, ${HINGE_HEAD.code}, with mounting plates`, `${2 * G.head.doors.n}`, `two per door, ${HINGE_HEAD.inset} in from its edges; plates on the box floor's top, full overlay on its front edge; Blum's 5 deg angled spacers if the lean needs them (trial first)`], [`${TIPON.name}, ${TIPON.code}, on adapter plate ${TIPON.plate}`, `${G.head.doors.n}`, `one per headboard door, on a block under the bedside shelf behind the top centre; pushes the top about ${G.head.doors.pop} out; magnet catch plate on the door`], ['Push-fit panel fittings (Keku type), sets', '8', 'four per services panel: two on the cleat, two on the first support']] : []),
     ['Wall packers, ply offcuts about 90 x 60', `${2 * Math.max(2, Math.floor(2 * G.xB / STUDS) + 1) + 2 * 2 * Math.max(2, Math.floor((G.xB - P.T / 2) / STUDS) + 1)}`, `at every stud, stacked from 6 and 12 offcuts: ${f0(G.yB1)} behind the rail under the shelf and the headboard cleat, ${f0(P.backGap)} behind the two rails over the back`],
     ...(P.cableHoles && G.cables ? [['Cable grommets, 20 mm', `${2 * G.cables.filter(q => q.axis === 'x').length}`, 'both ends of the holes between spaces (sheet 7)']] : []),
     ['Screws, dowels, wall fixings, glue', '-', 'see the fixings schedule with the build sequence'],
@@ -2879,7 +2896,8 @@ function joinery(model) {
         for (const [S, s] of sides) {
           const cl = cleats.find(p => p.name.indexOf(`(${S})`) >= 0), B1s = one(`Bed-cabinet side (${S})`); if (!cl || !B1s) continue;
           const q = bb(cl), yAt = (z) => G.head.B0[0] - (z - G.head.B0[1]) * Math.tan(a) - 2 / Math.cos(a) - 15;
-          f.push(F('s30', cl, B1s, [s, 0, 0], P.T, spread(q[2], q[5], 60, 200).map(z => [s * G.xB, yAt(z), z])));
+          const ca = (G.cables || []).find(c => c.id === 'a' && c.S === S), av = ca ? [[ca.c[1] - 22, ca.c[1] + 22]] : [];  // clear of cable hole a
+          f.push(F('s30', cl, B1s, [s, 0, 0], P.T, spread(q[2], q[5], 60, 200, av).map(z => [s * G.xB, yAt(z), z])));
         }
         ops.push({ title: 'Cleats onto the bed-cabinet sides', add: cleats.map(p => [p, [0, 0, E]]), fast: f, setout: 'they carry the removable services panels' });
       }
@@ -2891,7 +2909,7 @@ function joinery(model) {
           setout: 'on the bench with the supports on the floor, before the unit goes against the wall' });
       }
       if (D) ops.push({ title: 'Doors and services panels', add: [...mk('H4'), ...mk('H7')].map(p => [p, [0, Math.cos(a) * E, Math.sin(a) * E]]), fast: [],
-        setout: `${D.reveal} mm reveals over the supports, ${D.gap} at the mitre; tilt-out hinges with a stop at the foot of each door, a push latch under the shelf set to pop the top ${D.pop} out; the services panels on push-fit panel fittings so they pull off` });
+        setout: `${D.reveal} mm reveals over the supports, ${D.gap} at the mitre; two concealed hinges at the foot of each door with plates on the box floor, a TIP-ON under the shelf pushing the top ${D.pop} out; the services panels on push-fit panel fittings so they pull off` });
     }
     inst('ledge', { show: true, base: [H2, H3], ops });
   }
@@ -3589,7 +3607,9 @@ class MurphyScene {
     const T = (id) => this.openOf(id);
     for (const r of this.doors) r.pv.rotation.z = -r.part.anim.sign * T(r.part.anim.id) * Math.PI / 2 * 0.95;
     for (const r of this.flaps) r.pv.rotation.x = T(r.part.anim.id) * Math.PI / 2 * 0.92;
-    for (const r of this.tilts) r.pv.rotation.x = -T(r.part.anim.id) * r.part.anim.deg * Math.PI / 180;
+    // the headboard doors open only with the bed down: closed, the bed stands in front of them
+    const bedDown = Math.max(0, Math.min(1, ((o.bed || 0) - 80) / 10));
+    for (const r of this.tilts) r.pv.rotation.x = -T(r.part.anim.id) * bedDown * r.part.anim.deg * Math.PI / 180;
     for (const r of this.drawers) r.grp.position.y = T(r.part.anim.id) * r.part.anim.dist * (r.part.anim.k === undefined ? 1 : r.part.anim.k);
     const aim = (mesh, a, b, d) => {
       const va = new THREE.Vector3(...a), vb = new THREE.Vector3(...b), dir = vb.clone().sub(va), L = dir.length();
@@ -4795,7 +4815,7 @@ function pageElevations(doc, M, S, I, info) {
 function headboardDetail(s, M, ox, oy) {
   const { P, G } = M, H = G.head, sc = 9, D = H.doors;
   const xc = H.gpos && H.gpos.length ? H.gpos[0].x + 20 : -(G.xB / 4) - 100; // through the power point, or between ribs
-  const win = [-25, Math.max(H.capY, D ? H.y0 + D.H * Math.sin((D.open - P.headAngle) * Math.PI / 180) : 0) + 30, (G.ledge ? G.ledge.top - 60 : H.z0 - 40), H.top + P.Thead + 30];
+  const win = [-25, Math.max(H.capY, D ? H.y0 + 110 : 0) + 30, (G.ledge ? G.ledge.top - 60 : H.z0 - 40), H.top + P.Thead + 30];
   const v = View(s, 'side', sc, [ox, oy], [win[0], win[2]]);
   v.parts(M.parts.filter(p => !p.bed && !p.mattress), { cut: xc, window: win, filter: (p) => /^H[1-9]$/.test(p.mark) || p.mark === 'PP' || (p.mark === 'PL' && /Headboard/.test(p.name)) });
   const a = v.Puv([win[0], win[2]]), b = v.Puv([win[1], win[3]]);
@@ -4812,22 +4832,23 @@ function headboardDetail(s, M, ox, oy) {
   v.dimAt([0, 0, H.top - 60], [0, H.clear, H.top - 60], v.P([0, 0, H.top - 60])[1] - 3, 'h', `${f0(H.clear)} clear`, { size: 5, color: H.clear >= P.headClear ? INK : BAD });
   v.dimAt([0, 0, H.top + P.Thead], [0, H.capY, H.top + P.Thead], v.P([0, 0, H.top + P.Thead])[1] + 4, 'h', null, { size: 5 });
   if (D) {
-    // the door tipped open to its stop, about its foot
+    // the door's top edge tipping forward about its foot, as far as the window shows
     const th = (D.open) * Math.PI / 180, ax = D.axis;
-    const rot = (q) => { const dy = q[0] - ax[0], dz = q[1] - ax[1]; return [ax[0] + dy * Math.cos(th) + dz * Math.sin(th), ax[1] - dy * Math.sin(th) + dz * Math.cos(th)]; };
-    const pts = [H.B0, ax, D.Od, D.Id].map(rot).map(q => v.Puv(q));
-    s.poly(pts.concat([pts[0]]), { lw: 0.25, dash: [1.2, 0.7], color: ACC });
-    const tq = v.Puv(rot(D.Od));
-    s.text(tq[0] + 1.5, tq[1], `open ${f0(D.open)} deg`, { size: 4.8, color: ACC, va: 'middle' });
+    const rot = (q, t) => { const dy = q[0] - ax[0], dz = q[1] - ax[1]; return [ax[0] + dy * Math.cos(t) + dz * Math.sin(t), ax[1] - dy * Math.sin(t) + dz * Math.cos(t)]; };
+    const arc = [];
+    for (let k = 0; k <= 60; k++) { const q = rot(D.Od, th * k / 60); if (q[0] > win[1] - 3) break; arc.push(v.Puv(q)); }
+    if (arc.length > 1) s.poly(arc, { lw: 0.25, dash: [1.2, 0.7], color: ACC, closed: false });
+    const tq = arc[arc.length - 1] || v.Puv(D.Od);
+    s.text(b[0] + 3, tq[1] - 2, `tips forward ${f0(D.open)} deg${D.open >= 90 + P.headAngle - 0.5 ? ', onto the mattress' : ''}`, { size: 4.8, color: ACC, ha: 'left', va: 'middle' });
     const hq = v.Puv(ax); s.circle(hq[0], hq[1], 0.7, { fill: ACC, lw: 0 });
-    s.text(hq[0] + 1.5, hq[1] - 2.5, 'tilt-out hinge', { size: 4.6, color: GREY });
+    s.text(hq[0] + 1.5, hq[1] - 2.5, 'concealed hinges, plates on the floor', { size: 4.6, color: GREY });
     const mq = v.Puv([(D.O[0] + D.I[0]) / 2, (D.O[1] + D.I[1]) / 2]);
     s.leader(mq, [b[0] + 3, mq[1] + 6], `mitre ${(Math.round(D.mitre * 10) / 10)} deg, ${D.gap} gap`, { size: 4.8, ha: 'left' });
   }
   s.rect(a[0], a[1], b[0] - a[0], b[1] - a[1], { lw: 0.2, dash: [2, 0.8, 0.4, 0.8] });
   s.text(a[0], b[1] + 15, `HEADBOARD ${D ? 'BOX' : 'SHELF'}  1:${sc}`, { size: 7.5, weight: 'bold' });
   s.text(a[0], b[1] + 11, `cut through the services zone and its power point; leaning ${P.headAngle} deg, ${H.maxAngle.toFixed(1)} at most for ${f0(P.headClear)} clear at the top`, { size: 5, color: GREY });
-  if (D) s.para(b[0] + 3, b[1] - 14, s.wrap(`Services zone ${f0(H.zone)} at each tower behind a removable panel, then three ${f0(H.compW)} compartments behind three ${f0(D.W)} x ${f0(D.H)} doors, ${D.reveal} mm reveals over the supports (${P.T} mm between doors, ${P.Thead} at the ends). Each door stands on tilt-out hinges with a stop at its foot and leans back closed under its own weight. Press the top: a push latch under the shelf pops it ${D.pop} mm proud, and that is the pull. Doors and shelf are both cut at ${(Math.round(D.mitre * 10) / 10)} deg (tilt the saw ${(Math.round((90 - D.mitre) * 10) / 10)}) and meet in a ${D.gap} mm line.`, 36, 5), { size: 5, color: GREY });
+  if (D) s.para(b[0] + 3, b[1] - 14, s.wrap(`Services zone ${f0(H.zone)} at each tower behind a removable panel, then three ${f0(H.compW)} compartments behind three ${f0(D.W)} x ${f0(D.H)} doors, ${D.reveal} mm reveals over the supports (${P.T} mm between doors, ${P.Thead} at the ends). Each door hangs on two concealed hinges at its foot (plates on the box floor) and leans back closed under its own weight. Press the top: a TIP-ON under the shelf pushes it ${D.pop} mm proud, and that is the pull. It tips forward ${f0(D.open)} deg. Doors and shelf are both cut at ${(Math.round(D.mitre * 10) / 10)} deg (tilt the saw ${(Math.round((90 - D.mitre) * 10) / 10)}) and meet in a ${D.gap} mm line.`, 36, 5), { size: 5, color: GREY });
 }
 
 function pageSections(doc, M, M90, M45, S, info) {
@@ -6828,6 +6849,12 @@ if (!readLS(LS_KEY + ':reveal6')) {
 if (!readLS(LS_KEY + ':clear110')) {
   if (params.headClear === 70) params.headClear = 110;
   writeLS(LS_KEY + ':clear110', 1);
+}
+// the backrest now leans 10 (room for the power points) and its doors open all the way: saved old defaults follow, once
+if (!readLS(LS_KEY + ':lean10')) {
+  if (params.headAngle === 5) params.headAngle = 10;
+  if (params.headDoorOpen === 30) params.headDoorOpen = 110;
+  writeLS(LS_KEY + ':lean10', 1);
 }
 // the carcass now stands 6 off the back wall (packers of 6 and 12 behind the rails): saved settings on the old 10 follow, once
 if (!readLS(LS_KEY + ':back6')) {

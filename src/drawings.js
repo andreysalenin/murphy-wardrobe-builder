@@ -489,7 +489,7 @@ function pageElevations(doc, M, S, I, info) {
 function headboardDetail(s, M, ox, oy) {
   const { P, G } = M, H = G.head, sc = 9, D = H.doors;
   const xc = H.gpos && H.gpos.length ? H.gpos[0].x + 20 : -(G.xB / 4) - 100; // through the power point, or between ribs
-  const win = [-25, Math.max(H.capY, D ? H.y0 + D.H * Math.sin((D.open - P.headAngle) * Math.PI / 180) : 0) + 30, (G.ledge ? G.ledge.top - 60 : H.z0 - 40), H.top + P.Thead + 30];
+  const win = [-25, Math.max(H.capY, D ? H.y0 + 110 : 0) + 30, (G.ledge ? G.ledge.top - 60 : H.z0 - 40), H.top + P.Thead + 30];
   const v = View(s, 'side', sc, [ox, oy], [win[0], win[2]]);
   v.parts(M.parts.filter(p => !p.bed && !p.mattress), { cut: xc, window: win, filter: (p) => /^H[1-9]$/.test(p.mark) || p.mark === 'PP' || (p.mark === 'PL' && /Headboard/.test(p.name)) });
   const a = v.Puv([win[0], win[2]]), b = v.Puv([win[1], win[3]]);
@@ -506,22 +506,23 @@ function headboardDetail(s, M, ox, oy) {
   v.dimAt([0, 0, H.top - 60], [0, H.clear, H.top - 60], v.P([0, 0, H.top - 60])[1] - 3, 'h', `${f0(H.clear)} clear`, { size: 5, color: H.clear >= P.headClear ? INK : BAD });
   v.dimAt([0, 0, H.top + P.Thead], [0, H.capY, H.top + P.Thead], v.P([0, 0, H.top + P.Thead])[1] + 4, 'h', null, { size: 5 });
   if (D) {
-    // the door tipped open to its stop, about its foot
+    // the door's top edge tipping forward about its foot, as far as the window shows
     const th = (D.open) * Math.PI / 180, ax = D.axis;
-    const rot = (q) => { const dy = q[0] - ax[0], dz = q[1] - ax[1]; return [ax[0] + dy * Math.cos(th) + dz * Math.sin(th), ax[1] - dy * Math.sin(th) + dz * Math.cos(th)]; };
-    const pts = [H.B0, ax, D.Od, D.Id].map(rot).map(q => v.Puv(q));
-    s.poly(pts.concat([pts[0]]), { lw: 0.25, dash: [1.2, 0.7], color: ACC });
-    const tq = v.Puv(rot(D.Od));
-    s.text(tq[0] + 1.5, tq[1], `open ${f0(D.open)} deg`, { size: 4.8, color: ACC, va: 'middle' });
+    const rot = (q, t) => { const dy = q[0] - ax[0], dz = q[1] - ax[1]; return [ax[0] + dy * Math.cos(t) + dz * Math.sin(t), ax[1] - dy * Math.sin(t) + dz * Math.cos(t)]; };
+    const arc = [];
+    for (let k = 0; k <= 60; k++) { const q = rot(D.Od, th * k / 60); if (q[0] > win[1] - 3) break; arc.push(v.Puv(q)); }
+    if (arc.length > 1) s.poly(arc, { lw: 0.25, dash: [1.2, 0.7], color: ACC, closed: false });
+    const tq = arc[arc.length - 1] || v.Puv(D.Od);
+    s.text(b[0] + 3, tq[1] - 2, `tips forward ${f0(D.open)} deg${D.open >= 90 + P.headAngle - 0.5 ? ', onto the mattress' : ''}`, { size: 4.8, color: ACC, ha: 'left', va: 'middle' });
     const hq = v.Puv(ax); s.circle(hq[0], hq[1], 0.7, { fill: ACC, lw: 0 });
-    s.text(hq[0] + 1.5, hq[1] - 2.5, 'tilt-out hinge', { size: 4.6, color: GREY });
+    s.text(hq[0] + 1.5, hq[1] - 2.5, 'concealed hinges, plates on the floor', { size: 4.6, color: GREY });
     const mq = v.Puv([(D.O[0] + D.I[0]) / 2, (D.O[1] + D.I[1]) / 2]);
     s.leader(mq, [b[0] + 3, mq[1] + 6], `mitre ${(Math.round(D.mitre * 10) / 10)} deg, ${D.gap} gap`, { size: 4.8, ha: 'left' });
   }
   s.rect(a[0], a[1], b[0] - a[0], b[1] - a[1], { lw: 0.2, dash: [2, 0.8, 0.4, 0.8] });
   s.text(a[0], b[1] + 15, `HEADBOARD ${D ? 'BOX' : 'SHELF'}  1:${sc}`, { size: 7.5, weight: 'bold' });
   s.text(a[0], b[1] + 11, `cut through the services zone and its power point; leaning ${P.headAngle} deg, ${H.maxAngle.toFixed(1)} at most for ${f0(P.headClear)} clear at the top`, { size: 5, color: GREY });
-  if (D) s.para(b[0] + 3, b[1] - 14, s.wrap(`Services zone ${f0(H.zone)} at each tower behind a removable panel, then three ${f0(H.compW)} compartments behind three ${f0(D.W)} x ${f0(D.H)} doors, ${D.reveal} mm reveals over the supports (${P.T} mm between doors, ${P.Thead} at the ends). Each door stands on tilt-out hinges with a stop at its foot and leans back closed under its own weight. Press the top: a push latch under the shelf pops it ${D.pop} mm proud, and that is the pull. Doors and shelf are both cut at ${(Math.round(D.mitre * 10) / 10)} deg (tilt the saw ${(Math.round((90 - D.mitre) * 10) / 10)}) and meet in a ${D.gap} mm line.`, 36, 5), { size: 5, color: GREY });
+  if (D) s.para(b[0] + 3, b[1] - 14, s.wrap(`Services zone ${f0(H.zone)} at each tower behind a removable panel, then three ${f0(H.compW)} compartments behind three ${f0(D.W)} x ${f0(D.H)} doors, ${D.reveal} mm reveals over the supports (${P.T} mm between doors, ${P.Thead} at the ends). Each door hangs on two concealed hinges at its foot (plates on the box floor) and leans back closed under its own weight. Press the top: a TIP-ON under the shelf pushes it ${D.pop} mm proud, and that is the pull. It tips forward ${f0(D.open)} deg. Doors and shelf are both cut at ${(Math.round(D.mitre * 10) / 10)} deg (tilt the saw ${(Math.round((90 - D.mitre) * 10) / 10)}) and meet in a ${D.gap} mm line.`, 36, 5), { size: 5, color: GREY });
 }
 
 function pageSections(doc, M, M90, M45, S, info) {

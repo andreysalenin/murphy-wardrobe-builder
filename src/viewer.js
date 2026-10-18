@@ -186,7 +186,9 @@ class MurphyScene {
     const T = (id) => this.openOf(id);
     for (const r of this.doors) r.pv.rotation.z = -r.part.anim.sign * T(r.part.anim.id) * Math.PI / 2 * 0.95;
     for (const r of this.flaps) r.pv.rotation.x = T(r.part.anim.id) * Math.PI / 2 * 0.92;
-    for (const r of this.tilts) r.pv.rotation.x = -T(r.part.anim.id) * r.part.anim.deg * Math.PI / 180;
+    // the headboard doors open only with the bed down: closed, the bed stands in front of them
+    const bedDown = Math.max(0, Math.min(1, ((o.bed || 0) - 80) / 10));
+    for (const r of this.tilts) r.pv.rotation.x = -T(r.part.anim.id) * bedDown * r.part.anim.deg * Math.PI / 180;
     for (const r of this.drawers) r.grp.position.y = T(r.part.anim.id) * r.part.anim.dist * (r.part.anim.k === undefined ? 1 : r.part.anim.k);
     const aim = (mesh, a, b, d) => {
       const va = new THREE.Vector3(...a), vb = new THREE.Vector3(...b), dir = vb.clone().sub(va), L = dir.length();

@@ -34,6 +34,12 @@ if (!readLS(LS_KEY + ':clear110')) {
   if (params.headClear === 70) params.headClear = 110;
   writeLS(LS_KEY + ':clear110', 1);
 }
+// the backrest now leans 10 (room for the power points) and its doors open all the way: saved old defaults follow, once
+if (!readLS(LS_KEY + ':lean10')) {
+  if (params.headAngle === 5) params.headAngle = 10;
+  if (params.headDoorOpen === 30) params.headDoorOpen = 110;
+  writeLS(LS_KEY + ':lean10', 1);
+}
 // the carcass now stands 6 off the back wall (packers of 6 and 12 behind the rails): saved settings on the old 10 follow, once
 if (!readLS(LS_KEY + ':back6')) {
   if (params.backGap === 10) params.backGap = 6;
