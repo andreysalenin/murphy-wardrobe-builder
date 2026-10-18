@@ -320,6 +320,13 @@ function rectLoopR01(u0, v0, u1, v1, r) {
     A2([u0 + r, v1], [u0, v1 - r], [u0 + r, v1 - r], r, true), L2([u0, v1 - r], [u0, v0])];
 }
 // rectangle u0..u1, v0..v1 (CCW) with the (u0,v0) corner rounded to radius r
+// rectangle with all four corners rounded to r (CCW)
+function rrLoop(u0, v0, u1, v1, r) {
+  r = Math.min(r, (u1 - u0) / 2 - 0.01, (v1 - v0) / 2 - 0.01);
+  if (r <= 0.01) return rectLoop(u0, v0, u1, v1);
+  return [L2([u0 + r, v0], [u1 - r, v0]), A2([u1 - r, v0], [u1, v0 + r], [u1 - r, v0 + r], r, true), L2([u1, v0 + r], [u1, v1 - r]), A2([u1, v1 - r], [u1 - r, v1], [u1 - r, v1 - r], r, true),
+    L2([u1 - r, v1], [u0 + r, v1]), A2([u0 + r, v1], [u0, v1 - r], [u0 + r, v1 - r], r, true), L2([u0, v1 - r], [u0, v0 + r]), A2([u0, v0 + r], [u0 + r, v0], [u0 + r, v0 + r], r, true)];
+}
 function rectLoopR00(u0, v0, u1, v1, r) {
   if (r <= 0.01) return rectLoop(u0, v0, u1, v1);
   r = Math.min(r, (u1 - u0) - 1, (v1 - v0) - 1);
@@ -1078,50 +1085,56 @@ function build(params, opts) {
           solids: [box(-G.xB, G.xB, 0, G.head.capY, zr1, zs)] });
       }
       // Australian double power points (AS/NZS 3112) flush in the bedside shelf over the services zones, turned so the
-      // 116 x 73 plate runs back toward the wall; switches toward the tower, the mechanism hanging under the shelf
+      // 116 x 73 plate runs back toward the wall; switches toward the bed, the mechanism hanging under the shelf
       const nG = Math.round(P.headGPO);
       G.head.gpos = [];
       if (nG) {
         // centred across the shelf's full depth, wall to front edge
-        const GL = 116, GW = 73, ph = 8, yc = Math.round(G.head.capY / 2);
+        const GL = 116, GW = 73, yc = Math.round(G.head.capY / 2);
         for (const [S, s] of sides.filter(([S]) => nG >= 2 || S === 'R')) {
           const xc = s * Math.round(((xe + rv / 2 + Th / 2) + (G.xB - Ts)) / 2); // between the end support and the cleat
-          const L = (lu, lv) => [xc + s * lv, yc + lu];     // plate's own frame: u along it, v 'up' toward the tower
-          G.head.gpos.push({ S, x: Math.round(xc), y: yc, plate: [GW, GL], cut: [54, 104], body: 32 });
-          const slot = (cu, cv, w, l, du) => { // a slot w wide and l long, its length along (du, 1) in the plate frame
-            const dl = Math.hypot(du, 1), ax = [du / dl, 1 / dl], bx = [ax[1], -ax[0]];
-            return prism([0, 0, zs + ph], X, Y, 0.4, [ccwLoop([[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([i, j]) => L(cu + bx[0] * i * w / 2 + ax[0] * j * l / 2, cv + bx[1] * i * w / 2 + ax[1] * j * l / 2)))]);
-          };
-          // the plate: a slab, then a raised face with a pocket for each switch, the rocker set down in it
-          const faces = [], zf = zs + 3, pocket = [13, 16], vc = 21, rk = { a: 7, w: 10, t: 3, th: 9, hp: 2.9 }, zp = zf + rk.hp;
-          const hole = (cu) => { const a = L(cu - pocket[0] / 2, vc - pocket[1] / 2), b = L(cu + pocket[0] / 2, vc + pocket[1] / 2);
-            return reverseLoop(rectLoop(Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1]))); };
-          const holes = [-1, 1].map(k => hole(k * 28));
-          const plate = [box(xc - GW / 2, xc + GW / 2, yc - GL / 2, yc + GL / 2, zs, zf),
-            prism([0, 0, zf], X, Y, ph - 2 - (zf - zs), [rectLoop(xc - GW / 2, yc - GL / 2, xc + GW / 2, yc + GL / 2), ...holes]),
-            prism([0, 0, zs + ph - 2], X, Y, 2, [rectLoop(xc - GW / 2 + 2, yc - GL / 2 + 2, xc + GW / 2 - 2, yc + GL / 2 - 2), ...holes])];
-          G.head.gpos[G.head.gpos.length - 1].switches = [];
+          const sv = -s, L = (lu, lv) => [xc + sv * lv, yc + lu]; // plate's own frame: u along it, v 'up' toward the bed's centre
+          G.head.gpos.push({ S, x: Math.round(xc), y: yc, plate: [GW, GL], cut: [54, 104], body: 32, switches: [] });
+          // a rounded rectangle given in the plate frame, as a world loop; a slot w wide, l long, along (du, 1)
+          const rr = (u0, v0, u1, v1, r) => { const a = L(u0, v0), b = L(u1, v1); return rrLoop(Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1]), r); };
+          const slotPts = (cu, cv, w, l, du) => { const dl = Math.hypot(du, 1), ax = [du / dl, 1 / dl], bx = [ax[1], -ax[0]];
+            return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([i, j]) => L(cu + bx[0] * i * w / 2 + ax[0] * j * l / 2, cv + bx[1] * i * w / 2 + ax[1] * j * l / 2)); };
+          const hole = (loop) => reverseLoop(loop);
+          // a Clipsal 2000-style horizontal double: a framed plate, the switch grid set in it, each socket's rocker over
+          // it. Pins per AS/NZS 3112 at 120 deg about a midpoint, active and neutral 7.92 off it at 30 deg to the
+          // vertical (an inverted V), earth 10.31 below it in a round dimple; apertures a little over the 6.35 x 1.6 pins
+          const zf = zs + 3, zi = zs + 6.5, zt = zs + 7.5, zr = zs + 7, mu = 9, mv = 7, gr = 0.6, vc = 20, vm = -6;
+          const rk = { a: 7, w: 12.5, t: 4.5, th: 9, hp: 3.6, open: [14, 15] }, zp = zf + rk.hp;
+          const grid = rr(-GL / 2 + mu + gr, -GW / 2 + mv + gr, GL / 2 - mu - gr, GW / 2 - mv - gr, 4.4);
+          const holesLo = [], holesHi = [], floors = [];
           for (const k of [-1, 1]) {
-            const cu = k * 28;
-            faces.push(slot(cu - 3.5, -5, 1.8, 7, Math.tan(Math.PI / 6)), slot(cu + 3.5, -5, 1.8, 7, -Math.tan(Math.PI / 6)), slot(cu, -17, 1.8, 7, 0));
-            // the rocker, drawn off: tipped so its dot end (toward the socket) stands up flush with the face; on, that end
-            // is pressed down into the pocket. Its section in (v, w), w up from the pivot, turned by phi
-            const phi = -rk.th * Math.PI / 180, cs = Math.cos(phi), sn = Math.sin(phi);
-            const tv = (v, w) => [v * cs - w * sn, v * sn + w * cs];
-            const W = (v, w) => { const q = tv(v, w); return [zp + q[1], xc + s * (vc + q[0])]; }; // (z, x) for a prism along +y
-            const sec = [[-rk.a, -rk.t / 2], [rk.a, -rk.t / 2], [rk.a, rk.t / 2], [-rk.a, rk.t / 2]].map(([v, w]) => W(v, w));
-            const y0 = yc + cu - rk.w / 2, id = `gpo-${S}-${k < 0 ? 1 : 2}`;
-            const anim = { type: 'rocker', id, axis: [xc + s * vc, zp], sign: -s, deg: 2 * rk.th };
-            put({ mark: 'PP', name: `Power point switch (${S}) ${k < 0 ? 1 : 2}`, grp: 'hardware', kind: 'plastic', hw: true, anim,
-              solids: [prism([0, y0, 0], Z, X, rk.w, [ccwLoop(sec)])] });
-            const top = tv(-rk.a / 2, rk.t / 2), nrm = tv(0, 1), d0 = [xc + s * (vc + top[0]), yc + cu, zp + top[1]];
-            put({ mark: 'PP', name: `Power point switch (${S}) ${k < 0 ? 1 : 2}, on dot`, grp: 'hardware', kind: 'indicator', hw: true, anim,
-              solids: [cyl(3.6, d0, [d0[0] + s * nrm[0] * 0.4, d0[1], d0[2] + nrm[1] * 0.4])] });
+            const cu = k * 28, an = [[cu - 6.86, vm + 3.96, Math.tan(Math.PI / 6)], [cu + 6.86, vm + 3.96, -Math.tan(Math.PI / 6)]].map(([u, v, du]) => slotPts(u, v, 2.3, 7.4, du));
+            const earth = slotPts(cu, vm - 10.31, 2.3, 8.4, 0), sw = hole(rr(cu - rk.open[0] / 2, vc - rk.open[1] / 2, cu + rk.open[0] / 2, vc + rk.open[1] / 2, 3));
+            holesLo.push(sw, ...an.map(q => hole(ccwLoop(q))), hole(ccwLoop(earth)));
+            const ec = L(cu, vm - 10.31);
+            holesHi.push(sw, ...an.map(q => hole(ccwLoop(q))), hole(circleLoop(ec[0], ec[1], 5.6)));
+            floors.push(...an.concat([earth]).map(q => prism([0, 0, zf], X, Y, zt - 1 - zf, [ccwLoop(q)]))); // dark inside, 1 below the face
+            // the rocker, drawn off: its socket end stands up and the far end is pressed in. On (down is on), the socket
+            // end goes in and the far end rises, showing the red mark on its end face
+            const th = rk.th * Math.PI / 180, cs = Math.cos(-th), sn = Math.sin(-th);
+            const A = [sv * cs, 0, sn], Nw = [-sv * sn, 0, cs], piv = [xc + sv * vc, yc + cu, zp];
+            const at = (v, w) => [piv[0] + v * A[0] + w * Nw[0], piv[1], piv[2] + v * A[2] + w * Nw[2]];
+            const ob = at(0, -rk.t / 2);
+            const rocker = sv > 0 ? prism(ob, A, Y, rk.t, [rrLoop(-rk.a, -rk.w / 2, rk.a, rk.w / 2, 2.5)]) : prism(ob, Y, A, rk.t, [rrLoop(-rk.w / 2, -rk.a, rk.w / 2, rk.a, 2.5)]);
+            const nb = cross(Y, Nw), out = nb[0] * A[0] + nb[2] * A[2] > 0, bt = 0.25;
+            const mark = prism(at(rk.a + (out ? 0 : bt), rk.t / 2 - 1.7), Y, Nw, bt, [rectLoop(-2.2, 0, 2.2, 1)]);
+            const n = k < 0 ? 1 : 2, id = `gpo-${S}-${n}`, anim = { type: 'rocker', id, axis: [piv[0], zp], sign: -sv, deg: 2 * rk.th };
+            put({ mark: 'PP', name: `Power point switch (${S}) ${n}`, grp: 'hardware', kind: 'plastic', hw: true, anim, solids: [rocker] });
+            put({ mark: 'PP', name: `Power point switch (${S}) ${n}, on mark`, grp: 'hardware', kind: 'indicator', hw: true, anim, solids: [mark] });
             G.head.gpos[G.head.gpos.length - 1].switches.push(id);
           }
+          const outer = rr(-GL / 2, -GW / 2, GL / 2, GW / 2, 7);
           put({ mark: 'PP', name: `Double power point (${S}), flush in the bedside shelf`, grp: 'hardware', kind: 'plastic', hw: true,
-            solids: [...plate, box(xc - 25, xc + 25, yc - 50, yc + 50, zr1 - 32, zr1)] });
-          put({ mark: 'PP', name: `Double power point (${S}), socket faces`, grp: 'hardware', kind: 'rubber', hw: true, solids: faces });
+            solids: [prism([0, 0, zs], X, Y, zf - zs, [outer]),
+              prism([0, 0, zf], X, Y, zr - zf, [outer, hole(rr(-GL / 2 + mu, -GW / 2 + mv, GL / 2 - mu, GW / 2 - mv, 5))]),
+              prism([0, 0, zf], X, Y, zi - zf, [grid, ...holesLo]), prism([0, 0, zi], X, Y, zt - zi, [grid, ...holesHi]),
+              box(xc - 25, xc + 25, yc - 50, yc + 50, zr1 - 32, zr1)] });
+          put({ mark: 'PP', name: `Double power point (${S}), socket holes`, grp: 'hardware', kind: 'rubber', hw: true, solids: floors });
         }
       }
     } else G.head.skipped = true;
