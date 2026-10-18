@@ -205,12 +205,22 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
 .review li b { font-weight: 600; }
 #rv-src { margin-top: 12px; }
 #rv-src a { color: var(--accent); }
+/* settings tabs */
+.tabs { position: sticky; top: 0; z-index: 3; display: flex; gap: 2px; padding: 8px 8px 0; background: var(--panel); border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+.tabs button { flex: 1 0 auto; border: 0; background: transparent; padding: 8px 10px 9px; font-size: 14px; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+.tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.rail [data-tab-hidden] { display: none; }
+.rail [data-when].off { display: none; }
+
 @media (max-width: 900px) {
   .legend { display: none; }
   .fig .v { font-size: 14px; }
   .work { grid-template-columns: minmax(0, 1fr); }
-  .rail { max-height: none; order: 2; position: static; }
-  .stage { order: 1; grid-template-rows: 62vh auto auto auto; }
+  .rail { max-height: none; order: 2; position: static; overflow: visible; }
+  .stage { display: contents; }
+  .viewer { order: 1; height: 62vh; }
+  .stage > :not(.viewer) { order: 3; }
   .results { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 600px) { header.top { grid-template-columns: minmax(0, 1fr); } .brand h1 { font-size: 26px; } }
@@ -232,7 +242,52 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
 
   <div class="work">
     <aside class="rail" aria-label="Settings">
-      <details class="grp" open>
+      <div class="tabs" role="tablist" aria-label="Settings">
+        <button type="button" role="tab" data-tab="design" aria-selected="true">Design</button>
+        <button type="button" role="tab" data-tab="sizes" aria-selected="false">Sizes</button>
+        <button type="button" role="tab" data-tab="kit" aria-selected="false">Bed kit</button>
+        <button type="button" role="tab" data-tab="build" aria-selected="false">Sheets</button>
+        <button type="button" role="tab" data-tab="all" aria-selected="false">All</button>
+      </div>
+      <details class="grp" open data-tab="design">
+        <summary>Design choices <i class="chev"></i></summary>
+        <div class="grp-body">
+          <div class="hint">The options that change what gets built. Sizes and fine-tuning are in the other tabs.</div>
+          <div class="sub-hd"><span>Bed</span></div>
+          <div class="field"><div><label for="lockType">Safety lock</label><small>Twin pin behind the flaps, one pull; or a slide bolt in each hanging space, into the bed's side rail.</small></div>
+            <select id="lockType"><option value="twin">Twin pin at the divider</option><option value="pins">Two pins mid-bay</option><option value="bolts">Slide bolts in the hanging spaces</option><option value="none">None</option></select></div>
+          <div class="field" data-when="lockType=twin"><label for="twinSpacing">Twin pin centres</label><div class="num"><input id="twinSpacing" type="number" min="40" max="90" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <label class="check" data-when="lockType=twin"><input type="checkbox" id="lockTab"> <span>Tab through the flap joint, to unlock without opening a flap</span></label>
+          <div class="field" data-when="lockType=pins"><label for="lockPinX">Mid-bay pins either side of centre</label><div class="num"><input id="lockPinX" type="number" min="50" max="800" step="10" inputmode="numeric"><span>mm</span></div></div>
+          <label class="check"><input type="checkbox" id="faceReveal"> <span>Reveal down the middle of the bed face, in line with the flap joint</span></label>
+          <label class="check"><input type="checkbox" id="supportOffset"> <span>Mattress support cut wide + narrow, its seam off the face joint</span></label>
+          <div class="sub-hd"><span>Headboard</span></div>
+          <label class="check"><input type="checkbox" id="ledge"> <span>Headboard ledge behind the pillows</span></label>
+          <label class="check" data-when="ledge"><input type="checkbox" id="headboard"> <span>Reclined backrest over the ledge, with a bedside shelf on top that runs to the wall</span></label>
+          <label class="check" data-when="ledge headboard"><input type="checkbox" id="headStore"> <span>Headboard storage: the backrest is three push-to-open doors that tilt out, mitred to the bedside shelf</span></label>
+          <div class="field" data-when="ledge headboard"><div><label for="headAngle">Backrest lean</label><small>From vertical. More lean, less room in the box behind.</small></div><div class="num"><input id="headAngle" type="number" min="0" max="30" step="0.5" inputmode="decimal"><span>deg</span></div></div>
+          <div class="field" data-when="ledge headboard headStore"><div><label for="headGPO">Power points in the bedside shelf</label><small>Australian doubles, flush: 0, 1 (right) or 2 (one each side).</small></div><div class="num"><input id="headGPO" type="number" min="0" max="2" step="1" inputmode="numeric"><span>no.</span></div></div>
+          <div class="field" data-when="ledge"><label for="ledgeClear">Ledge clear of the swing</label><div class="num"><input id="ledgeClear" type="number" min="0" max="100" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="ledge headboard !headStore"><div><label for="headLip">Bedside shelf lip</label><small>Fixed backrest only: past its top front edge (the doors meet the shelf in a mitre instead).</small></div><div class="num"><input id="headLip" type="number" min="0" max="60" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="ledge headboard headStore"><div><label for="headZone">Services zone at each tower</label><small>Power points and wiring, behind a removable panel; the doors start here.</small></div><div class="num"><input id="headZone" type="number" min="60" max="250" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="ledge headboard headStore"><div><label for="headDoorOpen">Headboard doors open</label><small>Tilt to the hinges' stop.</small></div><div class="num"><input id="headDoorOpen" type="number" min="10" max="60" step="1" inputmode="numeric"><span>deg</span></div></div>
+          <div class="field" data-when="ledge headboard"><div><label for="headClear">Clear depth inside the box, at the top</label><small>Wall to the backrest: room for a power point's mechanism under the shelf, turned to run back (about 100 long).</small></div><div class="num"><input id="headClear" type="number" min="0" max="200" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="ledge headboard"><label for="headH">Backrest height</label><div class="num"><input id="headH" type="number" min="150" max="1200" step="10" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="ledge headboard"><div><label for="headGap">Backrest to the open mattress</label><small>How close the pillows get.</small></div><div class="num"><input id="headGap" type="number" min="0" max="80" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="sub-hd"><span>Towers and shelves</span></div>
+          <div class="field"><div><label for="doorHinge">Tower doors hinged on</label><small>Wall side keeps the open door out of the way of the bed.</small></div>
+            <select id="doorHinge"><option value="outer">Wall side</option><option value="inner">Bed side</option></select></div>
+          <div class="field"><div><label for="kickCentre">Kick board</label><small>One plank right across. Auto makes it as tall as clears the bed's swing; the drawers drop to sit on it.</small></div>
+            <select id="kickCentre"><option value="auto">One piece, auto height</option><option value="full">One piece, drawer height</option><option value="none">Towers only</option></select></div>
+          <label class="check"><input type="checkbox" id="topShelf"> <span>Extra shelf halfway up the top compartment</span></label>
+          <label class="check"><input type="checkbox" id="cableHoles"> <span>20 mm cable holes for power and lighting</span></label>
+          <label class="check"><input type="checkbox" id="edgeSteel"> <span>Steel flat hidden in the shelf's front edge</span></label>
+          <div class="field" data-when="edgeSteel"><div><label for="steelH">Steel flat height</label><small>2 mm more than the shelf: it sits proud underneath.</small></div><div class="num"><input id="steelH" type="number" min="10" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="edgeSteel"><label for="steelT">Steel flat thickness</label><div class="num"><input id="steelT" type="number" min="5" max="20" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="upstand">Lip on the shelf's front edge</label><small>0 keeps the shelf flat so boxes slide in.</small></div><div class="num"><input id="upstand" type="number" min="0" max="200" step="1" inputmode="numeric"><span>mm</span></div></div>
+        </div>
+      </details>
+      <details class="grp" open data-tab="sizes">
         <summary>Cavity <i class="chev"></i></summary>
         <div class="grp-body">
           <div class="hint">Measured once the old wardrobe is out and the top is open. Everything else follows these three.</div>
@@ -245,7 +300,7 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="field"><div><label for="frontSetback">Fronts set back</label><small>From the room wall face.</small></div><div class="num"><input id="frontSetback" type="number" min="0" max="100" step="1" inputmode="numeric"><span>mm</span></div></div>
         </div>
       </details>
-      <details class="grp" open>
+      <details class="grp" open data-tab="sizes">
         <summary>Mattress and bed <i class="chev"></i></summary>
         <div class="grp-body">
           <div class="field"><label for="mW">Mattress width</label><div class="num"><input id="mW" type="number" min="800" max="2000" step="1" inputmode="numeric"><span>mm</span></div></div>
@@ -261,7 +316,7 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="field"><label for="faceOverhang">Face panel past the rails</label><div class="num"><input id="faceOverhang" type="number" min="0" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
         </div>
       </details>
-      <details class="grp" open>
+      <details class="grp" open data-tab="sizes">
         <summary>Side towers <i class="chev"></i></summary>
         <div class="grp-body">
           <div class="field"><div><span class="lbl">Drawers each side</span><small>Heights are the fronts, bottom first.</small></div>
@@ -270,29 +325,21 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="row-btns"><button type="button" class="btn small" id="dr-equal">Make all the same as the first</button></div>
           <div class="field"><div><label for="hangClear">Hanging space, clear</label><small>Between the two fixed shelves, plus whatever the drawers drop for the kick board.</small></div><div class="num"><input id="hangClear" type="number" min="300" max="2000" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><label for="railDrop">Rail centre below the shelf</label><div class="num"><input id="railDrop" type="number" min="25" max="150" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <label class="check"><input type="checkbox" id="topShelf"> <span>Extra shelf halfway up the top compartment</span></label>
-          <label class="check"><input type="checkbox" id="cableHoles"> <span>20 mm cable holes for power and lighting</span></label>
-          <label class="check"><input type="checkbox" id="supportOffset"> <span>Mattress support cut wide + narrow, its seam off the face joint</span></label>
-          <label class="check"><input type="checkbox" id="faceReveal"> <span>Reveal down the middle of the bed face, in line with the flap joint</span></label>
           <div class="sub-hd"><span>Runners</span></div>
           <div class="field"><div><label for="runnerClear">Runner clearance each side</label><small>Hettich KA 5632, full extension: 12.7.</small></div><div class="num"><input id="runnerClear" type="number" min="0" max="30" step="0.1" inputmode="decimal"><span>mm</span></div></div>
           <div class="field"><div><label for="runnerLen">Runner length</label><small>0 picks the longest that fits: 250 to 700 in 50s, needing 4 more inside the tower.</small></div><div class="num"><input id="runnerLen" type="number" min="0" max="900" step="50" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><label for="boxLess">Box lower than its front by</label><div class="num"><input id="boxLess" type="number" min="10" max="150" step="1" inputmode="numeric"><span>mm</span></div></div>
         </div>
       </details>
-      <details class="grp">
+      <details class="grp" data-tab="sizes">
         <summary>Fronts <i class="chev"></i></summary>
         <div class="grp-body">
           <div class="field"><div><label for="gap">Reveal between fronts</label><small>Your "gapdraw".</small></div><div class="num"><input id="gap" type="number" min="1" max="12" step="0.5" inputmode="decimal"><span>mm</span></div></div>
           <div class="field"><div><label for="gapAbove">Header filler height</label><small>Scribed to the ceiling.</small></div><div class="num"><input id="gapAbove" type="number" min="0" max="300" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <div class="field"><div><label for="kickCentre">Kick board</label><small>One plank right across. Auto makes it as tall as clears the bed's swing; the drawers drop to sit on it.</small></div>
-            <select id="kickCentre"><option value="auto">One piece, auto height</option><option value="full">One piece, drawer height</option><option value="none">Towers only</option></select></div>
-          <div class="field"><div><label for="doorHinge">Tower doors hinged on</label><small>Wall side keeps the open door out of the way of the bed.</small></div>
-            <select id="doorHinge"><option value="outer">Wall side</option><option value="inner">Bed side</option></select></div>
           <div class="field"><label for="frontGap">Fronts off the carcass</label><div class="num"><input id="frontGap" type="number" min="0" max="5" step="0.5" inputmode="decimal"><span>mm</span></div></div>
         </div>
       </details>
-      <details class="grp">
+      <details class="grp" data-tab="build">
         <summary>Plywood <i class="chev"></i></summary>
         <div class="grp-body">
           <div class="field"><div><label for="T">Carcass, fronts, bed frame</label><small>"plythicka"</small></div><div class="num"><input id="T" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
@@ -306,7 +353,7 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="field"><label for="Thead">Backrest, ribs, bedside shelf</label><div class="num"><input id="Thead" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
         </div>
       </details>
-      <details class="grp">
+      <details class="grp" data-tab="kit">
         <summary>Create-A-Bed hardware <i class="chev"></i></summary>
         <div class="grp-body">
           <div class="hint">From the Deluxe Queen Vertical plan (page numbers in the tags). Heights match the kit's cabinet when the frame sits where the kit puts it; depths are measured from the bed's face, which stands 19 mm proud of the carcass here.</div>
@@ -344,33 +391,10 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="field"><div><label for="legFromTop">Leg pivot down from rail top</label><small><span class="src">p.10: 2-1/2 in</span></small></div><div class="num"><input id="legFromTop" type="number" min="10" max="250" step="0.1" inputmode="decimal"><span>mm</span></div></div>
           <div class="field"><label for="struts">Deck cross struts</label><div class="num"><input id="struts" type="number" min="2" max="20" step="1" inputmode="numeric"><span>no.</span></div></div>
           <div class="field"><label for="ladderW">Strut width</label><div class="num"><input id="ladderW" type="number" min="20" max="120" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <div class="sub-hd"><span>Around the bed</span></div>
-          <label class="check"><input type="checkbox" id="ledge"> <span>Headboard ledge behind the pillows</span></label>
-          <div class="field"><label for="ledgeClear">Ledge clear of the swing</label><div class="num"><input id="ledgeClear" type="number" min="0" max="100" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <label class="check"><input type="checkbox" id="headboard"> <span>Reclined backrest over the ledge, with a bedside shelf on top that runs to the wall</span></label>
-          <div class="field"><div><label for="headAngle">Backrest lean</label><small>From vertical. More lean, less room in the box behind.</small></div><div class="num"><input id="headAngle" type="number" min="0" max="30" step="0.5" inputmode="decimal"><span>deg</span></div></div>
-          <div class="field"><div><label for="headLip">Bedside shelf lip</label><small>Fixed backrest only: past its top front edge (the doors meet the shelf in a mitre instead).</small></div><div class="num"><input id="headLip" type="number" min="0" max="60" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <label class="check"><input type="checkbox" id="headStore"> <span>Headboard storage: the backrest is three push-to-open doors that tilt out, mitred to the bedside shelf</span></label>
-          <div class="field"><div><label for="headZone">Services zone at each tower</label><small>Power points and wiring, behind a removable panel; the doors start here.</small></div><div class="num"><input id="headZone" type="number" min="60" max="250" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <div class="field"><div><label for="headGPO">Power points in the bedside shelf</label><small>Australian doubles, flush: 0, 1 (right) or 2 (one each side).</small></div><div class="num"><input id="headGPO" type="number" min="0" max="2" step="1" inputmode="numeric"><span>no.</span></div></div>
-          <div class="field"><div><label for="headDoorOpen">Headboard doors open</label><small>Tilt to the hinges' stop.</small></div><div class="num"><input id="headDoorOpen" type="number" min="10" max="60" step="1" inputmode="numeric"><span>deg</span></div></div>
-          <div class="field"><div><label for="headClear">Clear depth inside the box, at the top</label><small>Wall to the backrest: room for a power point's mechanism under the shelf, turned to run back (about 100 long).</small></div><div class="num"><input id="headClear" type="number" min="0" max="200" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <div class="field"><label for="headH">Backrest height</label><div class="num"><input id="headH" type="number" min="150" max="1200" step="10" inputmode="numeric"><span>mm</span></div></div>
-          <div class="field"><div><label for="headGap">Backrest to the open mattress</label><small>How close the pillows get.</small></div><div class="num"><input id="headGap" type="number" min="0" max="80" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <div class="sub-hd"><span>Shelf over the bed</span></div>
-          <label class="check"><input type="checkbox" id="edgeSteel"> <span>Steel flat hidden in the shelf's front edge</span></label>
-          <div class="field"><div><label for="steelH">Steel flat height</label><small>2 mm more than the shelf: it sits proud underneath.</small></div><div class="num"><input id="steelH" type="number" min="10" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <div class="field"><label for="steelT">Steel flat thickness</label><div class="num"><input id="steelT" type="number" min="5" max="20" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <div class="field"><div><label for="upstand">Lip on the shelf's front edge</label><small>0 keeps the shelf flat so boxes slide in.</small></div><div class="num"><input id="upstand" type="number" min="0" max="200" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <div class="field"><div><label for="lockType">Safety lock</label><small>Twin pin: two pins on one bar either side of the divider, one pull, behind the flaps. Side bolts: a slim spring bolt in each hanging space, into the bed's side rail.</small></div>
-            <select id="lockType"><option value="twin">Twin pin at the divider</option><option value="pins">Two pins mid-bay</option><option value="bolts">Slim side bolts in the hanging spaces</option><option value="none">None</option></select></div>
-          <div class="field"><label for="twinSpacing">Twin pin centres</label><div class="num"><input id="twinSpacing" type="number" min="40" max="90" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <label class="check"><input type="checkbox" id="lockTab"> <span>Tab through the flap joint, to unlock without opening a flap</span></label>
-          <div class="field"><label for="lockPinX">Mid-bay pins either side of centre</label><div class="num"><input id="lockPinX" type="number" min="50" max="800" step="10" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><label for="wallRail">Wall rail height</label><div class="num"><input id="wallRail" type="number" min="40" max="200" step="1" inputmode="numeric"><span>mm</span></div></div>
         </div>
       </details>
-      <details class="grp">
+      <details class="grp" data-tab="build">
         <summary>Sheets and cutting <i class="chev"></i></summary>
         <div class="grp-body">
           <div class="hint">The sheets you have. Parts are nested onto them by thickness, with straight through-cuts a track saw can follow.</div>

@@ -10,7 +10,7 @@ const ACC = [176, 98, 10], BAD = [176, 40, 31], CABLE = [36, 104, 170];
 const FILL = {
   carcass: [244, 236, 221], front: [252, 249, 243], frame: [235, 220, 196], deck: [240, 228, 207], drawer: [248, 241, 228], back: [236, 228, 214],
   plinth: [230, 220, 203], packer: [222, 199, 166], ledge: [244, 236, 221], mattress: [238, 240, 242], metal: [74, 78, 84], chrome: [190, 194, 199], zinc: [178, 184, 192],
-  block: [181, 136, 92], rubber: [40, 40, 42], strap: [70, 86, 124], plastic: [244, 244, 240],
+  block: [181, 136, 92], rubber: [40, 40, 42], strap: [70, 86, 124], plastic: [244, 244, 240], bronze: [196, 156, 104],
 };
 const CUT = [214, 190, 152], CUT_FRONT = [226, 206, 172];
 const T_RGB = { 6: [123, 92, 196], 12: [19, 138, 126], 18: [196, 122, 18] };
@@ -731,9 +731,9 @@ function pageHardware(doc, M, S, info) {
   v.dimAt([0, G.yB1, G.zBm0], [0, yE, G.zBm0], v.P([0, 0, G.zBm0])[1] + 4, 'h', null, { size: 5.4 });
   if (G.bolt) {
     const pq = v.Puv([G.bolt.y, G.bolt.z]);
-    s.circle(pq[0], pq[1], G.bolt.hole / 2 / sc, { lw: 0.3, color: INK, fill: WHITE });
+    s.circle(pq[0], pq[1], G.bolt.holeB / 2 / sc, { lw: 0.3, color: INK, fill: WHITE });
     v.dimAt([0, G.bolt.y, G.bolt.z], [0, yE, G.bolt.z], pq[1] - 4, 'h', fh(yE - G.bolt.y), { size: 5.4 });
-    s.text(xR, pq[1] + 6.5, `safety bolt, ${G.bolt.hole} through, ${fh(G.bolt.z)} up`, { size: 5.6, va: 'middle', weight: 'bold' });
+    s.text(xR, pq[1] + 6.5, `safety bolt, ${G.bolt.holeB} through, ${fh(G.bolt.z)} up`, { size: 5.6, va: 'middle', weight: 'bold' });
     s.text(xR, pq[1] + 3.5, 'tower side and this side; detail at the bottom right', { size: 5, va: 'middle', color: GREY });
   }
   // cable holes through this side (20 mm), dimensioned from the back edge
@@ -845,21 +845,22 @@ function pageHardware(doc, M, S, info) {
   }
   if (P.lockType === 'bolts' && G.bolt) {
     const b = G.bolt, sc2 = 2, qx = 266, qy = 60, D = (X, y) => [-X, y, 0];
-    const win = [G.xFi - 25, G.xT2 + 45, -(G.yF + 6), -(G.yRail - 6)];
+    const win = [G.xFi - 25, G.xT2 + 52, -(G.yF + 6), -(G.yRail - 6)];
     const vb = View(s, 'top', sc2, [qx, qy], [win[0], win[2]]);
     drawSection(s, vb, sectionAt(M.parts.filter(p => !p.leg && !p.mattress && p.name.indexOf('(L)') < 0), b.z), win);
     const a0 = vb.Puv([win[0], win[2]]), a1 = vb.Puv([win[1], win[3]]);
     s.rect(a0[0], a0[1], a1[0] - a0[0], a1[1] - a0[1], { lw: 0.2, dash: [2, 0.8, 0.4, 0.8] });
-    // the pin, thrown: across the gap and into the rail
-    const p0 = vb.P(D(G.xB, b.y + b.pin / 2)), p1 = vb.P(D(G.xFo - b.into, b.y - b.pin / 2));
-    s.rect(Math.min(p0[0], p1[0]), Math.min(p0[1], p1[1]), Math.abs(p1[0] - p0[0]), Math.abs(p1[1] - p0[1]), { lw: 0.25, dash: [1, 0.6], color: INK });
+    // pulled back (dashed): rod, sleeve and knob moved out by the travel
+    const tr = b.travel, rect = (x0, x1, d, o) => { const p0 = vb.P(D(x0, b.y + d / 2)), p1 = vb.P(D(x1, b.y - d / 2)); s.rect(Math.min(p0[0], p1[0]), Math.min(p0[1], p1[1]), Math.abs(p1[0] - p0[0]), Math.abs(p1[1] - p0[1]), Object.assign({ lw: 0.22, dash: [1, 0.6], color: ACC }, o || {})); };
+    rect(b.tip + tr, b.knobX + tr, b.rod); rect(b.tip + tr, b.tip + tr + b.sleeve[1], b.sleeve[0]); rect(b.knobX + tr + 4, b.knobX + tr + b.knob[1] - 3, b.knob[0]);
     const yd = a0[1] - 4;
-    for (const [x0, x1] of [[G.xFo - b.into, G.xFo], [G.xFo, G.xB], [G.xB, G.xT2], [G.xT2, G.xT2 + b.flange[1] + b.knob[1]]]) vb.dimAt(D(x0, G.yF), D(x1, G.yF), yd, 'h', null, { size: 5.2 });
+    for (const [x0, x1] of [[b.tip, G.xFo], [G.xFo, G.xB], [G.xB, G.xJ], [G.xJ, G.xT2], [G.xT2, G.xT2 + b.proud]]) vb.dimAt(D(x0, G.yF), D(x1, G.yF), yd, 'h', null, { size: 5.2 });
+    vb.dimAt(D(b.tip, b.y), D(b.tip + tr, b.y), vb.P(D(0, b.y - 16))[1], 'h', f0(tr), { size: 5, color: ACC });
     vb.dimAt(D(G.xT2 + 40, b.y), D(G.xT2 + 40, G.yC), a1[0] + 4, 'v', null, { size: 5.2 });
-    for (const [x, t] of [[G.xFo - 9, 'rail'], [(G.xFo + G.xB) / 2, 'gap'], [(G.xB + G.xJ) / 2, 'B1'], [(G.xJ + G.xT2) / 2, 'T2'], [G.xT2 + 12, 'knob']]) { const q = vb.P(D(x, G.yF)); s.text(q[0], yd - 5.5, t, { size: 4.8, ha: 'center', color: GREY }); }
+    for (const [x, t] of [[G.xFo - 9, 'rail'], [(G.xFo + G.xB) / 2, 'gap'], [(G.xB + G.xJ) / 2, 'B1'], [(G.xJ + G.xT2) / 2, 'T2'], [G.xT2 + 10, 'knob']]) { const q = vb.P(D(x, G.yF)); s.text(q[0], yd - 5.5, t, { size: 4.8, ha: 'center', color: GREY }); }
     s.text(a0[0], a1[1] + 8, `SAFETY BOLT, PLAN AT ${f0(b.z)}  1:2`, { size: 7.5, weight: 'bold' });
-    s.text(a0[0], a1[1] + 4, 'right-hand side; room at the bottom; pin thrown (dashed)', { size: 5.2, color: GREY });
-    s.para(a0[0], yd - 11, s.wrap(`Spring index plunger with a rest position (pull and twist to hold it back), M16 body in a ${b.hole} mm hole through the tower side and the bed-cabinet side, flange on the tower side. Its ${b.pin} mm pin crosses the ${fh(P.gapHydr)} gap and goes ${b.into} into a steel bush in the side rail: drill the rail through the hole after a trial closing. ${b.flange[1] + b.knob[1]} proud inside the hanging space; open the hanging doors and pull both before lowering the bed.`, 130, 5.2), { size: 5.2, color: GREY });
+    s.text(a0[0], a1[1] + 4, 'right-hand side, bed closed, bolt in; pulled back 25 dashed', { size: 5.2, color: GREY });
+    s.para(a0[0], yd - 11, s.wrap(`Captive slide bolt from stock parts: ${b.rod} mm 316 rod ${f0(b.rodL)} long, a 14 x 2 brass sleeve ${b.sleeve[1]} long glued on the tip, a stainless knob on an M4 stud. Flanged bronze bush 10 x ${b.bush[0]} x ${b.bush[1]} in T2 (${b.holeT} hole); 16 x 0.5 brass liner through B1 and ${b.into} deep in the rail (${b.holeB} holes, the rail's ${b.rxDepth} deep). A 9 x 2.5 O-ring at the joint gives drag and stops the sleeve. In: knob on the flange, ${b.proud} proud. Pulled ${f0(tr)}: tip ${f0(b.inside)} inside B1. Rod goes in from the gap side, then the knob.`, 132, 5.2), { size: 5.2, color: GREY });
   }
   if (P.lockType === 'pins') {
     const sd2 = 2, qx = 262, qy = 52;

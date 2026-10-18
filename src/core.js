@@ -544,7 +544,7 @@ const COLORS = { // RGB 0..1 for STEP; the viewer has matching styles
   carcass: [0.86, 0.76, 0.59], front: [0.91, 0.84, 0.70], frame: [0.80, 0.66, 0.46], deck: [0.84, 0.72, 0.53],
   drawer: [0.89, 0.80, 0.64], back: [0.80, 0.71, 0.55], plinth: [0.74, 0.63, 0.47], packer: [0.70, 0.55, 0.36],
   ledge: [0.86, 0.76, 0.59], mattress: [0.93, 0.93, 0.91], metal: [0.20, 0.21, 0.23], chrome: [0.78, 0.79, 0.81], zinc: [0.70, 0.73, 0.77],
-  block: [0.55, 0.38, 0.22], rubber: [0.10, 0.10, 0.11], strap: [0.24, 0.30, 0.44], plastic: [0.95, 0.95, 0.93],
+  block: [0.55, 0.38, 0.22], rubber: [0.10, 0.10, 0.11], bronze: [0.72, 0.56, 0.34], strap: [0.24, 0.30, 0.44], plastic: [0.95, 0.95, 0.93],
 };
 
 function build(params, opts) {
@@ -1021,20 +1021,45 @@ function build(params, opts) {
       }
     } else G.head.skipped = true;
   }
-  // safety bolts: a slim spring plunger each side, from inside the hanging space through the tower side and the
-  // bed-cabinet side; its 8 mm pin crosses the gap into the side rail. Drawn withdrawn (its rest position).
+  // safety bolts: a captive slide bolt each side, from inside the hanging space through the tower side and the
+  // bed-cabinet side into a lined hole in the frame's side rail. All stock parts: 10 mm stainless rod with a brass
+  // sleeve on its tip, brass tube liners, a flanged bronze bush, an O-ring that gives drag and cushions the stop, and
+  // a stainless knob. Pushed in, the knob stops on the bush's flange; pulled out, the sleeve stops on the O-ring with
+  // the tip 2 mm inside the bed-cabinet side. Drawn thrown (bed closed); the viewer pulls it back before the bed moves.
   G.bolt = null;
   if (P.lockType === 'bolts') {
     const y = Math.round((G.yRail + G.yFb) / 2);
     const hz = P.doorHinge === 'inner' ? parts.filter(p => p.hinges).flatMap(p => p.hinges) : [];
     let z = Math.min(Math.max(1450, G.zS1t + 150), G.zS2b - 150);
     for (let k = 0; k < 40 && hz.some(h => Math.abs(h - z) < 60); k++) z += 20;
-    G.bolt = { y, z, hole: 17, body: 16, pin: 8, into: 12, flange: [28, 3], knob: [20, 15] };
-    const b = G.bolt;
-    for (const [S, s] of sides) put({ mark: 'SB', name: `Safety bolt (${S}), spring plunger with rest position`, grp: 'hardware', kind: 'chrome', hw: true,
-      solids: [cyl(b.body, [s * (G.xB + 0.5), y, z], [s * G.xT2, y, z]), cyl(b.flange[0], [s * G.xT2, y, z], [s * (G.xT2 + b.flange[1]), y, z]),
-        cyl(b.knob[0], [s * (G.xT2 + b.flange[1]), y, z], [s * (G.xT2 + b.flange[1] + b.knob[1]), y, z])] });
-    G.boltHoles = sides.map(([S, s]) => ({ id: 'bolt', S, axis: 'x', x: [s * G.xB, s * G.xT2], c: [y, z], d: b.hole, what: 'safety bolt' }));
+    const b = G.bolt = { y, z, rod: 10, sleeve: [14, 16], liner: [16, 15], bush: [14, 12], flange: [20, 2], oring: [14, 2.5], knob: [30, 15], into: 12, rxDepth: 13, holeB: 16, holeT: 14 };
+    b.tip = G.xFo - b.into;                                   // thrown tip, |x|
+    b.knobX = G.xT2 + b.flange[1];                            // knob's back face, on the flange
+    b.rodL = b.knobX - b.tip;
+    b.travel = G.xJ - b.sleeve[1] - b.tip;                // sleeve back to the O-ring
+    b.inside = b.tip + b.travel - G.xB;                       // pulled back: tip this far inside the bed-cabinet side
+    b.proud = b.flange[1] + b.knob[1];                        // thrown; pulled back it stands proud + travel
+    // a tube along x: |x| from a to c, outside d, bore d2 (none: solid)
+    const tube = (s, a, c, d, d2) => { const pr = yzPrism(s * a, s * c, circleLoop(y, z, d / 2)); if (d2) pr.loops.push(reverseLoop(circleLoop(y, z, d2 / 2))); return pr; };
+    for (const [S, s] of sides) {
+      put({ mark: 'SB', name: `Safety bolt (${S}), liner and bush`, grp: 'hardware', kind: 'bronze', hw: true,
+        solids: [tube(s, G.xB, G.xJ, b.liner[0], b.liner[1]), tube(s, G.xT2 - b.bush[1], G.xT2, b.bush[0], b.rod), tube(s, G.xT2, G.xT2 + b.flange[1], b.flange[0], b.rod)] });
+      put({ mark: 'SB', name: `Safety bolt (${S}), O-ring`, grp: 'hardware', kind: 'rubber', hw: true, solids: [tube(s, G.xJ, G.xJ + b.oring[1], b.oring[0], b.rod)] });
+      put({ mark: 'SB', name: `Safety bolt (${S}), rod and knob`, grp: 'hardware', kind: 'chrome', hw: true, dyn: { type: 'bolt', dx: s * b.travel },
+        solids: [tube(s, b.tip, b.knobX, b.rod), tube(s, b.knobX, b.knobX + 4, 14), tube(s, b.knobX + 4, b.knobX + b.knob[1] - 3, b.knob[0]), tube(s, b.knobX + b.knob[1] - 3, b.knobX + b.knob[1], 22)] });
+      put({ mark: 'SB', name: `Safety bolt (${S}), sleeve on the tip`, grp: 'hardware', kind: 'bronze', hw: true, dyn: { type: 'bolt', dx: s * b.travel },
+        solids: [tube(s, b.tip, b.tip + b.sleeve[1], b.sleeve[0], b.rod)] });
+      // the receiver: a 16 mm hole 13 deep in the rail's outer face, lined flush with the same brass tube
+      for (const p of parts.filter(p => p.mark === 'F2' && p.name.indexOf(`(${S})`) >= 0)) {
+        const pr = p.solids[0], xm = s * (G.xFo - b.rxDepth);
+        const inner = Object.assign({}, pr, { o: [Math.min(s * G.xFi, xm), 0, 0], len: Math.abs(xm - s * G.xFi), loops: pr.loops.slice() });
+        const outer = Object.assign({}, pr, { o: [Math.min(xm, s * G.xFo), 0, 0], len: Math.abs(s * G.xFo - xm), loops: pr.loops.concat([reverseLoop(circleLoop(y, z, b.holeB / 2))]) });
+        p.solids = [inner, outer]; p.cable = (p.cable || []).concat('bolt');
+      }
+      fput({ mark: 'SR', name: `Safety bolt receiver (${S}), brass liner in the side rail`, grp: 'hardware', kind: 'bronze', hw: true, solids: [tube(s, G.xFo - b.into, G.xFo, b.liner[0], b.liner[1])] });
+    }
+    G.boltHoles = sides.flatMap(([S, s]) => [{ id: 'bolt', S, axis: 'x', x: [s * G.xB, s * G.xJ], c: [y, z], d: b.holeB, what: 'safety bolt, lined' },
+      { id: 'bolt', S, axis: 'x', x: [s * G.xJ, s * G.xT2], c: [y, z], d: b.holeT, what: 'safety bolt, bushed' }]);
     drillHoles(G.boltHoles, parts);
   }
   if (P.cableHoles) cableHoles(P, G, parts);
@@ -1392,7 +1417,7 @@ function clearanceSchedule(model) {
     const lift = G.twin ? G.twin.lift : P.lockDepth + P.gapHolder + 8;
     D.push(row('Safety pins: into the foot rail / above it when lifted', '10 / 5 or more', `${r1(P.lockDepth)} / ${r1(lift - P.lockDepth)}`, P.lockDepth >= 10 && lift - P.lockDepth >= 5 ? 'ok' : 'tight'));
   }
-  if (P.lockType === 'bolts' && G.bolt) D.push(row('Safety bolts: pin into the side rail / proud in the hanging space', `10 or more / ${G.bolt.flange[1] + G.bolt.knob[1]}`, `${G.bolt.into} / ${G.bolt.flange[1] + G.bolt.knob[1]}`, 'ok', 'withdrawn to swing the bed'));
+  if (P.lockType === 'bolts' && G.bolt) D.push(row('Safety bolts: into the side rail / tip inside the side, pulled back / knob proud, in and out', `10 or more / 1 or more / -`, `${G.bolt.into} / ${r1(G.bolt.inside)} / ${G.bolt.proud} and ${Math.round(G.bolt.proud + G.bolt.travel)}`, G.bolt.inside >= 1 && G.bolt.into >= 10 ? 'ok' : 'bad', 'pull both before the bed moves'));
   D.push(row('Drawer runners, each side of the box', '12.5 to 13.2', P.runnerClear, P.runnerClear >= 12.5 && P.runnerClear <= 13.2 ? 'ok' : 'tight', RUNNER_HW.name));
   D.push(row('Drawer runner end to the tower back', `${RUNNER_HW.kt} or more`, G.cD - G.runner, atLeast(G.cD - G.runner, RUNNER_HW.kt)));
   D.push(row('Hanging rail top to the shelf above', '30 or more', P.railDrop - 12.5, atLeast(P.railDrop - 12.5, 30), 'for hanger hooks'));
@@ -1539,7 +1564,7 @@ function reviewNotes(model, S) {
     ['Shelf fixings', 'The divider only works if it cannot rack: glue it with 8 mm dowels and screws along each edge, like the upper sides (no deep housing). Make the shelf, upper sides, divider, top, wall rails and the 6 mm back up as one box on the floor, slide it in onto the bed-cabinet sides, screw it down and through the tower sides, and screw the rails into the studs; the build sequence sheets have the steps and screws.'],
     ['Safety lock', P.lockType === 'twin' ? `A twin pin straddles the centre divider behind the flap joint: two 10 mm pins ${f0(P.twinSpacing)} apart, nutted through one steel bar, run through a hardwood block in the divider's front notch and go ${P.lockDepth} mm into the foot rail. One pull through either flap lifts both 30 mm; a spring ball plunger holds them up while the bed is down.${P.lockTab ? ' A 2 mm tab on the bar pokes out through the flap joint, so it can be lifted without opening a flap, and shows whether it is locked.' : ''}`
       : P.lockType === 'pins' ? `Two 10 mm drop pins, ${f0(P.lockPinX)} either side of centre behind the flaps, go down through the shelf and ${P.lockDepth} mm into the foot rail. Lift both before lowering the bed.`
-      : P.lockType === 'bolts' && G.bolt ? `A slim spring bolt each side: an index plunger with a rest position (pull and twist to hold it back), in a ${G.bolt.hole} mm hole through the tower side and the bed-cabinet side, ${f0(G.bolt.z)} up and ${f0(G.yC - G.bolt.y)} back from the front edge, inside the hanging space. Its ${G.bolt.pin} mm pin crosses the ${f0(P.gapHydr)} mm gap and goes ${G.bolt.into} into a steel bush in the side rail. It stands ${G.bolt.flange[1] + G.bolt.knob[1]} proud of the tower side, at the front of the hanging space; open the hanging doors and pull both before lowering the bed. Drill the rail through the side's hole after a trial closing.` : 'Turned off.'],
+      : P.lockType === 'bolts' && G.bolt ? `A captive slide bolt each side, inside the hanging space ${f0(G.bolt.z)} up and ${f0(G.yC - G.bolt.y)} back from the front edge: a ${G.bolt.rod} mm stainless rod with a stainless knob, running in a flanged bronze bush in the tower side and a brass-lined hole in the bed-cabinet side, across the ${f0(P.gapHydr)} mm gap and ${G.bolt.into} into a brass-lined hole in the side rail. Push it in until the knob meets the flange (it stands ${G.bolt.proud} proud); pull it ${f0(G.bolt.travel)} until the brass sleeve on its tip stops on the O-ring, ${f0(G.bolt.inside)} mm inside the side, clear of the rail. The O-ring gives it drag so it stays where it's put. Fit the rod from the gap side with the bed down, then screw the knob on. Mark the rail with a 10 mm bit through the bushes after a trial closing.` : 'Turned off.'],
     ['Wall anchoring', `The gas springs pull the cabinet forward as the bed comes down. ${f0(P.wallRail)} mm wall rails under the shelf and under the top take screws into the studs (the kit asks for four 3 in screws through its header rear rail for a queen).`],
     ['Bed deck as the kit builds it', `Face panel in two ${f0(G.xFo + P.faceOverhang)} halves (a sheet is 1220 wide)${P.faceOverhang ? `, ${f0(P.faceOverhang)} past the side rails so the reveal to the cabinet sides matches the fronts` : ''}, ${P.struts} cross struts and a ${P.Tsup} mm mattress support (the kit's part J, two 1/4 in sheets: its 65 to 80 lb mattress range already counts them)${G.supportCuts && G.supportCuts[0][2].indexOf('wide') > 0 ? `, here cut ${f0(G.supportCuts[0][1] - G.supportCuts[0][0])} + ${f0(G.supportCuts[1][1] - G.supportCuts[1][0])} so its seam is off the face joint` : ''}, with ${G.vents ? G.vents.n : 0} vent holes of ${G.vents ? G.vents.d : 25} mm between the struts.${G.faceRv ? ` A ${f0(2 * G.faceRv)} mm reveal runs down the middle of the face, in line with the flap joint above: paint the struts dark where they show through it.` : ''} The face is glued and dowelled to the rails: nothing goes through its show face. Side rails ${f0(P.railD)} deep with the 2-7/8 in radius at the foot end, head rail ${f0(P.headRailD)} so it stands proud as a lip behind the pillows, foot rail ${f0(P.footRailD)} so the legs can swing past it.`],
     ['Screws, kept few', `Six kinds of screw plus the wall screws, and one 8 mm dowel. Every edge joint takes an 8g x 50, every face-to-face joint an 8g x 30, the drawer fronts 8g x 25 pan heads, and every 6 and 12 mm part (backs, drawer boxes, deck, headboard) a 6g x 25. All the hinge, stay, runner and rail hardware takes one 3.5 x 15; only the runners on the 12 mm drawer sides need 3.5 x 10. The price: some joints get more screw than they strictly need (32 into an edge where 22 would do), so pilot every edge and keep the drill square; the 6g x 25 bites 13 into the 12 mm drawer edges rather than 18, which the glue makes up; and the mattress support's screws run through the strut and ${f0(Math.max(0, 25 - P.Tsup - P.Tladder))} into the back of the face panel, leaving ${f0(Math.max(0, P.T - 25 + P.Tsup + P.Tladder))} over their tips. No brads: the header's battens are glued and clamped, and the kick board is bonded with no fixings in its face. Nothing goes through the bed face either: it is glued and dowelled to the rails.`],
@@ -1637,7 +1662,12 @@ function hardwareList(model) {
       ['Steel bushes 10 mm, strike plate, M8 spring ball plunger', '4 + 1 + 1', 'bushes in the guide block and shelf; plate let into the foot rail'],
       ...(P.lockTab ? [['Steel tab, 2 mm', '1', 'screwed to the bar, out through the flap joint']] : [])]
       : P.lockType === 'pins' ? [['Drop pins, 10 mm, with hardwood blocks', '2', `into steel bushes in the foot rail, ${P.lockDepth} mm deep`]]
-      : P.lockType === 'bolts' && G.bolt ? [['Spring index plungers with rest position, M16 body, 8 mm pin, flanged', '2', `safety bolts through the tower and bed-cabinet sides, ${f0(G.bolt.z)} up; pin travel ${f0(P.gapHydr + G.bolt.into)} or more`], ['Steel bushes 8 mm, 12 long', '2', 'pressed into the side rails, drilled through the sides\' holes after a trial closing']] : []),
+      : P.lockType === 'bolts' && G.bolt ? [['316 stainless round bar 10 mm', `2 x ${f0(G.bolt.rodL)}`, 'safety bolt rods: chamfer the tip 1 mm; drill 3.3 and tap M4 x 10 at the knob end'],
+        ['Stainless knob about 30 diameter, 15 tall, M4 female, on an M4 x 12 stainless grub screw', '2', 'threadlocked into the rod'],
+        ['Brass tube 14 x 2 (10 inside)', `2 x ${G.bolt.sleeve[1]}`, 'sleeves on the rod tips, retaining compound (Loctite 638 or 648)'],
+        ['Brass tube 16 x 0.5 (15 inside)', `2 x ${f0(G.xJ - G.xB)} and 2 x ${G.bolt.into}`, 'liners: through the bed-cabinet sides and in the side rails, flush, glued with epoxy'],
+        ['Flanged sintered-bronze bush 10 x 14 x 12, flange 20 x 2', '2', 'in the tower sides, flange on the hanging-space face'],
+        ['Nitrile O-ring 9 x 2.5', '2 (and spares)', 'in the 14 bore at the joint between the sides: drag and a soft stop']] : []),
     ['Hanging rail 25 mm + end brackets', '2', `${Math.round(G.towerIn - 4)} long`],
     ['Handles or pulls', `${nDr + 4 + 2}`, 'drawers, doors, two on the bed face (kit: 5 to 6 ft up)'],
     ...(G.head && G.head.gpos && G.head.gpos.length ? [['Double power points (Australian GPO), with flush-mount brackets', `${G.head.gpos.length}`, 'in the bedside shelf, 104 x 54 cut-outs; fitted and wired by an electrician']] : []),

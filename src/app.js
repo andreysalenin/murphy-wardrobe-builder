@@ -65,6 +65,21 @@ function fillInputs() {
   for (const k of CHK_FIELDS) if ($(k)) $(k).checked = !!params[k];
   drawerInputs();
   libRows();
+  whenFields();
+}
+// fields that only matter with another option on: data-when="ledge headboard !headStore" or "lockType=twin"
+function whenFields() {
+  const ok = (t) => { const neg = t[0] === '!', k = neg ? t.slice(1) : t, [id, v] = k.split('='), el = $(id); if (!el) return true;
+    const on = v !== undefined ? el.value === v : el.type === 'checkbox' ? el.checked : !!el.value; return neg ? !on : on; };
+  document.querySelectorAll('.rail [data-when]').forEach(el => el.classList.toggle('off', !el.dataset.when.split(/\s+/).every(ok)));
+}
+const LS_TAB = 'murphy-wardrobe-builder.tab';
+function showTab(t) {
+  const tabs = [...document.querySelectorAll('.tabs [data-tab]')];
+  if (!tabs.some(b => b.dataset.tab === t)) t = 'design';
+  tabs.forEach(b => { b.setAttribute('aria-selected', String(b.dataset.tab === t)); b.tabIndex = b.dataset.tab === t ? 0 : -1; });
+  document.querySelectorAll('.rail details.grp').forEach(d => { if (t === 'all' || d.dataset.tab === t) d.removeAttribute('data-tab-hidden'); else d.setAttribute('data-tab-hidden', ''); });
+  writeLS(LS_TAB, t);
 }
 function readInputs() {
   for (const k of NUM_FIELDS) { const el = $(k); if (el && el.value !== '' && isFinite(Number(el.value))) params[k] = Number(el.value); }
@@ -309,6 +324,13 @@ function bind() {
   const edits = (e) => e.target.matches('input,select') && e.target.type !== 'file';
   rail.addEventListener('input', (e) => { if (edits(e)) schedule(false); });
   rail.addEventListener('change', (e) => { if (edits(e)) schedule(true); });
+  rail.addEventListener('change', whenFields);
+  const tabBar = document.querySelector('.tabs');
+  tabBar.addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (!b) return; showTab(b.dataset.tab);
+    if (rail.getBoundingClientRect().top < 0) rail.scrollIntoView({ block: 'start' }); else rail.scrollTop = 0; });
+  tabBar.addEventListener('keydown', (e) => { if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return; const bs = [...tabBar.querySelectorAll('[data-tab]')], i = bs.findIndex(b => b.getAttribute('aria-selected') === 'true');
+    const n = bs[(i + (e.key === 'ArrowRight' ? 1 : bs.length - 1)) % bs.length]; showTab(n.dataset.tab); n.focus(); e.preventDefault(); });
+  showTab(readLS(LS_TAB) || 'design');
   $('dr-dec').addEventListener('click', () => { readInputs(); if (params.drawers.length > 1) params.drawers.pop(); drawerInputs(); schedule(true); });
   $('dr-inc').addEventListener('click', () => { readInputs(); if (params.drawers.length < 10) params.drawers.push(params.drawers[params.drawers.length - 1] || 180); drawerInputs(); schedule(true); });
   $('dr-equal').addEventListener('click', () => { readInputs(); params.drawers = params.drawers.map(() => params.drawers[0]); drawerInputs(); schedule(true); });
