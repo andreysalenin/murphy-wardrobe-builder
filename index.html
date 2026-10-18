@@ -941,7 +941,7 @@ const DEFAULTS = {
   frontGap: 1,        // fronts off the carcass edge (bumpers)
   // front thickness by kind, 12 or 18 (the bed's face panel stays at T): every front's face stays in one plane, and
   // the carcass edges behind each kind step forward or back to stay frontGap behind it
-  TfDrawer: 12, TfSide: 12, TfTop: 12,
+  TfDrawer: 18, TfSide: 18, TfTop: 18,
   // mattress and bed
   mW: 1530,           // mattressw
   mL: 2030,           // mattressh
@@ -2564,7 +2564,7 @@ function checks(model) {
   else if (diag > P.H - G.zPl) w('info', 'Stand the towers up on the floor, then lift onto the plinth', `Diagonal ${f0(diag)}: it clears the ceiling (${f0(P.H)}) only from the floor, not from the top of a ${f0(G.zPl)} plinth.`, 'install');
   if (G.antClear < 200) w('warn', 'Little room for the flap fittings', `Only ${f0(G.antClear)} clear behind the flaps; most lift fittings and gas stays want 200 or more.`, 'fronts');
   // flap lift
-  const flapKg = G.flapW * G.flapH * P.T * PLY_DENSITY;
+  const flapKg = G.flapW * G.flapH * P.TfTop * PLY_DENSITY;
   w('info', `Flaps ${f0(G.flapW)} x ${f0(G.flapH)}, about ${flapKg.toFixed(1)} kg`, `Lift-mechanism power factor (height x weight) about ${f0(G.flapH * flapKg)}. Pick the gas stay or lift fitting from its chart for this, and a push latch that out-pushes the stay. ${f0(G.antClear)} clear behind the flaps for the fittings.`, 'fronts');
   if (!G.stay.ok) w('warn', 'Flap gas stays', `Mounted as drawn a stay would be ${f0(G.stay.L1)} long open with ${f0(G.stay.stroke)} stroke, ${f0(G.stay.L0)} closed; stock gas stays run to about 500 with a stroke of a quarter of their length or more, and are about 90 longer than their stroke closed. Use a lift fitting for flaps this size.`, 'fronts');
   if (G.stay.clear < 5) w(G.stay.clear < 0 ? 'bad' : 'warn', 'Flap stays close to the shelf or top', `The stays come ${f0(G.stay.clear)} mm from the shelf or the top as the flaps open.`, 'fronts');
@@ -2607,9 +2607,10 @@ function reviewNotes(model, S) {
     })() : 'Cable holes are turned off.'],
     ['Ventilation', `A mattress stood on end in a closed bay needs air: the mattress support has ${G.vents ? G.vents.n : 0} holes of ${G.vents ? G.vents.d : 25} mm between the struts (drill them before it goes on), and the side gaps stay open.`],
     ['Front thicknesses', (() => { const k = [['drawer fronts', 'drawer'], ['tower doors', 'side'], ['flaps', 'top']]; const thin = k.filter(([, z]) => G.thin[z]).map(([n]) => n), thick = k.filter(([, z]) => !G.thin[z]).map(([n]) => n);
+      if (!thin.length) return `All the fronts are ${G.tf.bed} mm, like the bed's face: every face in one plane ${f0(G.yF)} from the wall, the carcass edges ${P.frontGap} mm behind them (${f0(G.cD)} deep), cup hinges throughout, and the fronts can be cut from the same sheets as the bed face so the colour and grain match. Drawer fronts, tower doors and flaps can each be 12 instead; the carcass then steps behind them so the faces stay flush.`;
       return `Drawer fronts ${G.tf.drawer}, tower doors ${G.tf.side}, flaps ${G.tf.top} and the bed's face ${G.tf.bed} mm, every face in one plane ${f0(G.yF)} from the wall. The carcass edges step to stay ${P.frontGap} mm behind whatever covers them: ${f0(G.cDd)} deep behind the drawers, ${f0(G.cDs)} behind the tower doors, ${f0(G.cDt)} behind the flaps and ${f0(G.cD)} for the bed cabinet's sides${Math.abs(G.yCd - G.yCs) > 0.01 ? `; the tower sides are cut ${f0(G.cDtow)} deep and notched ${f0(Math.abs(G.yCd - G.yCs))} along the ${G.yCd < G.yCs ? 'drawers' : 'doors'}, the step in the reveal over the top drawer` : ''}${G.yEnd < G.yCt - 0.01 ? `; the shelf and top over the bed are notched ${f0(G.yCt - G.yEnd)} at their ends, behind the towers' top doors` : ''}.${thin.length ? ` The 12 mm ${thin.join(' and ')} save weight and look lighter; the hinged ones take Blum's thin-front hinges (no cup: two 10 mm dowel holes), one more per door or flap to hold it flat. Use a good birch or hoop-pine ply and finish both faces alike so they stay flat.` : ''}`; })()],
     ['Tower doors', P.doorHinge === 'outer' ? `Hinged on the wall side, ${P.gap} mm from the cavity wall with their faces flush with the room wall. A 110 deg CLIP top on a ${P.TfSide} mm door wants about ${hingeGapMin(P.TfSide)} mm beside its hinge edge, so they open fully, away from the bed.` : `Hinged on the bed side: they open past 90 deg, but an open door stands ${f0(G.doorX[0] - G.xFo)} mm from the edge of the lowered bed.`],
-    ['Lift-up flaps', `About ${(G.flapW * G.flapH * P.T * PLY_DENSITY).toFixed(1)} kg each. Choose the gas stays from their force chart and a push latch strong enough to open against them. ${f0(G.antClear)} clear behind the flaps.`],
+    ['Lift-up flaps', `About ${(G.flapW * G.flapH * P.TfTop * PLY_DENSITY).toFixed(1)} kg each (${P.TfTop} mm). Choose the gas stays from their force chart and a push latch strong enough to open against them. ${f0(G.antClear)} clear behind the flaps.`],
     ['Hanging height', `${f0(G.hangClear)} clear suits shirts and jackets, not long coats. Raising the shelf over the hanging space takes height from the ${f0(G.topClear)} top compartment.`],
     ['Mattress', `${P.mW} x ${P.mL} x ${P.mT}. The queen kit is set up for 60 x 80 in (1524 x 2032), at most 12 in thick, 65 to 80 lb (29 to 36 kg); set the spring plates from the booklet's chart for your mattress weight.`],
     ['Clear floor', `The open bed reaches ${f0(G.clear.open.reach)} from the back wall, ${f0(G.clear.open.reach - P.D)} into the room.`],
@@ -7023,6 +7024,11 @@ if (!readLS(LS_KEY + ':lean10')) {
   if (params.headAngle === 5) params.headAngle = 10;
   if (params.headDoorOpen === 30) params.headDoorOpen = 110;
   writeLS(LS_KEY + ':lean10', 1);
+}
+// fronts now default to 18 mm everywhere (12 stays a choice per kind): saved settings still on the brief all-12 default follow, once
+if (!readLS(LS_KEY + ':fronts18')) {
+  if ([params.TfDrawer, params.TfSide, params.TfTop].every(v => Number(v) === 12)) { params.TfDrawer = 18; params.TfSide = 18; params.TfTop = 18; }
+  writeLS(LS_KEY + ':fronts18', 1);
 }
 // the carcass now stands 6 off the back wall (packers of 6 and 12 behind the rails): saved settings on the old 10 follow, once
 if (!readLS(LS_KEY + ':back6')) {

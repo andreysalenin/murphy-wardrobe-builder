@@ -40,6 +40,11 @@ if (!readLS(LS_KEY + ':lean10')) {
   if (params.headDoorOpen === 30) params.headDoorOpen = 110;
   writeLS(LS_KEY + ':lean10', 1);
 }
+// fronts now default to 18 mm everywhere (12 stays a choice per kind): saved settings still on the brief all-12 default follow, once
+if (!readLS(LS_KEY + ':fronts18')) {
+  if ([params.TfDrawer, params.TfSide, params.TfTop].every(v => Number(v) === 12)) { params.TfDrawer = 18; params.TfSide = 18; params.TfTop = 18; }
+  writeLS(LS_KEY + ':fronts18', 1);
+}
 // the carcass now stands 6 off the back wall (packers of 6 and 12 behind the rails): saved settings on the old 10 follow, once
 if (!readLS(LS_KEY + ':back6')) {
   if (params.backGap === 10) params.backGap = 6;
