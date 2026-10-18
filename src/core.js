@@ -991,8 +991,10 @@ function build(params, opts) {
       if (well) {
         put({ mark: 'H11', name: `Headboard well floor, ${well} below the sill`, grp: bgrp, kind: 'ledge', T: Tg, L: 2 * G.xB, W: yL - Tg - G.yB1, grain: false,
           solids: [box(-G.xB, G.xB, G.yB1, yL - Tg, zw - Tg, zw)] });
-        put({ mark: 'H12', name: 'Headboard well cleat, inside the ledge front', grp: bgrp, kind: 'ledge', T: Tg, L: 2 * G.xB, W: 90, grain: false,
-          solids: [box(-G.xB, G.xB, yL - 2 * Tg, yL - Tg, zw - Tg - 90, zw - Tg)] });
+        // 12 mm is plenty for a cleat that only carries the well floor's front edge; it sits under the floor, so its
+        // thickness takes nothing from the well
+        put({ mark: 'H12', name: 'Headboard well cleat, inside the ledge front', grp: bgrp, kind: 'ledge', T: 12, L: 2 * G.xB, W: 90, grain: false,
+          solids: [box(-G.xB, G.xB, yL - Tg - 12, yL - Tg, zw - Tg - 90, zw - Tg)] });
       }
     } else G.ledge.skipped = true;
   }
@@ -2107,7 +2109,7 @@ function joinery(model) {
     if (H11 && H12) {
       const b12 = bb(H12), b11 = bb(H11), zc = (b12[2] + b12[5]) / 2;
       ops.push({ title: 'Well cleat inside the ledge front', bench: true, add: [[H12, [0, -E, 0]]],
-        fast: [F('s30', H12, H2, [0, 1, 0], Tg, spread(-G.xB, G.xB, 50, 200).map(x => [x, b12[4], zc]))], setout: 'level with the wall cleat' });
+        fast: [F('s25', H12, H2, [0, 1, 0], 12, spread(-G.xB, G.xB, 50, 200).map(x => [x, b12[4], zc]))], setout: 'level with the wall cleat; 25 mm screws, so they stop short of the ledge front\'s face' });
       ops.push({ title: 'Well floor onto its cleats, sill onto the ledge front', add: [H1, H11, ...ribs].map(p => [p, [0, 0, E]]),
         fast: [F('s50', H1, H2, [0, 0, -1], Tg, spread(-G.xB, G.xB, 50, 200, ribAvoid).map(x => [x, (b2[1] + b2[4]) / 2, b2[5]])),
           F('s50', H11, H3, [0, 0, -1], Tg, spread(-G.xB, G.xB, 50, 200, ribAvoid).map(x => [x, (b3[1] + b3[4]) / 2, b3[5]])),
