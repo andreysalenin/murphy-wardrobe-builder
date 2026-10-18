@@ -617,13 +617,22 @@ function bedding(P, G) {
     const cx = H.doorX.map(([a, b]) => (a + b) / 2), cw = H.compW;
     B.inside = inside; B.squeezed = inside < PL.L;
     B.stored.push({ kind: 'pillow', door: 'headdoor-1', at: [cx[0], G.yB1 + 2, zf + 2], h }, { kind: 'pillow', door: 'headdoor-3', at: [cx[2], G.yB1 + 2, zf + 2], h });
-    // the doona folded into the middle one, filling it like a soft block: on the well floor and behind the sill, then out
-    // to just behind the door, below the push latch
-    const y0 = G.yB1 + 3, zt = H.top - 48, zs = H.z0 + 6, sec = [[y0, zf + 3]];
-    if (L && L.well) sec.push([L.ySill - 6, zf + 3], [L.ySill - 6, zs]); else sec.push([back(zs) - 14, zs]);
-    if (L && L.well) sec.push([back(zs) - 14, zs]);
-    sec.push([back(zt) - 12, zt], [y0, zt]);
-    B.stored.push({ kind: 'doona', door: 'headdoor-2', x: [cx[1] - cw / 2 + 18, cx[1] + cw / 2 - 18], sec });
+    // the doona folded into the middle one: a stack of soft folds standing on the well floor against the back, kept
+    // behind the line of the sill (the ledge the well leaves inside the compartment) and, higher up, behind the door,
+    // below the push latch
+    const y0 = G.yB1 + 3, zt = H.top - 48, z0 = zf + 3, nF = Math.max(3, Math.round((zt - z0) / 135)), gap = 3;
+    const hg = D.hinge, cap = L && L.well ? L.ySill - 8 : hg.K[0] - hg.leaf - 4;          // behind the sill, or the hinge's floor leaf
+    const front = (z) => Math.min(cap, back(z) - 12);
+    const kink = H.B0[1] + (H.B0[0] - 12 - cap) * (H.B1[1] - H.B0[1]) / (H.B0[0] - H.B1[0]); // where the door line meets that line
+    const layers = [];
+    for (let k = 0; k < nF; k++) {
+      const za = z0 + k * (zt - z0) / nF + (k ? gap / 2 : 0), zb = z0 + (k + 1) * (zt - z0) / nF - (k < nF - 1 ? gap / 2 : 0);
+      const sec = [[y0, za], [front(za), za]];
+      if (kink > za && kink < zb) sec.push([front(kink), kink]);
+      sec.push([front(zb), zb], [y0, zb]);
+      layers.push(sec);
+    }
+    B.stored.push({ kind: 'doona', door: 'headdoor-2', x: [cx[1] - cw / 2 + 18, cx[1] + cw / 2 - 18], layers });
   }
   return B;
 }

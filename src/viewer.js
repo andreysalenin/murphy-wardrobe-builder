@@ -250,8 +250,11 @@ class MurphyScene {
         const g = pillowGeometry(PL.L, PL.W, PL.T, PL.edge); g.scale(b.h / PL.L, 1, 1); g.applyMatrix4(UP); g.translate(b.at[0], b.at[1], b.at[2] + b.h / 2);
         add(g, colPillow, 0.9, this.root, b.door, 'store', true);
       } else {
-        const g = softExtrude(b.sec, b.x[1] - b.x[0], 16, YZ); g.translate(b.x[0], 0, 0);
-        add(g, colDoona, 0.95, this.root, b.door, 'store', true);
+        for (const sec of b.layers) { // folds, each a soft slab
+          const hz = Math.max(...sec.map(q => q[1])) - Math.min(...sec.map(q => q[1]));
+          const g = softExtrude(sec, b.x[1] - b.x[0], Math.min(16, hz / 2 - 2), YZ); g.translate(b.x[0], 0, 0);
+          add(g, colDoona, 0.95, this.root, b.door, 'store', true);
+        }
       }
     }
   }
