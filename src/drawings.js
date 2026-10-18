@@ -487,11 +487,12 @@ function pageElevations(doc, M, S, I, info) {
 
 // the headboard box in section between the ribs, 1:9: the lean, the doors and their mitre, the room for a wall outlet
 function headboardDetail(s, M, ox, oy) {
-  const { P, G } = M, H = G.head, sc = 9, D = H.doors;
+  const { P, G } = M, H = G.head, D = H.doors;
   const xc = H.gpos && H.gpos.length ? H.gpos[0].x + 20 : -(G.xB / 4) - 100; // through the power point, or between ribs
-  const win = [-25, Math.max(H.capY, D ? H.y0 + 110 : 0) + 30, (G.ledge ? G.ledge.top - 60 : H.z0 - 40), H.top + P.Thead + 30];
+  const win = [-25, Math.max(H.capY, D ? H.y0 + 110 : 0) + 30, (G.ledge ? (G.ledge.wellTop || G.ledge.top) - 60 : H.z0 - 40), H.top + P.Thead + 30];
+  const sc = [9, 10, 12, 15].find(k => (win[3] - win[2]) / k <= 80) || 15; // a deeper box (sunk into the ledge) drawn smaller to fit
   const v = View(s, 'side', sc, [ox, oy], [win[0], win[2]]);
-  v.parts(M.parts.filter(p => !p.bed && !p.mattress), { cut: xc, window: win, filter: (p) => /^H[1-9]$/.test(p.mark) || p.mark === 'PP' || (p.mark === 'PL' && /Headboard/.test(p.name)) });
+  v.parts(M.parts.filter(p => !p.bed && !p.mattress), { cut: xc, window: win, filter: (p) => /^H\d+$/.test(p.mark) || p.mark === 'PP' || (p.mark === 'PL' && /Headboard/.test(p.name)) });
   const a = v.Puv([win[0], win[2]]), b = v.Puv([win[1], win[3]]);
   const w0 = v.Puv([0, win[2]]), w1 = v.Puv([0, win[3]]);
   s.line([w0[0], w1[0]], [w0[1], w1[1]], { lw: 0.45 });
@@ -515,7 +516,9 @@ function headboardDetail(s, M, ox, oy) {
     const tq = arc[arc.length - 1] || v.Puv(D.Od);
     s.text(b[0] + 3, tq[1] - 2, `tips forward ${f0(D.open)} deg${D.open >= 90 + P.headAngle - 0.5 ? ', onto the mattress' : D.open >= D.rest - 0.5 ? ', onto the mattress edge' : ''}`, { size: 4.8, color: ACC, ha: 'left', va: 'middle' });
     const hq = v.Puv(ax); s.circle(hq[0], hq[1], 0.7, { fill: ACC, lw: 0 });
-    s.text(hq[0] + 1.5, hq[1] - 2.5, D.hinge.front ? 'piano hinge, knuckle to the front' : 'piano hinge, hidden behind the foot', { size: 4.6, color: GREY });
+    // its label, unless it would land on the 1:1 inset's leader notes (a deep box drawn smaller brings it up to them)
+    const leadY = b[1] - 20 - 29, ly = hq[1] - 2.5;
+    if (!D.hinge || ly > leadY - 3 || ly < leadY - 11) s.text(hq[0] + 1.5, ly, D.hinge.front ? 'piano hinge, knuckle to the front' : 'piano hinge, hidden behind the foot', { size: 4.6, color: GREY });
     const mq = v.Puv([(D.O[0] + D.I[0]) / 2, (D.O[1] + D.I[1]) / 2]);
     s.leader(mq, [b[0] + 3, mq[1] + 6], `mitre ${(Math.round(D.mitre * 10) / 10)} deg, ${D.gap} gap`, { size: 4.8, ha: 'left' });
   }
@@ -1019,7 +1022,7 @@ function pageClearances(doc, M, M45, M90, S, info) {
     const se = 7.5, ex = 158, ez = 22;
     const ve = View(s, 'side', se, [ex, ez], [G.yB1 - 6, 0]);
     const cutX = G.xB - 0.5, band = (p) => p.name.indexOf('(R)') < 0;
-    const fixedK = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'K1'];
+    const fixedK = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'H11', 'H12', 'K1'];
     ve.parts(M.parts, { cut: cutX, filter: (p) => band(p) && ((!p.bed && (fixedK.includes(p.mark) || ['PV', 'BS', 'ST', 'B8', 'B9'].includes(p.mark))) || (p.bed && ['F2', 'F3', 'BS', 'PV'].includes(p.mark)) || p.mark === 'GS'), window: [G.yB1 - 6, G.yFb + 10, 0, G.springCab[1] + 70] });
     for (const [Mx, st] of [[M45, { color: GREY, dash: [0.6, 0.6], lw: 0.12 }], [M90, { color: ACC, lw: 0.18 }]]) {
       ve.outline(Mx.parts, { filter: (p) => band(p) && ((p.bed && ['F2', 'F3', 'BS'].includes(p.mark)) || p.mark === 'GS'), st, window: [G.yB1 - 6, G.yFb + 10, 0, G.springCab[1] + 70] });

@@ -5,7 +5,7 @@ const C = window.MurphyCore, V = window.MurphyViewer;
 const LS_KEY = 'murphy-wardrobe-builder.v3', LS_VIEW = 'murphy-wardrobe-builder.view.v1', LS_THEME = 'murphy-wardrobe-builder.theme';
 const $ = (id) => document.getElementById(id);
 const NUM_FIELDS = ['W', 'H', 'D', 'sideClear', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
-  'hangClear', 'railDrop', 'runnerClear', 'runnerLen', 'boxLess', 'gap', 'gapAbove', 'frontGap', 'TfDrawer', 'TfSide', 'TfTop', 'T', 'Tb', 'Tback', 'Tsup', 'Tladder', 'Tplinth', 'Tpacker', 'Tledge', 'Thead',
+  'hangClear', 'railDrop', 'runnerClear', 'runnerLen', 'boxLess', 'gap', 'gapAbove', 'frontGap', 'TfDrawer', 'TfSide', 'TfTop', 'headWell', 'T', 'Tb', 'Tback', 'Tsup', 'Tladder', 'Tplinth', 'Tpacker', 'Tledge', 'Thead',
   'pivotFromRail', 'pivotAboveHead', 'cabPivotZ', 'pinGap', 'springLowAlong', 'springLowOut', 'springUpFront', 'springUpZ', 'stopFront', 'stopBelowTop',
   'springD', 'springRodD', 'springEndD', 'springBodyL', 'studS', 'plateT', 'nutStack', 'stopD', 'stopH', 'legD',
   'railD', 'headRailD', 'footRailD', 'railR', 'legFromFoot', 'legFromTop', 'struts', 'ladderW',
@@ -44,6 +44,11 @@ if (!readLS(LS_KEY + ':lean10')) {
 if (!readLS(LS_KEY + ':fronts18')) {
   if ([params.TfDrawer, params.TfSide, params.TfTop].every(v => Number(v) === 12)) { params.TfDrawer = 18; params.TfSide = 18; params.TfTop = 18; }
   writeLS(LS_KEY + ':fronts18', 1);
+}
+// the power points now lie along the shelf (switches to the wall): their bodies want a 125 services zone, once
+if (!readLS(LS_KEY + ':zone125')) {
+  if (Number(params.headZone) === 100) params.headZone = 125;
+  writeLS(LS_KEY + ':zone125', 1);
 }
 // the carcass now stands 6 off the back wall (packers of 6 and 12 behind the rails): saved settings on the old 10 follow, once
 if (!readLS(LS_KEY + ':back6')) {
