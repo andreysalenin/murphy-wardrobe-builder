@@ -76,6 +76,7 @@ details.grp[open] > summary .chev { transform: rotate(45deg); }
 .num input:focus { outline: none; }
 .num:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 select { border: 1px solid var(--line); border-radius: var(--r); background: var(--bg); padding: 6px 8px; font-size: 14px; max-width: 190px; }
+select:disabled { opacity: 0.55; cursor: not-allowed; background: color-mix(in srgb, var(--line) 35%, var(--bg)); }
 .stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--bg); }
 .stepper button { border: 0; background: transparent; width: 34px; height: 34px; cursor: pointer; font-size: 18px; color: var(--ink); }
 .stepper button:hover { background: var(--accent-soft); }
@@ -277,6 +278,16 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="field" data-when="ledge headboard"><div><label for="headClear">Clear depth inside the box, at the top</label><small>Wall to the backrest: room for a power point's mechanism under the shelf, turned to run back (about 100 long).</small></div><div class="num"><input id="headClear" type="number" min="0" max="200" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field" data-when="ledge headboard"><label for="headH">Backrest height</label><div class="num"><input id="headH" type="number" min="150" max="1200" step="10" inputmode="numeric"><span>mm</span></div></div>
           <div class="field" data-when="ledge headboard"><div><label for="headGap">Backrest to the open mattress</label><small>How close the pillows get.</small></div><div class="num"><input id="headGap" type="number" min="0" max="80" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="sub-hd"><span>Front thicknesses</span></div>
+          <div class="hint">Every face stays in one plane; the carcass edges behind each kind of front step back or forward to suit it. 12 mm hinged fronts take Blum's thin-front hinges, one extra each.</div>
+          <div class="field"><div><label for="TfBed">Bed face</label><small>Carries the bed frame: always 18.</small></div>
+            <select id="TfBed" disabled aria-disabled="true"><option>18 mm</option></select></div>
+          <div class="field"><label for="TfDrawer">Drawer fronts</label>
+            <select id="TfDrawer"><option value="12">12 mm</option><option value="18">18 mm</option></select></div>
+          <div class="field"><div><label for="TfSide">Side doors</label><small>The towers' hanging-space and top doors.</small></div>
+            <select id="TfSide"><option value="12">12 mm</option><option value="18">18 mm</option></select></div>
+          <div class="field"><div><label for="TfTop">Top doors</label><small>The lift-up flaps over the bed.</small></div>
+            <select id="TfTop"><option value="12">12 mm</option><option value="18">18 mm</option></select></div>
           <div class="sub-hd"><span>Towers and shelves</span></div>
           <div class="field"><div><label for="doorHinge">Tower doors hinged on</label><small>Wall side keeps the open door out of the way of the bed.</small></div>
             <select id="doorHinge"><option value="outer">Wall side</option><option value="inner">Bed side</option></select></div>
@@ -345,7 +356,7 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
       <details class="grp" data-tab="build">
         <summary>Plywood <i class="chev"></i></summary>
         <div class="grp-body">
-          <div class="field"><div><label for="T">Carcass, fronts, bed frame</label><small>"plythicka"</small></div><div class="num"><input id="T" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="T">Carcass, bed frame and bed face</label><small>"plythicka"</small></div><div class="num"><input id="T" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><div><label for="Tb">Drawer boxes</label><small>"plythickb"</small></div><div class="num"><input id="Tb" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><label for="Tback">Backs and drawer bottoms</label><div class="num"><input id="Tback" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><label for="Tsup">Mattress support</label><div class="num"><input id="Tsup" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>

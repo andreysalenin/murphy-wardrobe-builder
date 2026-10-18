@@ -369,10 +369,10 @@ function pageOverview(doc, M, S, I, info) {
     ['Bed frame', `${f0(G.frameW)} x ${f0(G.frameL)}; face panel ${P.T} mm in two halves, ${f0(2 * (G.xFo + P.faceOverhang))} wide${P.faceOverhang ? `, ${f0(P.faceOverhang)} past the rails` : ''}`],
     ['Pivot', `${f0(G.pivot[1])} above the floor, ${f0(G.pivotBehindFace)} behind the face`],
     ['Bed down', `reaches ${f0(G.clear.open.reach)} from the wall, mattress top ${f0(G.clear.open.mattTop)}`],
-    ['Tower, inside', `${f0(G.towerIn)} wide x ${f0(G.cD)} deep`],
+    ['Tower, inside', `${f0(G.towerIn)} wide x ${G.cDd === G.cDs ? f0(G.cDd) : f0(G.cDd) + ' (drawers) / ' + f0(G.cDs) + ' (doors)'} deep`],
     ['Drawers', `${P.drawers.length} per tower, fronts ${P.drawers.map(f0).join(' / ')}, ${G.runner} runners`],
     ['Hanging / top', `${f0(G.hangClear)} / ${f0(G.topClear)} clear`],
-    ['Fronts', `${P.T} mm, ${f0(P.gap)} mm reveals, ${f0(G.doorOverlay)} overlay at the hinges; one-piece kick and header`],
+    ['Fronts', `drawers ${G.tf.drawer}, tower doors ${G.tf.side}, flaps ${G.tf.top}, bed face ${G.tf.bed} mm, faces flush; ${f0(P.gap)} mm reveals, ${f0(G.doorOverlay)} overlay at the hinges; one-piece kick and header`],
     ['Plywood', st.filter(q => q.used).map(q => `${q.T} mm: ${isFinite(q.need) ? q.need : '?'} of ${q.have}`).join(', ')],
     ['Plywood mass', `about ${S.massPly.toFixed(0)} kg (bed frame ${S.massBed.toFixed(0)} kg)`],
   ];
@@ -464,9 +464,9 @@ function pageElevations(doc, M, S, I, info) {
   v3.dimAt([-P.mW / 2, P.D, 0], [P.mW / 2, P.D, 0], yb3 - 5.5, 'h', `${f0(P.mW)} mattress`, { size: 5.4 });
   v3.dimAt([-G.xA, P.D, 0], [G.xA, P.D, 0], yb3 - 11, 'h', null, { size: 5.6 });
   const xd = v3.P([G.xA, 0, 0])[0] - 3;
-  v3.dimAt([G.xA, G.yB1, 0], [G.xA, G.yC, 0], xd, 'v', null, { size: 5.2 });
+  v3.dimAt([G.xA, G.yB1, 0], [G.xA, G.yCs, 0], xd, 'v', null, { size: 5.2 });
   v3.dimAt([G.xA, 0, 0], [G.xA, P.D, 0], xd - 5, 'v', null, { size: 5.2 });
-  s.text(ox, pb - 48, `Depth: ${f0(P.backGap)} to the wall, ${f0(P.Tback)} back, ${f0(G.cD)} carcass, ${f0(P.frontGap)} + ${f0(P.T)} front.`, { size: 5.6, color: GREY });
+  s.text(ox, pb - 48, `Depth: ${f0(P.backGap)} to the wall, ${f0(P.Tback)} back, then carcass and front: ${[['drawers', 'drawer'], ['tower doors', 'side'], ['flaps', 'top'], ['bed face', 'bed']].map(([n, k]) => `${n} ${f0(G.yFbOf[k] - P.frontGap - G.yB1)} + ${f0(P.frontGap)} + ${f0(G.tf[k])}`).join(', ')}; every front's face in one plane.`, { size: 5.6, color: GREY });
   const pz2 = (G.zBm1 + G.zTopB) / 2;
   const v4 = View(s, 'top', sc, [ox2 + P.W / 2 / sc, pb], [0, 0]);
   v4.parts(M.parts.filter(p => !p.leg && !p.mattress), { cut: pz2, filter: (p) => !(p.hw && !['FS', 'LP', 'PL'].includes(p.mark)) });
@@ -478,7 +478,7 @@ function pageElevations(doc, M, S, I, info) {
 
   // fronts schedule
   const tx = 375;
-  s.heading(tx - 30, 248, 'FRONTS', `${P.T} mm, ${f0(G.doorOverlay)} overlay at the hinges`);
+  s.heading(tx - 30, 248, 'FRONTS', `drawers ${G.tf.drawer}, doors ${G.tf.side}, flaps ${G.tf.top}, bed face ${G.tf.bed} mm; ${f0(G.doorOverlay)} overlay at the hinges`);
   const fr = S.cut.filter(r => r.mark[0] === 'D' || r.mark === 'F1' || r.mark[0] === 'K');
   const rows = fr.map(r => [r.mark, f0(r.L) + ' x ' + f0(r.W), r.qty, r.mark.startsWith('D1') || r.mark.startsWith('D2') ? (P.doorHinge === 'outer' ? 'wall edge' : 'bed edge') : r.mark.startsWith('D4') ? 'top edge' : '']);
   s.table(tx - 30, 238, [['MARK', 12, 'left'], ['H x W', 24, 'left'], ['QTY', 9, 'right'], ['HINGED', 20, 'left']], rows, { rowH: 4.3, size: 5.8, hsize: 5.4 });
@@ -611,11 +611,11 @@ function pageSections(doc, M, M90, M45, S, info) {
   s.line([ox2, ox2], [oz - 3, v2.P([0, 0, P.H])[1] + 3], { lw: 0.4 });
   s.viewLabel(ox2 + 20, 278, 'SECTION B-B', 'through a tower');
   const ztt = v2.P([0, 0, P.H])[1] + 5;
-  [[0, G.yB0], [G.yB0, G.yB1], [G.yB1, G.yC], [G.yC, G.yFb], [G.yFb, G.yF]].forEach(([a, b], i) => v2.dimAt([0, a, P.H], [0, b, P.H], ztt, 'h', null, { size: 5, side: i === 0 ? 'start' : i >= 3 ? 'end' : undefined }));
+  [[0, G.yB0], [G.yB0, G.yB1], [G.yB1, G.yCs], [G.yCs, G.yFbOf.side], [G.yFbOf.side, G.yF]].forEach(([a, b], i) => v2.dimAt([0, a, P.H], [0, b, P.H], ztt, 'h', null, { size: 5, side: i === 0 ? 'start' : i >= 3 ? 'end' : undefined }));
   const f1 = G.fronts[0];
-  v2.dimAt([0, G.yC - G.runner, f1.z0], [0, G.yC, f1.z0], v2.P([0, 0, f1.z0])[1] - 3, 'h', `${G.runner} runners`, { size: 5 });
+  v2.dimAt([0, G.yCd - G.runner, f1.z0], [0, G.yCd, f1.z0], v2.P([0, 0, f1.z0])[1] - 3, 'h', `${G.runner} runners`, { size: 5 });
   v2.levels(v2.P([0, P.D, 0])[0] + 4, [G.zPl + P.T, G.zS1b, G.zS1t, G.zRail, G.zS2b, G.zS2t, G.zTopB], { size: 5.4 });
-  s.text(v2.P([0, (G.yB1 + G.yC) / 2, G.zRail])[0], v2.P([0, 0, G.zRail])[1] - 4, 'rail', { size: 5, ha: 'center', color: GREY });
+  s.text(v2.P([0, (G.yB1 + G.yCs) / 2, G.zRail])[0], v2.P([0, 0, G.zRail])[1] - 4, 'rail', { size: 5, ha: 'center', color: GREY });
 
   // clearance table
   const cx = 292;
@@ -748,7 +748,7 @@ function pageHardware(doc, M, S, info) {
     v.dimAt([0, q[0], q[1]], [0, yE, q[1]], pq[1] + (i === 2 ? -7.5 : 7.5), 'h', fh(yE - q[0]), { size: 5.4, color: ACC });
     v.dimAt([0, G.yB1, 0], [0, G.yB1, q[1]], v.P([0, G.yB1, 0])[0] - 5 - i * 6, 'v', fh(q[1]), { size: 5.4, color: ACC });
     s.text(xR, pq[1], name, { size: 5.6, va: 'middle', weight: 'bold' });
-    s.text(xR, pq[1] - 3, `kit: ${pts[i][2]}`, { size: 5, va: 'middle', color: GREY });
+    s.para(xR, pq[1] - 3.8, s.wrap(`kit: ${pts[i][2]}`, Math.max(30, 142 - xR), 5), { size: 5, color: GREY });
   });
   v.dimAt([0, G.yB1, G.zBm0], [0, yE, G.zBm0], v.P([0, 0, G.zBm0])[1] + 4, 'h', null, { size: 5.4 });
   if (G.bolt) {
@@ -778,62 +778,78 @@ function pageHardware(doc, M, S, info) {
 
   // 2. tower door, inside face: hinge cups
   const dx = 150, sd = 10, dy = 250 - Math.max(G.midDoor[1] - G.midDoor[0], G.topDoor[1] - G.topDoor[0]) / sd;
-  const door = (z0, z1, x0, label) => {
+  // thin fronts: the boss centre sits 2 mm clear inside the side panel's inner face (as modelled), so from the hinge edge:
+  const hingeOffThin = Math.abs((P.doorHinge === 'inner' ? G.doorX[0] : G.doorX[1]) - ((P.doorHinge === 'inner' ? G.xT2 : G.xOi) + (P.doorHinge === 'inner' ? 1 : -1) * (C.HINGE_THIN.boss.d / 2 + 2)));
+  const door = (z0, z1, x0, label, mk) => {
     const w = G.doorW / sd, h = (z1 - z0) / sd, inner = P.doorHinge === 'inner';
     s.rect(x0, dy, w, h, { fill: FILL.front, lw: LW_VIS });
     const ex = inner ? x0 + w : x0; // seen from inside, the hinge edge flips
-    const cx = inner ? ex - G.hingeDoor.cup / sd : ex + G.hingeDoor.cup / sd;
-    for (const z of C.hingeZs([z0, z1])) { const cy = dy + (z - z0) / sd; s.circle(cx, cy, 17.5 / sd, { lw: 0.25, fill: WHITE }); s.line([cx - 2.6, cx + 2.6], [cy, cy], { lw: 0.08 }); }
-    const hz = C.hingeZs([z0, z1]);
-    s.dim([ex, dy + (hz[0] - z0) / sd], [cx, dy + (hz[0] - z0) / sd], dy - 4, 'h', fh(G.hingeDoor.cup), { size: 5 });
+    const pd = M.parts.find(p => p.mark === mk && p.name.endsWith('(R)')), hz = pd && pd.hinges ? pd.hinges : C.hingeZs([z0, z1], G.thin.side);
+    const cxd = G.thin.side ? hingeOffThin : G.hingeDoor.cup, cx = inner ? ex - cxd / sd : ex + cxd / sd;
+    for (const z of hz) {
+      const cy = dy + (z - z0) / sd;
+      if (G.thin.side) { // EXPANDO T: two 10 mm dowel holes, 32 apart, under the boss (dashed)
+        const B = C.HINGE_THIN.boss, dw = C.HINGE_THIN.dowels;
+        s.rect(cx - B.flange[1] / 2 / sd, cy - B.flange[0] / 2 / sd, B.flange[1] / sd, B.flange[0] / sd, { lw: 0.12, dash: [0.8, 0.5], color: GREY });
+        for (const dz of [-dw[2] / 2, dw[2] / 2]) s.circle(cx, cy + dz / sd, dw[0] / 2 / sd, { lw: 0.25, fill: WHITE });
+        s.line([cx - 2.6, cx + 2.6], [cy, cy], { lw: 0.08 });
+      } else { s.circle(cx, cy, 17.5 / sd, { lw: 0.25, fill: WHITE }); s.line([cx - 2.6, cx + 2.6], [cy, cy], { lw: 0.08 }); }
+    }
+    s.dim([ex, dy + (hz[0] - z0) / sd], [cx, dy + (hz[0] - z0) / sd], dy - 4, 'h', fh(cxd), { size: 5 });
     let prev = z0;
     hz.concat([z1]).forEach((z, k) => { s.dim([x0 + w, dy + (prev - z0) / sd], [x0 + w, dy + (z - z0) / sd], inner ? x0 - 4 : x0 + w + 4, 'v', fh(z - prev), { size: 5 }); prev = z; });
     s.text(x0 + w / 2, dy + h + 3, label, { size: 6, ha: 'center', weight: 'bold' });
   };
-  door(G.midDoor[0], G.midDoor[1], dx, `D2  ${fh(G.doorW)} x ${fh(G.midDoor[1] - G.midDoor[0])}`);
-  door(G.topDoor[0], G.topDoor[1], dx + 58, `D1  ${fh(G.doorW)} x ${fh(G.topDoor[1] - G.topDoor[0])}`);
+  door(G.midDoor[0], G.midDoor[1], dx, `D2  ${fh(G.doorW)} x ${fh(G.midDoor[1] - G.midDoor[0])}`, 'D2');
+  door(G.topDoor[0], G.topDoor[1], dx + 58, `D1  ${fh(G.doorW)} x ${fh(G.topDoor[1] - G.topDoor[0])}`, 'D1');
   s.text(dx - 6, 276, 'TOWER DOORS, INSIDE FACE  1:10', { size: 7.5, weight: 'bold' });
   const HD = G.hingeDoor, HF = G.hingeFlap;
-  s.para(dx - 6, 272, s.wrap(`${C.HINGE_HW.name}. 35 mm cups bored 13 deep, centres ${fh(HD.cup)} from the ${P.doorHinge === 'outer' ? 'wall' : 'bed'}-side edge (${fh(HD.B)} mm boring distance), screw holes 45 apart and 9.5 further in. ${HD.H} mm CLIP cruciform plates (${HD.code}) on the side panel, holes 37 back from its front edge and 32 apart, at the cup heights: ${fh(HD.overlay)} overlay. Flaps: ${C.HINGE_FLAP.name}, no spring or damper so the push latches open them, on ${HF.H} mm plates (${HF.code}) under the top, cups ${fh(HF.cup)} below the top edge. Right-hand tower shown; the left is a mirror image.`, 104, 5.4), { size: 5.4, color: GREY });
+  const hz0 = (zr) => { const pd = M.parts.find(p => (p.mark === 'D1' || p.mark === 'D2') && p.name.endsWith('(R)') && Math.abs(p.L - (zr[1] - zr[0])) < 0.5); return pd && pd.hinges ? pd.hinges.length : C.hingeZs(zr, G.thin.side).length; };
+  const edgeW = P.doorHinge === 'outer' ? 'wall' : 'bed';
+  const doorTxt = G.thin.side
+    ? `${P.TfSide} mm doors: ${C.HINGE_THIN.short} (EXPANDO T, no cup), two 10 mm dowel holes 32 apart centred ${fh(hingeOffThin)} from the ${edgeW}-side edge; ${hz0(G.midDoor)} on D2, ${hz0(G.topDoor)} on D1, one more than an 18 mm door to keep it flat.`
+    : `${P.TfSide} mm doors: ${C.HINGE_HW.short || C.HINGE_HW.name}, 35 mm cups 13 deep, centres ${fh(HD.cup)} from the ${edgeW}-side edge (${fh(HD.B)} boring distance).`;
+  const flapTxt = G.thin.top ? `Flaps (${P.TfTop} mm): ${C.HINGE_FLAP_THIN.short}, ${G.flapHw.hinges.length} per flap` : `Flaps (${P.TfTop} mm): 70T3550 unsprung, cups ${fh(HF.cup)} below the top edge`;
+  s.para(dx - 6, 272, s.wrap(`${doorTxt} ${HD.H} mm plates (${HD.code}) 37 back on the side panel: ${fh(HD.overlay)} overlay. ${flapTxt}, on ${HF.H} mm plates (${HF.code}) under the top. Right-hand tower shown.`, 104, 5.4), { size: 5.4, color: GREY });
 
   // 3. runner lines on a tower side, from inside (front edge on the right)
   {
     const sr = 10, rx = dx + 8, rz = 40, NL = G.runner, holes = C.runnerHoles(NL), zIn = G.zPl + P.T, zs = G.runnerZ || [];
     const vr = View(s, 'side', sr, [rx, rz], [G.yB1, zIn]);
-    const [p0, p1] = [vr.Puv([G.yB1, zIn]), vr.Puv([G.yC, G.zS1b])];
+    const [p0, p1] = [vr.Puv([G.yB1, zIn]), vr.Puv([G.yCd, G.zS1b])];
     s.rect(p0[0], p0[1], p1[0] - p0[0], p1[1] - p0[1], { fill: FILL.carcass, lw: LW_VIS });
     for (const z of zs) {
-      const a = vr.Puv([G.yC - NL, z - C.RUNNER_HW.h / 2]), b = vr.Puv([G.yC, z + C.RUNNER_HW.h / 2]);
+      const a = vr.Puv([G.yCd - NL, z - C.RUNNER_HW.h / 2]), b = vr.Puv([G.yCd, z + C.RUNNER_HW.h / 2]);
       s.rect(a[0], a[1], b[0] - a[0], b[1] - a[1], { fill: FILL.zinc, lw: 0.12, color: [40, 42, 46] });
-      for (const h of holes) { const q = vr.Puv([G.yC - h, z]); s.circle(q[0], q[1], 0.35, { fill: INK, lw: 0 }); }
+      for (const h of holes) { const q = vr.Puv([G.yCd - h, z]); s.circle(q[0], q[1], 0.35, { fill: INK, lw: 0 }); }
     }
     let prev = zIn;
     zs.forEach((z, i) => { vr.dimAt([0, G.yB1, prev], [0, G.yB1, z], p0[0] - 4, 'v', fh(z - prev), { size: 4.8 }); prev = z; });
     if (zs.length) {
       const zb = zs[0];
-      vr.dimAt([0, G.yC - holes[0], zb], [0, G.yC, zb], p0[1] - 4, 'h', fh(holes[0]), { size: 4.6, side: 'over' });
-      vr.dimAt([0, G.yC - holes[holes.length - 1], zb], [0, G.yC, zb], p0[1] - 9, 'h', fh(holes[holes.length - 1]), { size: 4.8 });
-      vr.dimAt([0, G.yC - NL, zb], [0, G.yC, zb], p0[1] - 14, 'h', `${fh(NL)} runner`, { size: 4.8 });
+      vr.dimAt([0, G.yCd - holes[0], zb], [0, G.yCd, zb], p0[1] - 4, 'h', fh(holes[0]), { size: 4.6, side: 'over' });
+      vr.dimAt([0, G.yCd - holes[holes.length - 1], zb], [0, G.yCd, zb], p0[1] - 9, 'h', fh(holes[holes.length - 1]), { size: 4.8 });
+      vr.dimAt([0, G.yCd - NL, zb], [0, G.yCd, zb], p0[1] - 14, 'h', `${fh(NL)} runner`, { size: 4.8 });
     }
     s.text(dx - 6, 134, `DRAWER RUNNERS, TOWER SIDE FROM INSIDE  1:${sr}`, { size: 7.5, weight: 'bold' });
-    s.para(dx - 6, 130, s.wrap(`${C.RUNNER_HW.name} ${NL}, full extension, ${C.RUNNER_HW.load} kg, ${C.RUNNER_HW.h} x ${C.RUNNER_HW.w}, a pair per drawer, cabinet members flush with the front edge on the centre lines shown (heights above the tower bottom). Holes from the front edge: ${holes.join(', ')}; screw at least the first, a middle one and the last. Needs ${NL + C.RUNNER_HW.kt} inside the carcase (${fh(G.cD)} here) and ${C.RUNNER_HW.w} each side of the box.`, 104, 5.4), { size: 5.4, color: GREY });
+    s.para(dx - 6, 130, s.wrap(`${C.RUNNER_HW.name} ${NL}, full extension, ${C.RUNNER_HW.load} kg, ${C.RUNNER_HW.h} x ${C.RUNNER_HW.w}, a pair per drawer, cabinet members flush with the front edge on the centre lines shown (heights above the tower bottom). Holes from the front edge: ${holes.join(', ')}; screw at least the first, a middle one and the last. Needs ${NL + C.RUNNER_HW.kt} inside the carcase (${fh(G.cDd)} here, behind ${P.TfDrawer} mm fronts) and ${C.RUNNER_HW.w} each side of the box.`, 104, 5.4), { size: 5.4, color: GREY });
   }
 
   // 3. shelf over the bed from above: pins, latches, stays, flap hinges
   const sp = 12, px0 = 258, py0 = 250;
   const vp = View(s, 'top', sp, [px0 + G.xJ / sp, py0], [0, 0]);
   vp.parts(M.parts.filter(p => !p.leg && !p.mattress && !p.bed), { cut: G.zBm1 + 70, filter: (p) => ['B2', 'B4', 'B5', 'B10', 'B11', 'T2', 'LP', 'PL', 'FS', 'D4', 'SF'].includes(p.mark) || (p.mark === 'FH' && p.name.endsWith('plate')) });
-  const yB = vp.P([0, G.yC, 0])[1] - 6;
+  const yB = vp.P([0, G.yCt, 0])[1] - 6;
   if (P.lockType === 'twin') {
     const hs = P.twinSpacing / 2;
     vp.dimAt([-hs, G.pinY, 0], [hs, G.pinY, 0], yB, 'h', `${fh(2 * hs)} pins`, { size: 5.4 });
-    vp.dimAt([-hs, G.pinY, 0], [-hs, G.yC, 0], vp.P([-hs, 0, 0])[0] + 6, 'v', fh(G.yC - G.pinY), { size: 5 });
+    vp.dimAt([-hs, G.pinY, 0], [-hs, G.yCt, 0], vp.P([-hs, 0, 0])[0] + 6, 'v', fh(G.yCt - G.pinY), { size: 5 });
   }
   if (P.lockType === 'pins') {
     vp.dimAt([-P.lockPinX, G.pinY, 0], [P.lockPinX, G.pinY, 0], yB, 'h', `${fh(2 * P.lockPinX)} pins`, { size: 5.4 });
-    vp.dimAt([-P.lockPinX, G.pinY, 0], [-P.lockPinX, G.yC, 0], vp.P([-P.lockPinX, 0, 0])[0] + 6, 'v', fh(G.yC - G.pinY), { size: 5 });
+    vp.dimAt([-P.lockPinX, G.pinY, 0], [-P.lockPinX, G.yCt, 0], vp.P([-P.lockPinX, 0, 0])[0] + 6, 'v', fh(G.yCt - G.pinY), { size: 5 });
   }
-  vp.dimAt([-G.flapHw.latch, G.yC, 0], [G.flapHw.latch, G.yC, 0], yB - 6, 'h', `${fh(2 * G.flapHw.latch)} latches`, { size: 5.4 });
+  vp.dimAt([-G.flapHw.latch, G.yCt, 0], [G.flapHw.latch, G.yCt, 0], yB - 6, 'h', `${fh(2 * G.flapHw.latch)} latches`, { size: 5.4 });
   s.text(px0 - 4, 276, 'SHELF OVER THE BED, FROM ABOVE  1:12', { size: 7.5, weight: 'bold' });
   s.para(px0 - 4, 272, s.wrap(`${P.lockType === 'twin' ? 'Twin-pin block (hardwood) in the divider\'s front notch. ' : P.lockType === 'pins' ? 'Safety-pin blocks (hardwood) near the front. ' : ''}Push latches drilled ${P.edgeSteel ? 'through the steel flat into the shelf edge' : P.upstand >= 25 ? 'into the lip' : 'into the shelf edge'}, gas stays on the side panels and the divider. Flap hinge plates go under the top at the same x as the cups.`, 140, 5.4), { size: 5.4, color: GREY });
 
@@ -850,7 +866,7 @@ function pageHardware(doc, M, S, info) {
     const pinX = vq.P([0, G.pinY, 0])[0];
     vq.dimAt([0, G.pinY, G.zF1 - P.lockDepth], [0, G.pinY, G.zF1], pinX - 10, 'v', fh(P.lockDepth), { size: 5.4 });
     vq.dimAt([0, G.pinY, G.zF1], [0, G.pinY, G.zBm0], pinX - 10, 'v', fh(P.gapHolder), { size: 5.4, side: 'end' });
-    vq.dimAt([0, G.pinY, G.zBm1], [0, G.yC, G.zBm1], vq.P([0, 0, G.zBm1 + tw.block[2] + 10])[1], 'h', fh(G.yC - G.pinY), { size: 5.4 });
+    vq.dimAt([0, G.pinY, G.zBm1], [0, G.yCt, G.zBm1], vq.P([0, 0, G.zBm1 + tw.block[2] + 10])[1], 'h', fh(G.yCt - G.pinY), { size: 5.4 });
     s.text(qx, b[1] + 8, 'TWIN PIN  1:2', { size: 7.5, weight: 'bold' });
     s.text(qx, b[1] + 4, `section through one pin; room on the right${G.steel ? `; steel flat ${fh(P.steelH)} x ${fh(P.steelT)} in the shelf edge (dark)` : ''}`, { size: 5.2, color: GREY });
     // cut across both pins, looking at the wall
@@ -878,7 +894,7 @@ function pageHardware(doc, M, S, info) {
     const yd = a0[1] - 4;
     for (const [x0, x1] of [[b.tip, G.xFo], [G.xFo, G.xB], [G.xB, G.xJ], [G.xJ, G.xT2], [G.xT2, G.xT2 + b.proud]]) vb.dimAt(D(x0, G.yF), D(x1, G.yF), yd, 'h', null, { size: 5.2 });
     vb.dimAt(D(b.tip, b.y), D(b.tip + tr, b.y), vb.P(D(0, b.y - 16))[1], 'h', f0(tr), { size: 5, color: ACC });
-    vb.dimAt(D(G.xT2 + 40, b.y), D(G.xT2 + 40, G.yC), a1[0] + 4, 'v', null, { size: 5.2 });
+    vb.dimAt(D(G.xT2 + 40, b.y), D(G.xT2 + 40, b.z < G.zStep ? G.yCd : G.yCs), a1[0] + 4, 'v', null, { size: 5.2 });
     for (const [x, t] of [[G.xFo - 9, 'rail'], [(G.xFo + G.xB) / 2, 'gap'], [(G.xB + G.xJ) / 2, 'B1'], [(G.xJ + G.xT2) / 2, 'T2'], [G.xT2 + 10, 'knob']]) { const q = vb.P(D(x, G.yF)); s.text(q[0], yd - 5.5, t, { size: 4.8, ha: 'center', color: GREY }); }
     s.text(a0[0], a1[1] + 8, `SAFETY BOLT, PLAN AT ${f0(b.z)}  1:2`, { size: 7.5, weight: 'bold' });
     s.text(a0[0], a1[1] + 4, 'right-hand side, bed closed, bolt in; pulled back 25 dashed', { size: 5.2, color: GREY });
@@ -894,7 +910,7 @@ function pageHardware(doc, M, S, info) {
     const pinX = vq.P([0, G.pinY, 0])[0];
     vq.dimAt([0, G.pinY, G.zF1 - P.lockDepth], [0, G.pinY, G.zF1], pinX + 12, 'v', fh(P.lockDepth), { size: 5.4 });
     vq.dimAt([0, G.pinY, G.zF1], [0, G.pinY, G.zBm0], pinX + 12, 'v', fh(P.gapHolder), { size: 5.4, side: 'end' });
-    vq.dimAt([0, G.pinY, G.zBm1], [0, G.yC, G.zBm1], vq.P([0, 0, G.zBm1 + 60])[1], 'h', fh(G.yC - G.pinY), { size: 5.4 });
+    vq.dimAt([0, G.pinY, G.zBm1], [0, G.yCt, G.zBm1], vq.P([0, 0, G.zBm1 + 60])[1], 'h', fh(G.yCt - G.pinY), { size: 5.4 });
     s.text(qx, b[1] + 8, 'SAFETY PIN  1:2', { size: 7.5, weight: 'bold' });
     s.para(qx, b[1] + 4, s.wrap(`10 mm pin through a bush in the shelf and a hardwood block, ${P.lockDepth} mm into a steel bush in the foot rail. Lift both pins (behind the flaps) before lowering the bed.`, 130, 5.2), { size: 5.2, color: GREY });
   }
@@ -1161,17 +1177,26 @@ function pageReview(doc, M, S, info) {
     s.heading(214, y, 'FLAGGED BY THE CHECKS NOW');
     y = s.numbered(214, y - 6, live.map(c => [c.title, c.text]), 190, { size: 7.4, numColor: BAD });
   }
-  let yy = Math.max(70, 22 + C.SOURCES.length * 7.2);
-  s.heading(14, yy, 'SOURCES');
+  // sources under the right-hand column, in one or two columns, clear of the title block (top at 40)
+  const n = C.SOURCES.length, room = y - 4 - 6 - 40, cols = n * 7.2 <= room ? 1 : 2, rows = Math.ceil(n / cols), cw = 190 / cols - 4;
+  const pitch = Math.min(7.2, Math.max(5.6, room / rows));
+  let yy = y - 4;
+  s.heading(214, yy, 'SOURCES');
   yy -= 6;
-  for (const [t, u] of C.SOURCES) { s.text(14, yy, t, { size: 6.4 }); s.text(14, yy - 3, u, { size: 5.6, color: GREY }); yy -= 7.2; }
+  C.SOURCES.forEach(([t, u], k) => {
+    const x = 214 + Math.floor(k / rows) * (cw + 4), yk = yy - (k % rows) * pitch;
+    let su = 5.6; while (su > 4 && s.tw(u, su) > cw) su -= 0.2;
+    let uu = u; if (s.tw(uu, su) > cw) { while (uu.length > 20 && s.tw(uu + '...', su) > cw) uu = uu.slice(0, -1); uu += '...'; }
+    let st = 6.4; while (st > 5 && s.tw(t, st) > cw) st -= 0.2;
+    s.text(x, yk, t, { size: st }); s.text(x, yk - 2.8, uu, { size: su, color: GREY });
+  });
   s.finish();
 }
 
 /* ------------------------------------------------------------------ build sequence: timeline and step cards */
 const FIX_SHORT = {
-  s50: '8g x 50 screws', s30: '8g x 30 screws', s25: '8g x 25 pan heads', b25: '6g x 25 screws', r10: '3.5 x 10 pan heads',
-  h15: '3.5 x 15 hardware screws', d8: '8 x 30 dowels', w75: '14g x 75 into studs', kit: 'kit machine screws', m4: 'M4 x 25 handle bolts',
+  s50: '8g x 50 screws', s30: '8g x 30 screws', s25: '8g x 25 pan heads', s20: '8g x 20 pan heads', b25: '6g x 25 screws', r10: '3.5 x 10 pan heads',
+  h15: '3.5 x 15 hardware screws', d8: '8 x 30 dowels', w75: '14g x 75 into studs', kit: 'kit machine screws', m4: 'M4 x 25 handle bolts', m4s: 'M4 x 20 handle bolts',
   pin: '5 mm shelf pins',
 };
 const PREP = [215, 210, 202];
@@ -1284,7 +1309,7 @@ function jointDetail(s, M, B, jy) {
   s.text(ox + T / 2, oy + 64, 'side', { size: 5.8, ha: 'center', color: GREY });
   s.text(ox + T + 66, cl, 'shelf', { size: 5.8, ha: 'right', va: 'middle', color: GREY });
   // spacing along the joint
-  const L = G.cD, k5 = 1 / 5, ex = 196, ey = jy - 30;
+  const L = G.cDtow, k5 = 1 / 5, ex = 196, ey = jy - 30;
   const nS = Math.max(2, Math.ceil(Math.max(0, L - 100) / 200) + 1), sp = (L - 100) / (nS - 1);
   const scr = Array.from({ length: nS }, (_, i) => 50 + i * sp), dw = scr.slice(1).map((v, i) => (v + scr[i]) / 2);
   s.heading(ex, jy, 'ALONG THE JOINT  1:5', `a ${f0(L)} deep tower joint: ${nS} screws and ${dw.length} dowels`);
@@ -1361,14 +1386,14 @@ function pageFixings(doc, M, S, info) {
 const STD_SCALES = [2, 2.5, 5, 7.5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 100];
 const SEQ_RGB = [null, [214, 110, 12], [35, 99, 172], [46, 125, 50], [123, 63, 160], [0, 128, 128]];
 const FXD = { // [length, shank, head, kind, pilot, clearance]
-  s50: [50, 4, 8.2, 'csk', 3, 4.5], s40: [40, 4, 8.2, 'csk', 3, 4.5], s30: [30, 4, 8.2, 'csk', 2.5, 4.5], s35: [35, 4, 8.2, 'csk', 3, 4.5], s25: [25, 4, 8.5, 'pan', 2.5, 6],
+  s50: [50, 4, 8.2, 'csk', 3, 4.5], s40: [40, 4, 8.2, 'csk', 3, 4.5], s30: [30, 4, 8.2, 'csk', 2.5, 4.5], s35: [35, 4, 8.2, 'csk', 3, 4.5], s25: [25, 4, 8.5, 'pan', 2.5, 6], s20: [20, 4, 8.5, 'pan', 2.5, 6],
   b30: [30, 3.5, 7, 'csk', 2, 3.5], b25: [25, 3.5, 7, 'csk', 2, 3.5], b20: [20, 3.5, 7, 'csk', 2, 3.5], b16: [16, 3.5, 7, 'csk', 2, 3.5],
-  r10: [10, 3.5, 7, 'pan', 2, 3.5], r14: [14, 4, 8, 'pan', 2.5, 4], h15: [15, 3.5, 7, 'csk', 2, 3.5], h17: [17, 3.5, 7, 'csk', 2, 3.5], m4: [25, 4, 7, 'pan', 5, 5],
+  r10: [10, 3.5, 7, 'pan', 2, 3.5], r14: [14, 4, 8, 'pan', 2.5, 4], h15: [15, 3.5, 7, 'csk', 2, 3.5], h17: [17, 3.5, 7, 'csk', 2, 3.5], m4: [25, 4, 7, 'pan', 5, 5], m4s: [20, 4, 7, 'pan', 5, 5],
   brad: [40, 1.6, 2.6, 'brad', 0, 0], br30: [30, 1.6, 2.6, 'brad', 0, 0], w75: [75, 6, 12, 'csk', 4, 6.5],
   d8: [30, 8, 8, 'dowel', 8, 8], dom: [40, 8, 22, 'dom', 8, 8],
 };
-const FX_SIZE = { s50: '8g × 50', s40: '8g × 40', s30: '8g × 30', s35: '8g × 35', s25: '8g × 25 pan', b30: '6g × 30', b25: '6g × 25', b20: '6g × 20', b16: '6g × 16',
-  r10: '3.5 × 10 pan', r14: '4 × 14 pan', h15: '3.5 × 15', h17: '3.5 × 17', m4: 'M4 × 25', brad: '40 brad', br30: '30 brad', w75: '14g × 75', d8: 'dowel 8 × 30', dom: 'Domino 8 × 40' };
+const FX_SIZE = { s50: '8g × 50', s40: '8g × 40', s30: '8g × 30', s35: '8g × 35', s25: '8g × 25 pan', s20: '8g × 20 pan', b30: '6g × 30', b25: '6g × 25', b20: '6g × 20', b16: '6g × 16',
+  r10: '3.5 × 10 pan', r14: '4 × 14 pan', h15: '3.5 × 15', h17: '3.5 × 17', m4: 'M4 × 25', m4s: 'M4 × 20', brad: '40 brad', br30: '30 brad', w75: '14g × 75', d8: 'dowel 8 × 30', dom: 'Domino 8 × 40' };
 const PART_NEW = [242, 196, 140], PART_OLD = [233, 228, 219], PART_CTX = [246, 246, 244], STEEL = [84, 89, 98], WOOD_FX = [184, 128, 64], HOLE = [58, 52, 46];
 const D2R = Math.PI / 180;
 const v3 = {
@@ -2373,7 +2398,7 @@ function halfKey(s, M, S, region, hv, info) {
   const [X0, Y0, X1, Y1] = region, W = X1 - X0, B = S.build, J = B.joinery;
   const inDet = new Set();
   for (const k of Object.keys(J.steps)) for (const i of J.steps[k]) for (const op of i.ops) for (const f of op.fast) inDet.add(f.key);
-  const order = ['s50', 's30', 's25', 'b25', 'h15', 'r10', 'w75', 'm4', 'd8'];
+  const order = ['s50', 's30', 's25', 's20', 'b25', 'h15', 'r10', 'w75', 'm4', 'm4s', 'd8'];
   const used = order.filter(k => B.fixings.some(f => f.key === k));
   s.text(X0, Y1 - 3.5, 'FIXINGS KEY, FULL SIZE', { size: 9, weight: 'bold' });
   s.para(X0, Y1 - 8, s.wrap(`Every fixing in this design at 1:1, with the tag used in the assembly details on sheets ${info.detFrom}-${info.detFrom + info.nDet - 1}. Lay a screw on its outline to check it. Counts are for the whole build; the schedule on sheet ${info.fixAt} adds spares.`, W, 6), { size: 6, color: GREY });
@@ -2390,7 +2415,7 @@ function halfKey(s, M, S, region, hv, info) {
       s.text(cx, yl - 3.6, FX_SIZE[k] || k, { size: 5.4, ha: 'center' });
       const q = (B.fixings.find(f => f.key === k) || {}).qty;
       if (q) s.text(cx, yl - 6.1, `${q} in all`, { size: 5, ha: 'center', color: GREY });
-      if (!inDet.has(k)) s.text(cx, yl - 8.4, { w75: 'into the studs', h15: 'all hardware', m4: 'handles' }[k] || 'hardware', { size: 4.6, ha: 'center', color: GREY });
+      if (!inDet.has(k)) s.text(cx, yl - 8.4, { w75: 'into the studs', h15: 'all hardware', m4: 'handles', m4s: 'handles, 12 mm' }[k] || 'hardware', { size: 4.6, ha: 'center', color: GREY });
       x += ws[i] + gap;
     });
   };

@@ -5,7 +5,7 @@ const C = window.MurphyCore, V = window.MurphyViewer;
 const LS_KEY = 'murphy-wardrobe-builder.v3', LS_VIEW = 'murphy-wardrobe-builder.view.v1', LS_THEME = 'murphy-wardrobe-builder.theme';
 const $ = (id) => document.getElementById(id);
 const NUM_FIELDS = ['W', 'H', 'D', 'sideClear', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
-  'hangClear', 'railDrop', 'runnerClear', 'runnerLen', 'boxLess', 'gap', 'gapAbove', 'frontGap', 'T', 'Tb', 'Tback', 'Tsup', 'Tladder', 'Tplinth', 'Tpacker', 'Tledge', 'Thead',
+  'hangClear', 'railDrop', 'runnerClear', 'runnerLen', 'boxLess', 'gap', 'gapAbove', 'frontGap', 'TfDrawer', 'TfSide', 'TfTop', 'T', 'Tb', 'Tback', 'Tsup', 'Tladder', 'Tplinth', 'Tpacker', 'Tledge', 'Thead',
   'pivotFromRail', 'pivotAboveHead', 'cabPivotZ', 'pinGap', 'springLowAlong', 'springLowOut', 'springUpFront', 'springUpZ', 'stopFront', 'stopBelowTop',
   'springD', 'springRodD', 'springEndD', 'springBodyL', 'studS', 'plateT', 'nutStack', 'stopD', 'stopH', 'legD',
   'railD', 'headRailD', 'footRailD', 'railR', 'legFromFoot', 'legFromTop', 'struts', 'ladderW',
@@ -142,7 +142,7 @@ function renderSummary() {
   const st = S.sheets;
   const figs = [
     ['Bed bay, clear', `${f0(G.bayIn)} <small>wide</small>`],
-    ['Tower inside', `${f0(G.towerIn)} x ${f0(G.cD)} <small>deep</small>`],
+    ['Tower inside', `${f0(G.towerIn)} x ${G.cDd === G.cDs ? f0(G.cDd) : f0(G.cDd) + ' / ' + f0(G.cDs)} <small>deep${G.cDd === G.cDs ? '' : ' (drawers / doors)'}</small>`],
     ['Drawer fronts', `${f0(G.doorW)} x ${P.drawers.map(f0).join(', ')}`],
     ['Hanging / top', `${f0(G.hangClear)} / ${f0(G.topClear)} <small>clear</small>`],
     ['Above the bed', `${f0(G.antClear)} <small>clear behind the flaps</small>`],
