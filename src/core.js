@@ -2303,18 +2303,18 @@ function assembly(model, sheets) {
   const studs = (L) => Math.max(2, Math.floor(L / STUDS) + 1);
   const has = (mk) => parts.some(p => p.mark === mk);
   const FX = {
-    s50: ['Cabinet screw 8g x 50 (4.0 x 50), countersunk, T20: every edge joint', 'pilot 3 x 35 deep in the edge; 4.5 clearance + countersink in the face (HSS bit in the steel flat)'],
-    s30: ['Cabinet screw 8g x 30 (4.0 x 30), countersunk, T20: face to face', 'pilot 2.5 in the face; 4.5 clearance + countersink'],
-    s25: ['Pan-head screw 8g x 25 (4.0 x 25), T20: drawer fronts', '6 through the box front (room to adjust); pilot 2.5 x 10 in the front'],
-    s20: ['Pan-head screw 8g x 20 (4.0 x 20), T20: 12 mm drawer fronts', '6 through the box front (room to adjust); pilot 2.5 x 6 in the front, depth stop: it is only 12 thick'],
-    b25: ['Countersunk screw 6g x 25 (3.5 x 25), T15: 6 and 12 mm parts', 'pilot 2; 3.5 clearance + countersink; in the face panel no more than 10 deep'],
-    h15: ['Chipboard screw 3.5 x 15, countersunk, T15: all the hardware', 'pilot 2 x 8: hinge cups and plates, piano hinges, flap stays, runners\' cabinet members, rail brackets'],
-    r10: ['Pan-head chipboard screw 3.5 x 10, T15: runners\' drawer members', 'pilot 2 x 6: the box sides are only 12 thick'],
+    s50: ['Cabinet screw 8g x 50 (4.0 x 50), countersunk, T20, stainless: every edge joint', 'pilot 3 x 35 deep in the edge; 4.5 clearance + countersink in the face (HSS bit in the steel flat)'],
+    s30: ['Cabinet screw 8g x 30 (4.0 x 30), countersunk, T20, stainless: face to face', 'pilot 2.5 in the face; 4.5 clearance + countersink'],
+    s25: ['Pan-head screw 8g x 25 (4.0 x 25), T20, stainless: drawer fronts', '6 through the box front (room to adjust); pilot 2.5 x 10 in the front'],
+    s20: ['Pan-head screw 8g x 20 (4.0 x 20), T20, stainless: 12 mm drawer fronts', '6 through the box front (room to adjust); pilot 2.5 x 6 in the front, depth stop: it is only 12 thick'],
+    b25: ['Countersunk screw 6g x 25 (3.5 x 25), T15 or square, stainless: 6 and 12 mm parts', 'pilot 2; 3.5 clearance + countersink; in the face panel no more than 10 deep'],
+    h15: ['Screw 3.5 x 15, stainless, for hardware: countersunk or pan to suit its holes', 'pilot 2 x 8: hinge cups and plates, piano hinges, flap stays, runners\' cabinet members, rail brackets'],
+    r10: ['Pan-head screw 3.5 x 10, stainless: runner drawer members, hinge door leaves', 'pilot 2 x 6: the box sides are only 12 thick'],
     d8: ['Fluted beech dowel 8 x 30, glued', '8 mm: 12 deep in the face (depth stop), 19 deep in the edge'],
-    w75: ['Batten screw 14g x 75 (6.0 x 75), T30, into timber studs', '6.5 clearance in the rail or panel; brick: 8 x 65 sleeve anchors in 10 mm holes'],
+    w75: ['Bugle batten screw 14g x 75 (6.3 x 75), Torx T40, stainless, into timber studs', '6.5 clearance in the rail or panel; brick: 8 x 65 sleeve anchors in 10 mm holes'],
     kit: [`Machine screw for the kit plates, ${P.packer ? f0(P.Tpacker) + ' longer than supplied' : 'as supplied'}`, 'through the side' + (P.packer ? ' and its pad' : '') + ', as the kit plates'],
-    m4: ['Handle bolt M4 x 25 (18 mm fronts)', '5 through the front'],
-    m4s: ['Handle bolt M4 x 20 (12 mm fronts)', '5 through the front'],
+    m4: ['Handle bolt M4 x 25, stainless (18 mm fronts)', '5 through the front'],
+    m4s: ['Handle bolt M4 x 20, stainless (12 mm fronts)', '5 through the front'],
     pin: ['Shelf pin 5 mm', '5 x 10 deep holes, 32 apart, 37 in from front and back'],
   };
   const qty = {}, steps = [];

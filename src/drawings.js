@@ -1341,7 +1341,7 @@ function pageFixings(doc, M, S, info) {
   let y = s.numbered(nx, ny - 6, [
     'Pilots 2, 2.5 and 3; clearance 3.5, 4.5 and 6.5; 5 for shelf pins and handle bolts; 6 through the drawer box fronts; 10 for the push latches; HSS bits for the steel flat.',
     '8 brad-point with a depth stop and a dowel jig (every wooden joint is 8 mm dowels: no Domino or biscuit joiner); 35 Forstner for the hinge cups, 13 deep, on a stand or hinge jig; a countersink; a 32 mm shelf-pin jig.',
-    'Driver bits: T15 for every 3.5 mm screw, T20 for every 4.0 mm one, T30 for the wall screws. Buy all of them in one brand and finish (zinc-plated or black) so the heads match where they show.',
+    'Driver bits: T15 for every 3.5 mm Torx screw, T20 for every 4.0 mm one, T40 for the stainless bugle batten screws; fresh bits, as stainless heads are softer. Buy all of them in stainless so the heads match where they show.',
     'Track saw, drill-driver, four 600 and two 1200 clamps, a 1200 level or a laser, a stud finder, an edge-banding iron and trimmer.',
   ], wN, { size: 5.8 });
   const mx = nx + wN + 10;
