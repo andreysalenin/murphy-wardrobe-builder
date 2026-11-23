@@ -307,13 +307,28 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
         <summary>Cavity <i class="chev"></i></summary>
         <div class="grp-body">
           <div class="hint">Measured once the old wardrobe is out and the top is open. Everything else follows these three.</div>
-          <div class="field"><label for="W">Width, wall to wall</label><div class="num"><input id="W" type="number" min="1800" max="4000" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="W">Width at the front, wall to wall</label><small>Where the carcass front sits, about 20 in from the mouth.</small></div><div class="num"><input id="W" type="number" min="1800" max="4000" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="Wback">Width at the back</label><small>Blank: the same as the front.</small></div><div class="num"><input id="Wback" type="number" min="1800" max="4000" step="0.5" inputmode="decimal"><span>mm</span></div></div>
           <div class="field"><label for="H">Height, floor to ceiling</label><div class="num"><input id="H" type="number" min="2100" max="3200" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><div><label for="D">Depth</label><small>510 + 90 once the top is opened.</small></div><div class="num"><input id="D" type="number" min="400" max="900" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="sub-hd"><span>Fitting room</span></div>
-          <div class="field"><div><label for="sideClear">Gap to each side wall</label><small>Packed and screwed to the studs.</small></div><div class="num"><input id="sideClear" type="number" min="0" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="hint">Tower to wall at each corner; the carcass stays square and the walls do what they do. Negative: that much planed off the outer side instead.</div>
+          <div class="field"><label for="packFL">Packing, front left</label><div class="num"><input id="packFL" type="number" min="-12" max="80" step="0.5" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><label for="packFR">Packing, front right</label><div class="num"><input id="packFR" type="number" min="-12" max="80" step="0.5" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="packBL">Packing, back left</label><small>Blank: the same as the front left.</small></div><div class="num"><input id="packBL" type="number" min="-12" max="80" step="0.5" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><div><label for="packBR">Packing, back right</label><small>Blank: whatever the back width leaves.</small></div><div class="num"><input id="packBR" type="number" min="-12" max="80" step="0.5" inputmode="decimal"><span>mm</span></div></div>
+          <div class="hint" id="pack-note"></div>
+          <div class="row-btns"><button type="button" class="btn small" id="pack-centre">Centre on the opening</button></div>
           <div class="field"><label for="backGap">Gap to the back wall</label><div class="num"><input id="backGap" type="number" min="0" max="60" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><div><label for="frontSetback">Fronts set back</label><small>From the room wall face.</small></div><div class="num"><input id="frontSetback" type="number" min="0" max="100" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="sub-hd"><span>Studs in the side walls</span></div>
+          <div class="hint">A stud standing proud of each side wall near the front, floor to ceiling. 0: none.</div>
+          <div class="field"><label for="wallStudL">Stands out, left</label><div class="num"><input id="wallStudL" type="number" min="0" max="150" step="0.5" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field"><label for="wallStudR">Stands out, right</label><div class="num"><input id="wallStudR" type="number" min="0" max="150" step="0.5" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field" data-when="wallStudL|wallStudR"><div><label for="wallStudY0">Stud runs from</label><small>Back from the back wall, to its back face.</small></div><div class="num"><input id="wallStudY0" type="number" min="0" max="900" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="wallStudL|wallStudR"><div><label for="wallStudY1">to</label><small>Its front face.</small></div><div class="num"><input id="wallStudY1" type="number" min="0" max="900" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="wallStudL|wallStudR"><div><label for="wallStudClad">Cladding</label><small>On the room, back and front faces. 0: bare.</small></div><div class="num"><input id="wallStudClad" type="number" min="0" max="30" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <label class="check" data-when="wallStudL|wallStudR"><input type="checkbox" id="wallStudFronts"> <span>Fronts stop at the clad studs: the opening runs between them</span></label>
         </div>
       </details>
       <details class="grp" open data-tab="sizes">

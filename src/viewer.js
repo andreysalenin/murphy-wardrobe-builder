@@ -12,7 +12,7 @@ const KIND_STYLE = {
   mattress: { color: 0xeeeeea, rough: 0.95, edges: false }, metal: { color: 0x2f3236, rough: 0.45, metal: 0.4 },
   chrome: { color: 0xc9ccd0, rough: 0.38, metal: 0.35 }, zinc: { color: 0xc4ccd6, rough: 0.32, metal: 0.25 },
   block: { color: 0x8c6239, rough: 0.7 }, rubber: { color: 0x1c1c1e, rough: 0.9, edges: false }, strap: { color: 0x3d4c70, rough: 0.9, edges: false },
-  plastic: { color: 0xf3f2ee, rough: 0.45 }, indicator: { color: 0xe8541a, rough: 0.45, edges: false }, bronze: { color: 0xb88f57, rough: 0.4, metal: 0.4 },
+  plastic: { color: 0xf3f2ee, rough: 0.45 }, indicator: { color: 0xe8541a, rough: 0.45, edges: false }, stud: { color: 0xc9a476, rough: 0.9 }, clad: { color: 0xf4f4f2, rough: 0.5 }, bronze: { color: 0xb88f57, rough: 0.4, metal: 0.4 },
 };
 const T_COL = { 6: 0x7b5cc4, 12: 0x138a7e, 18: 0xc47a12 };
 
@@ -186,11 +186,15 @@ class MurphyScene {
     const P = model.P;
     const fl = new THREE.Mesh(new THREE.PlaneGeometry(P.W + 1600, 3200), new THREE.MeshStandardMaterial({ color: srgb(0xb9b2a6), roughness: 1, transparent: true, opacity: 0.35, depthWrite: false }));
     fl.position.set(0, 1300, -0.5); fl.userData.noFit = true; this.room.add(fl);
+    // the walls as found: each side wall a straight line from its back corner to its front one, carried to the mouth
+    const wx = (S, y) => C.wallAt(G, S, y), V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+    const corners = [[wx('R', 0), wx('L', 0)], [wx('R', P.D), wx('L', P.D)]];
     const lines = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(-P.W / 2, P.D, 0), new THREE.Vector3(-P.W / 2, 0, 0), new THREE.Vector3(-P.W / 2, 0, 0), new THREE.Vector3(P.W / 2, 0, 0),
-      new THREE.Vector3(P.W / 2, 0, 0), new THREE.Vector3(P.W / 2, P.D, 0), new THREE.Vector3(-P.W / 2, 0, P.H), new THREE.Vector3(P.W / 2, 0, P.H),
-      new THREE.Vector3(-P.W / 2, 0, 0), new THREE.Vector3(-P.W / 2, 0, P.H), new THREE.Vector3(P.W / 2, 0, 0), new THREE.Vector3(P.W / 2, 0, P.H),
-      new THREE.Vector3(-P.W / 2, P.D, P.H), new THREE.Vector3(-P.W / 2, 0, P.H), new THREE.Vector3(P.W / 2, P.D, P.H), new THREE.Vector3(P.W / 2, 0, P.H),
+      V3(corners[1][0], P.D, 0), V3(corners[0][0], 0, 0), V3(corners[0][0], 0, 0), V3(corners[0][1], 0, 0),
+      V3(corners[0][1], 0, 0), V3(corners[1][1], P.D, 0), V3(corners[0][0], 0, P.H), V3(corners[0][1], 0, P.H),
+      V3(corners[0][0], 0, 0), V3(corners[0][0], 0, P.H), V3(corners[0][1], 0, 0), V3(corners[0][1], 0, P.H),
+      V3(corners[1][0], P.D, P.H), V3(corners[0][0], 0, P.H), V3(corners[1][1], P.D, P.H), V3(corners[0][1], 0, P.H),
+      V3(corners[1][0], P.D, 0), V3(corners[1][0], P.D, P.H), V3(corners[1][1], P.D, 0), V3(corners[1][1], P.D, P.H),
     ]);
     const rl = new THREE.LineSegments(lines, new THREE.LineBasicMaterial({ color: 0x8a8378, transparent: true, opacity: 0.6 }));
     rl.userData.noFit = true; this.room.add(rl);
@@ -301,7 +305,8 @@ class MurphyScene {
       let vis = true;
       if (!o.fronts && p.kind === 'front' && !p.bed) vis = false;
       if (!o.mattress && p.mattress) vis = false;
-      if (!o.hw && p.hw && !p.mattress) vis = false;
+      if (!o.hw && p.hw && !p.mattress && !p.ctx) vis = false;
+      if (p.ctx && o.room === false) vis = false;
       if (o.only && !o.only(p)) vis = false;
       r.grp.visible = vis;
       let m;

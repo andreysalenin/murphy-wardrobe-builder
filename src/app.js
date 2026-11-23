@@ -4,19 +4,22 @@
 const C = window.MurphyCore, V = window.MurphyViewer;
 const LS_KEY = 'murphy-wardrobe-builder.v3', LS_VIEW = 'murphy-wardrobe-builder.view.v1', LS_THEME = 'murphy-wardrobe-builder.theme';
 const $ = (id) => document.getElementById(id);
-const NUM_FIELDS = ['W', 'H', 'D', 'sideClear', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
+const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'wallStudL', 'wallStudR', 'wallStudY0', 'wallStudY1', 'wallStudClad', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
   'hangClear', 'railDrop', 'runnerClear', 'runnerLen', 'boxLess', 'gap', 'gapAbove', 'frontGap', 'TfDrawer', 'TfSide', 'TfTop', 'headWell', 'T', 'Tb', 'Tback', 'Tsup', 'Tladder', 'Tplinth', 'Tpacker', 'Tledge', 'Thead',
   'pivotFromRail', 'pivotAboveHead', 'cabPivotZ', 'pinGap', 'springLowAlong', 'springLowOut', 'springUpFront', 'springUpZ', 'stopFront', 'stopBelowTop',
   'springD', 'springRodD', 'springEndD', 'springBodyL', 'studS', 'plateT', 'nutStack', 'stopD', 'stopH', 'legD',
   'railD', 'headRailD', 'footRailD', 'railR', 'legFromFoot', 'legFromTop', 'struts', 'ladderW',
   'ledgeClear', 'headAngle', 'headH', 'headGap', 'headLip', 'headClear', 'headDoorOpen', 'headGPO', 'headZone', 'upstand', 'steelH', 'steelT', 'twinSpacing', 'lockPinX', 'wallRail', 'kerf', 'trim'];
+const OPT_FIELDS = ['Wback', 'packBL', 'packBR'];  // blank: worked out from the others
 const SEL_FIELDS = ['kickCentre', 'doorHinge', 'lockType', 'headHinge'];
-const CHK_FIELDS = ['topShelf', 'cableHoles', 'headStore', 'supportOffset', 'faceReveal', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain'];
+const CHK_FIELDS = ['topShelf', 'cableHoles', 'headStore', 'supportOffset', 'faceReveal', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain', 'wallStudFronts'];
 
 const readLS = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } };
 const writeLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage off: settings just aren't remembered */ } };
 const defaults = () => JSON.parse(JSON.stringify(C.DEFAULTS));
 let params = Object.assign(defaults(), readLS(LS_KEY) || {});
+// the side gap became packing at four corners: a saved gap becomes the front packing both sides, once
+{ const saved = readLS(LS_KEY); if (saved && saved.sideClear != null && saved.packFL == null) { params.packFL = params.packFR = Number(saved.sideClear); } delete params.sideClear; }
 // the bed-cabinet sides moved in to the kit's 11 mm gap, with no packers: saved settings still on the old 30 mm
 // default with packers follow, once; a gap someone chose themselves stays
 if (!readLS(LS_KEY + ':gap11')) {
@@ -82,6 +85,7 @@ applyTheme(readLS(LS_THEME) || 'auto');
 /* ---------------------------------------------------------------- inputs */
 function fillInputs() {
   for (const k of NUM_FIELDS) if ($(k)) $(k).value = params[k];
+  for (const k of OPT_FIELDS) if ($(k)) $(k).value = params[k] == null ? '' : params[k];
   for (const k of SEL_FIELDS) if ($(k)) $(k).value = params[k];
   for (const k of CHK_FIELDS) if ($(k)) $(k).checked = !!params[k];
   drawerInputs();
@@ -90,8 +94,9 @@ function fillInputs() {
 }
 // fields that only matter with another option on: data-when="ledge headboard !headStore" or "lockType=twin"
 function whenFields() {
-  const ok = (t) => { const neg = t[0] === '!', k = neg ? t.slice(1) : t, [id, v] = k.split('='), el = $(id); if (!el) return true;
-    const on = v !== undefined ? el.value === v : el.type === 'checkbox' ? el.checked : !!el.value; return neg ? !on : on; };
+  const one = (k) => { const [id, v] = k.split('='), el = $(id); if (!el) return true;
+    return v !== undefined ? el.value === v : el.type === 'checkbox' ? el.checked : el.type === 'number' ? Number(el.value) > 0 : !!el.value; };
+  const ok = (t) => { const neg = t[0] === '!', k = neg ? t.slice(1) : t, on = k.split('|').some(one); return neg ? !on : on; };  // a|b: either
   document.querySelectorAll('.rail [data-when]').forEach(el => el.classList.toggle('off', !el.dataset.when.split(/\s+/).every(ok)));
 }
 const LS_TAB = 'murphy-wardrobe-builder.tab';
@@ -104,6 +109,7 @@ function showTab(t) {
 }
 function readInputs() {
   for (const k of NUM_FIELDS) { const el = $(k); if (el && el.value !== '' && isFinite(Number(el.value))) params[k] = Number(el.value); }
+  for (const k of OPT_FIELDS) { const el = $(k); if (el) params[k] = el.value === '' || !isFinite(Number(el.value)) ? null : Number(el.value); }
   for (const k of SEL_FIELDS) if ($(k)) params[k] = $(k).value;
   for (const k of CHK_FIELDS) if ($(k)) params[k] = $(k).checked;
   params.drawers = [...document.querySelectorAll('#drawers input')].map(i => Number(i.value) || 180);
@@ -144,6 +150,7 @@ function rebuild(keepView, sync) {
     summary = C.summary(model);
   } catch (e) { console.error(e); status('That combination of sizes does not build: ' + e.message); return; }
   if (viewer) { viewer.setModel(model, keepView); viewer.set(viewState()); }
+  renderCavity();
   renderSummary();
   renderSheets();
   renderReview();
@@ -151,11 +158,26 @@ function rebuild(keepView, sync) {
   $('hdr-size').textContent = `${f0(params.W)} x ${f0(params.H)} x ${f0(params.D)}`;
 }
 
+/* ---------------------------------------------------------------- cavity: what the blanks work out to */
+function renderCavity() {
+  const { P, G } = model, pk = G.pack, r1 = (v) => String(Math.round(v * 10) / 10);
+  if ($('Wback')) $('Wback').placeholder = r1(P.W);
+  if ($('packBL')) $('packBL').placeholder = r1(P.packFL);
+  if ($('packBR')) $('packBR').placeholder = r1(pk.Wb - 2 * G.cw - pk.BL);
+  const off = G.openOff, studs = G.wstuds.length && P.wallStudFronts;
+  const add = Math.abs(pk.backSum - pk.Wb) > 0.5 ? ` <b>The back adds up to ${r1(pk.backSum)}, not ${r1(pk.Wb)}.</b>` : '';
+  if ($('pack-note')) $('pack-note').innerHTML = `Carcass <b>${r1(2 * G.cw)}</b> wide. ${studs ? 'Opening between the clad studs' : 'Opening'} <b>${r1(G.openL + G.openR)}</b>, ` +
+    (Math.abs(off) < 0.05 ? 'centred on the bed.' : `its centre <b>${r1(Math.abs(off))}</b> ${off > 0 ? 'left' : 'right'} of the bed's.`) + add;
+  if ($('pack-centre')) $('pack-centre').disabled = Math.abs(off) < 0.05;
+}
+
 /* ---------------------------------------------------------------- summary */
 function renderSummary() {
   const { P, G } = model, S = summary;
   const st = S.sheets;
   const figs = [
+    ['Carcass', `${f0(2 * G.cw)} <small>wide, square</small>`],
+    ['Opening', `${f0(G.openL + G.openR)} <small>${Math.abs(G.openOff) < 0.05 ? 'symmetric' : f0(Math.abs(G.openOff)) + ' off centre'}</small>`],
     ['Bed bay, clear', `${f0(G.bayIn)} <small>wide</small>`],
     ['Tower inside', `${f0(G.towerIn)} x ${G.cDd === G.cDs ? f0(G.cDd) : f0(G.cDd) + ' / ' + f0(G.cDs)} <small>deep${G.cDd === G.cDs ? '' : ' (drawers / doors)'}</small>`],
     ['Drawer fronts', `${f0(G.doorW)} x ${P.drawers.map(f0).join(', ')}`],
@@ -354,6 +376,7 @@ function bind() {
   showTab(readLS(LS_TAB) || 'design');
   $('dr-dec').addEventListener('click', () => { readInputs(); if (params.drawers.length > 1) params.drawers.pop(); drawerInputs(); schedule(true); });
   $('dr-inc').addEventListener('click', () => { readInputs(); if (params.drawers.length < 10) params.drawers.push(params.drawers[params.drawers.length - 1] || 180); drawerInputs(); schedule(true); });
+  $('pack-centre').addEventListener('click', () => { readInputs(); Object.assign(params, C.centreOnOpening(params)); fillInputs(); schedule(true); });
   $('dr-equal').addEventListener('click', () => { readInputs(); params.drawers = params.drawers.map(() => params.drawers[0]); drawerInputs(); schedule(true); });
   $('lib-add').addEventListener('click', () => { readInputs(); params.sheets.push({ T: 18, L: 2440, W: 1220, n: 1 }); libRows(); schedule(true); });
   $('lib').addEventListener('click', (e) => { const b = e.target.closest('[data-del]'); if (!b) return; readInputs(); params.sheets.splice(Number(b.dataset.del), 1); libRows(); schedule(true); });

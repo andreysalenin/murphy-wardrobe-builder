@@ -9,10 +9,21 @@
    Names in comments are the macros in murphy_bed.tikz (metres there, mm here). */
 const DEFAULTS = {
   // cavity
-  W: 2458,            // aperturew
+  W: 2458,            // aperturew: wall to wall at the front (where the carcass front sits)
+  Wback: null,        // wall to wall at the back wall (null: the same as at the front, walls parallel)
   H: 2554,            // apertureh
   D: 600,             // cavity depth once the top is opened (510 + 90)
-  sideClear: 5,       // carcass to cavity side wall, each side (scribe / packing room)
+  // the carcass stays square; each corner between a tower and its side wall is packed (or, negative, the tower's
+  // outer side is planed to the wall). Left and right as seen from the room.
+  packFL: 5, packFR: 5, // at the front
+  packBL: null,       // at the back, left (null: the same as the front left)
+  packBR: null,       // at the back, right (null: whatever the back width leaves)
+  // timber studs standing proud of the side walls near the front (as found in the master robe), each clad on its
+  // three exposed faces; 0 = no stud on that side
+  wallStudL: 0, wallStudR: 0, // how far each stands proud of its wall
+  wallStudY0: 495, wallStudY1: 585, // where they run, front to back, from the back wall
+  wallStudClad: 16,   // cladding on the room, back and front faces (0: bare)
+  wallStudFronts: true, // the fronts stop a reveal short of the clad studs: the opening is between them
   backGap: 6,         // carcass back to wall: packers of 6 and 12 stack to fill it behind the wall rails
   frontSetback: 0,    // front faces behind the cavity mouth
   frontGap: 1,        // fronts off the carcass edge (bumpers)
@@ -221,7 +232,15 @@ function normParams(p) {
   const P = Object.assign(clone(DEFAULTS), p ? clone(p) : {});
   const num = (k, lo, hi) => { let v = Number(P[k]); if (!isFinite(v)) v = DEFAULTS[k]; P[k] = Math.min(hi, Math.max(lo, v)); };
   num('W', 1800, 4000); num('H', 2100, 3200); num('D', 400, 900);
-  num('sideClear', 0, 40); num('backGap', 0, 60); num('frontSetback', 0, 100); num('frontGap', 0, 5);
+  // the side gap became packing at four corners: an old 'sideClear' becomes the front packing both sides
+  if (p && p.sideClear != null && p.packFL == null && p.packFR == null) P.packFL = P.packFR = Number(p.sideClear);
+  delete P.sideClear;
+  const opt = (k, lo, hi) => { if (P[k] === null || P[k] === undefined || P[k] === '' || !isFinite(Number(P[k]))) { P[k] = null; return; } P[k] = Math.min(hi, Math.max(lo, Number(P[k]))); };
+  num('packFL', -12, 80); num('packFR', -12, 80); opt('Wback', 1800, 4000); opt('packBL', -12, 80); opt('packBR', -12, 80);
+  num('wallStudL', 0, 150); num('wallStudR', 0, 150); num('wallStudY0', 0, 900); num('wallStudY1', 0, 900); num('wallStudClad', 0, 30);
+  if (P.wallStudY1 < P.wallStudY0 + 10) P.wallStudY1 = P.wallStudY0 + 10;
+  P.wallStudFronts = P.wallStudFronts !== false;
+  num('backGap', 0, 60); num('frontSetback', 0, 100); num('frontGap', 0, 5);
   for (const k of ['TfDrawer', 'TfSide', 'TfTop']) P[k] = Number(P[k]) <= 15 ? 12 : 18;
   num('mW', 800, 2000); num('mL', 1800, 2200); num('mT', 120, 400);
   num('gapMx', 5, 80); num('gapMy', 0, 40); num('gapHolder', 0, 80); num('gapHydr', 5, 80); num('gapBelow', 0, 200); num('faceBelowFrame', 0, 60);
@@ -445,16 +464,31 @@ function runnerFor(P, depth) {
   return best;
 }
 
+// x of a side wall's face at depth y (L at +x, R at -x): a straight line through its back and front corners
+function wallAt(G, S, y) { const w = G.walls[S]; return w[0] + (w[1] - w[0]) * y / G.walls.yRef; }
+
+// trade front packing between the sides so the carcass sits centred on the opening the fronts fill
+function centreOnOpening(params) {
+  const P = normParams(params), G = derived(P), d = G.openOff, out = {};
+  if (Math.abs(d) < 0.05) return out;
+  // the opening's centre sits d toward the left: more packing on the right moves the carcass left by the same
+  out.packFL = Math.round((P.packFL - d) * 10) / 10; out.packFR = Math.round((P.packFR + d) * 10) / 10;
+  if (P.packBL != null) out.packBL = Math.round((P.packBL - d) * 10) / 10;
+  if (P.packBR != null) out.packBR = Math.round((P.packBR + d) * 10) / 10;
+  return out;
+}
+
 function derived(P) {
   const T = P.T, g = P.gap, G = {};
   G.T = T;
-  G.xA = P.W / 2;                              // cavity half width
+  // the carcass, square and symmetric about x = 0; the cavity may sit off-centre round it (see the walls below)
+  G.cw = (P.W - P.packFL - P.packFR) / 2;      // carcass half width
   G.xFi = P.mW / 2 + P.gapMx;                  // frame side rail, inner face
   G.xFo = G.xFi + T;                           // frame side rail, outer face (= face panel edge, sideofmattressholder)
   G.xB = G.xFo + P.gapHydr;                    // bed-cabinet side, inner face
   G.xJ = G.xB + T;                             // joint between the bed-cabinet side and the tower side (the doubled 36)
   G.xT2 = G.xJ + T;                            // tower inner side, face toward the drawers
-  G.xOo = G.xA - P.sideClear;                  // tower outer side, outer face
+  G.xOo = G.cw;                                // tower outer side, outer face
   G.xOi = G.xOo - T;                           // tower outer side, inner face
   G.towerIn = G.xOi - G.xT2;                   // clear width inside a tower (borderspacex)
   G.towerW = G.xOo - G.xJ;                     // tower outside width
@@ -472,6 +506,27 @@ function derived(P) {
   G.yB1 = P.backGap + P.Tback;                 // carcass rear edge
   G.cD = G.yC - G.yB1;                         // carcass depth behind 18 mm fronts
   G.cDd = G.yCd - G.yB1; G.cDs = G.yCs - G.yB1; G.cDt = G.yCt - G.yB1; G.cDtow = G.yCtow - G.yB1;
+  // the side walls: straight lines from the back corners to the front ones (taken at the carcass front, yC), carried
+  // on to the cavity mouth; x of each wall's face at the back and at yC (L at +x, R at -x)
+  {
+    const BL = P.packBL != null ? P.packBL : P.packFL, Wb = P.Wback != null ? P.Wback : P.W;
+    const BR = P.packBR != null ? P.packBR : Wb - 2 * G.cw - BL;
+    G.pack = { FL: P.packFL, FR: P.packFR, BL, BR, Wb, backSum: BL + 2 * G.cw + BR, autoBL: P.packBL == null, autoBR: P.packBR == null };
+    G.walls = { yRef: G.yC, L: [G.cw + BL, G.cw + P.packFL], R: [-(G.cw + BR), -(G.cw + P.packFR)] };
+    // studs: their clad faces in from each wall (distances from x = 0, toward the bed)
+    G.wstuds = [];
+    for (const [S, s, pr] of [['L', 1, P.wallStudL], ['R', -1, P.wallStudR]]) if (pr > 0) {
+      const c = P.wallStudClad, y0 = P.wallStudY0, y1 = P.wallStudY1, xw = Math.abs(G.walls[S][1]);  // in front of the carcass: the front width
+      G.wstuds.push({ S, s, p: pr, clad: c, y0, y1, yc0: y0 - c, yc1: y1 + c, xWall: xw, xStud: xw - pr, xFace: xw - pr - c });
+    }
+    // the opening the fronts fill: wall to wall at the front, or between the clad studs where they reach the fronts
+    const band = Math.min(G.yFbOf.side, G.yFbOf.drawer, G.yFbOf.top, G.yFb) - 2;
+    const lim = (S) => { let x = Math.abs(G.walls[S][1]); const st = G.wstuds.find(q => q.S === S);
+      if (st && P.wallStudFronts && st.yc1 > band) x = Math.min(x, st.xFace); return x; };
+    G.openL = lim('L'); G.openR = lim('R'); G.frontBand = band;
+    G.xA = Math.min(G.openL, G.openR);         // the fronts' half width: symmetric, a reveal short of the nearer side
+    G.openOff = (G.openL - G.openR) / 2;       // the opening's centre, + toward the left wall
+  }
   G.zTop = P.H - P.gapAbove;                   // carcass top surface (header filler above)
   G.zTopB = G.zTop - T;
   // bed frame (closed). The face panel starts at gapBelow; the frame's head end sits faceBelowFrame higher.
@@ -517,7 +572,7 @@ function derived(P) {
   G.plankMax = Math.max(0, ...P.sheets.filter(q => q.T === T).map(q => Math.max(q.L, q.W) - 2 * P.trim));
   G.plankSpan = 2 * (G.xA - g);
   G.plankL = G.plankMax ? Math.min(G.plankSpan, Math.floor(G.plankMax)) : G.plankSpan;
-  G.plankEnd = (P.W - G.plankL) / 2;             // gap from each cavity wall to the planks' ends
+  G.plankEnd = G.xA - G.plankL / 2;               // gap from the opening's nearer side to the planks' ends
   const zD0 = G.kickH + g;                      // first drawer front
   G.drawerDrop = P.gapBelow - zD0;
   G.zPl = zD0;                                  // tower bottom panel, underside (plinth top)
@@ -595,7 +650,7 @@ const COLORS = { // RGB 0..1 for STEP; the viewer has matching styles
   carcass: [0.86, 0.76, 0.59], front: [0.91, 0.84, 0.70], frame: [0.80, 0.66, 0.46], deck: [0.84, 0.72, 0.53],
   drawer: [0.89, 0.80, 0.64], back: [0.80, 0.71, 0.55], plinth: [0.74, 0.63, 0.47], packer: [0.70, 0.55, 0.36],
   ledge: [0.86, 0.76, 0.59], mattress: [0.93, 0.93, 0.91], metal: [0.20, 0.21, 0.23], chrome: [0.78, 0.79, 0.81], zinc: [0.70, 0.73, 0.77],
-  block: [0.55, 0.38, 0.22], rubber: [0.10, 0.10, 0.11], bronze: [0.72, 0.56, 0.34], strap: [0.24, 0.30, 0.44], plastic: [0.95, 0.95, 0.93], indicator: [0.91, 0.33, 0.10],
+  block: [0.55, 0.38, 0.22], rubber: [0.10, 0.10, 0.11], bronze: [0.72, 0.56, 0.34], strap: [0.24, 0.30, 0.44], plastic: [0.95, 0.95, 0.93], indicator: [0.91, 0.33, 0.10], stud: [0.78, 0.64, 0.45], clad: [0.96, 0.96, 0.95],
 };
 
 // the made bed and where its bedding goes: two pillows at the head and a doona, in the open bed's frame (the viewer
@@ -1252,6 +1307,17 @@ function build(params, opts) {
     if (p.bed) p.solids = p.leg ? legSolids(G, p.solids[0].o[0], bedTh, true) : p.solids.map(q => rotatePrism(q, G.pivot, bedTh));
     else if (p.dyn && p.dyn.type === 'pin') p.solids = p.solids.map(q => Object.assign({}, q, { o: add(q.o, [0, 0, p.dyn.lift]) }));
   }
+  // the studs in the side walls and their cladding: part of the room, drawn for fit, never cut or exported
+  for (const st of G.wstuds) {
+    const side = st.S === 'L' ? 'left' : 'right', X = (a, b) => st.s > 0 ? [a, b] : [-b, -a];
+    const [sx0, sx1] = X(st.xStud, st.xWall + Math.max(8, 35 - st.p)), zH = P.H;  // a 35 deep stud: what isn't proud is in the wall
+    put({ mark: 'WS', name: `Stud in the ${side} wall (${st.S})`, grp: 'room', kind: 'stud', hw: true, ctx: true, solids: [box(sx0, sx1, st.y0, st.y1, 0, zH)] });
+    if (st.clad > 0) {
+      const [fx0, fx1] = X(st.xFace, st.xStud), [ex0, ex1] = X(st.xStud, st.xWall);
+      put({ mark: 'WS', name: `Stud cladding, ${side} (${st.S})`, grp: 'room', kind: 'clad', hw: true, ctx: true,
+        solids: [box(fx0, fx1, st.yc0, st.yc1, 0, zH), box(ex0, ex1, st.yc0, st.y0, 0, zH), box(ex0, ex1, st.y1, st.yc1, 0, zH)] });
+    }
+  }
   G.bedding = bedding(P, G);
   const model = { P, G, parts, bedAngle: opts.bedAngle || 0 };
   model.checks = checks(model);
@@ -1601,7 +1667,10 @@ function clearanceSchedule(model) {
   const D = [], Fm = hingeGapMin(P.T);
   D.push(row('Reveal beside the bed face', `${P.gap}`, G.bedReveal, G.bedReveal < P.gap - 1 ? 'tight' : G.bedReveal > P.gap + 1 ? 'info' : 'ok', G.bedReveal > P.gap + 1 ? 'wider than the other fronts' : ''));
   D.push(row('Bed face top to the flaps', `${P.gap}`, G.flapZ[0] - G.zF1, near(G.flapZ[0] - G.zF1, P.gap, 1)));
-  if (P.doorHinge === 'outer') D.push(row('Door hinge edge to the cavity wall', `${Fm} or more`, P.gap, atLeast(P.gap, Fm), 'Blum, to open to 110 deg'));
+  if (P.doorHinge === 'outer') for (const [S, o] of [['left', G.openL], ['right', G.openR]]) {
+    const rv = o - G.doorX[1];
+    D.push(row(`Door hinge edge to the ${G.wstuds.some(q => (q.S === 'L') === (S === 'left') && P.wallStudFronts && q.yc1 > G.frontBand) ? 'clad stud' : 'cavity wall'}, ${S}`, `${Fm} or more`, rv, atLeast(rv, Fm), 'Blum, to open to 110 deg'));
+  }
   else D.push(row('Open doors to the lowered bed', '10 or more', G.doorX[0] - G.xFo - P.faceOverhang, atLeast(G.doorX[0] - G.xFo - P.faceOverhang, 10)));
   D.push(row('Flap gas stays: closed length less stroke', '90 or more', G.stay.L0 - G.stay.stroke, G.stay.ok ? 'ok' : 'tight', G.stay.ok ? `stay about ${Math.ceil(G.stay.L1 / 5) * 5} open, ${Math.ceil(G.stay.stroke / 10) * 10} stroke` : 'no stock stay: use a lift fitting'));
   D.push(row('Flap stays to the shelf and the top, as the flaps open', '5 or more', G.stay.clear, atLeast(G.stay.clear, 5)));
@@ -1621,7 +1690,14 @@ function clearanceSchedule(model) {
   groups.push({ key: 'D', title: 'FRONTS AND FITTINGS', sub: '', rows: D });
   // E. fitting in the room
   const E = [], towerH = G.zTop - G.zPl, diag = Math.hypot(towerH, G.cDtow + P.Tback);
-  E.push(row('Towers to the cavity walls', '3 or more', P.sideClear, atLeast(P.sideClear, 3), 'to plumb and scribe'));
+  for (const [k, what] of [['FL', 'front left'], ['FR', 'front right'], ['BL', 'back left'], ['BR', 'back right']]) {
+    const v = G.pack[k];
+    E.push(row(`Tower to the wall, ${what}`, '3 or more, or planed', v < 0 ? `${r1(-v)} planed` : v, v < 0 ? (-v <= P.T / 2 ? 'ok' : 'tight') : atLeast(v, 3), v < 0 ? 'the outer side planed to the wall' : 'packed, to plumb and scribe'));
+  }
+  for (const st of G.wstuds) {
+    const yOver = Math.min(st.yc1, G.yCtow) - Math.max(st.yc0, G.yB1), d = st.xFace - G.cw;
+    if (yOver > 0) E.push(row(`Tower to the clad stud, ${st.S === 'L' ? 'left' : 'right'}`, '0 or more', d, atLeast(d, 0), `the stud ${r1(st.p)} proud${st.clad ? ' and ' + r1(st.clad) + ' cladding' : ''}`));
+  }
   if (G.head && !G.head.skipped) E.push(row('Headboard box: wall to the backrest inside, at the top', `${Math.round(P.headClear)} or more`, G.head.clear, atLeast(G.head.clear, P.headClear), `a wall outlet and its plug; ${G.head.maxAngle.toFixed(1)} deg lean at most`));
   E.push(row('Carcass back to the wall', '5 or more', P.backGap, atLeast(P.backGap, 5), 'packers fill it behind the wall rails'));
   E.push(row('Standing a tower up: diagonal under the ceiling', '10 or more', P.H - diag, atLeast(P.H - diag, 10), 'from the floor'));
@@ -1649,6 +1725,7 @@ function clearanceSchedule(model) {
 
 /* ------------------------------------------------------------------ checks (design review, live) */
 const h5 = (x) => String(Math.round(x * 2) / 2);
+const r1 = (v) => Math.round(v * 10) / 10;
 function checks(model) {
   const { P, G } = model, out = [];
   const w = (level, title, text, tag) => out.push({ level, title, text, tag: tag || '' });
@@ -1728,7 +1805,29 @@ function checks(model) {
   if (G.runner + RUNNER_HW.kt > G.cDd + 0.1) w('bad', 'Runners too long', `${G.runner} runners need ${G.runner + RUNNER_HW.kt} inside the tower; it has ${f0(G.cDd)}.`, 'layout');
   else if (!RUNNER_STD.includes(G.runner)) w('warn', 'Runner length', `${RUNNER_HW.name} comes in 250 to 700 in 50s; ${G.runner} is not one of them.`, 'hardware');
   if (P.doorHinge === 'outer' && P.gap < hingeGapMin(P.TfSide)) w('warn', 'Doors next to the cavity walls', `Each tower door is hinged ${f0(P.gap)} mm from the cavity wall with its face flush with the room wall; a ${(G.thin.side ? HINGE_THIN : HINGE_HW).short} on a ${P.TfSide} mm door wants about ${hingeGapMin(P.TfSide)} beside its hinge edge to swing clear. Widen the reveals or add scribe fillers at the walls.`, 'fronts');
-  if (P.sideClear < 3) w('warn', 'No room to scribe the towers', `${f0(P.sideClear)} mm between each tower and its cavity wall leaves nothing to plumb and pack it against an out-of-true wall; 5 or more is easier.`, 'install');
+  {
+    const K = [['FL', 'front left'], ['FR', 'front right'], ['BL', 'back left'], ['BR', 'back right']], pk = G.pack;
+    const tight = K.filter(([k]) => pk[k] >= 0 && pk[k] < 3 && pk['F' + k[1]] >= 0 && pk['B' + k[1]] >= 0), plane = K.filter(([k]) => pk[k] < 0);
+    if (tight.length) w('warn', 'No room to scribe the towers', `${tight.map(([k, n]) => `${n} ${f0(pk[k])}`).join(', ')} mm between a tower and its wall leaves nothing to plumb and pack it against an out-of-true wall; 5 or more is easier, or plane the side to the wall (negative packing).`, 'install');
+    const over = plane.filter(([k]) => -pk[k] > P.T / 2 + 0.05);
+    if (over.length) w('bad', 'Too much to plane off a tower side', `${over.map(([k, n]) => `${n} ${r1(-pk[k])}`).join(', ')} mm off an ${f0(P.T)} mm side is more than half of it (${f0(P.T / 2)}). Pack that wall out, or narrow the carcass.`, 'layout');
+    else if (plane.length) w('info', 'Tower sides planed to the walls', plane.map(([k, n]) => {
+      const S = k[1] === 'L' ? 'left' : 'right', other = (k[0] === 'F' ? 'B' : 'F') + k[1];
+      return `Plane the ${S} tower's outer side ${r1(-pk[k])} mm at the ${k[0] === 'F' ? 'front' : 'back'}, ${pk[other] < 0 ? 'and ' + r1(-pk[other]) + ' at the ' + (k[0] === 'F' ? 'back' : 'front') : 'tapering out toward the ' + (k[0] === 'F' ? 'back' : 'front')}.`;
+    }).filter((t, i, a) => a.indexOf(t) === i).join(' ') + ' The carcass stays square; the walls are what is out.', 'install');
+    if (Math.abs(pk.backSum - pk.Wb) > 0.5) w('bad', 'Packing at the back does not add up', `Back left ${r1(pk.BL)} + carcass ${r1(2 * G.cw)} + back right ${r1(pk.BR)} = ${r1(pk.backSum)}, but the cavity is ${r1(pk.Wb)} at the back. Leave the back-right packing blank to take what is left.`, 'layout');
+    for (const st of G.wstuds) {
+      const side = st.S === 'L' ? 'left' : 'right', yOver = Math.min(st.yc1, G.yCtow) - Math.max(st.yc0, G.yB1), d = st.xFace - G.cw;
+      if (yOver > 0 && d < -0.05) w('bad', `The ${side} tower runs into the stud`, `The ${side} stud${st.clad ? ', clad,' : ''} stands ${r1(st.p + st.clad)} out of its wall from ${f0(st.yc0)} to ${f0(Math.min(st.yc1, P.D))} back from the wall, ${r1(-d)} mm into the tower. Pack the front ${side} at least ${r1(st.p + st.clad)} (the towers get narrower), or take the cladding off that face.`, 'layout');
+      if (!P.wallStudFronts && st.yc1 > G.frontBand && st.xFace < G.doorX[1] + 0.05) w('bad', `The ${side} door runs into the clad stud`, `The clad stud reaches the fronts (to ${f0(st.yc1)}) and its face is ${r1(G.doorX[1] - st.xFace)} inside the door's outer edge. Turn on "Fronts stop at the clad studs".`, 'layout');
+    }
+    // symmetry: measured against the opening the fronts fill, not the cavity
+    const off = G.openOff, edge = (S) => { const st = G.wstuds.find(q => q.S === S), pk = P['packF' + S];
+      return st && P.wallStudFronts && st.yc1 > G.frontBand ? `front packing ${r1(pk)} less the clad stud's ${r1(st.p + st.clad)}` : `front packing ${r1(pk)}`; };
+    const why = [`the gap from the carcass to the opening's edge is ${r1(G.openL - G.cw)} on the left (${edge('L')}) and ${r1(G.openR - G.cw)} on the right (${edge('R')})`];
+    if (Math.abs(off) < 0.05) w('info', 'Symmetric about the opening', `The opening the fronts fill runs ${r1(G.openR)} right and ${r1(G.openL)} left of the bed's centre line: truly symmetric, to within 0.05 mm.`, 'layout');
+    else w('info', 'Not symmetric about the opening', `The opening's centre is ${r1(Math.abs(off))} mm ${off > 0 ? 'left' : 'right'} of the bed's centre line, because ${why[0]}. The fronts stay symmetric about the bed, so the reveal at the ${off > 0 ? 'left' : 'right'} side of the opening is ${r1(2 * Math.abs(off) + P.gap)} instead of ${f0(P.gap)}. "Centre on the opening" moves the carcass ${r1(Math.abs(off))} by trading front packing between the sides.`, 'layout');
+  }
   const sideLen = G.zTopB - G.zPl - P.T;
   const maxL = Math.max(...P.sheets.filter(s => s.T === P.T).map(s => s.L - 2 * P.trim), 0);
   if (sideLen > maxL) w('bad', 'Tower sides longer than the sheets', `${f0(sideLen)} needed, ${f0(maxL)} usable.`, 'stock');
@@ -1751,7 +1850,7 @@ function reviewNotes(model, S) {
   const st18 = S ? S.sheets.find(q => q.T === P.T) : null;
   const edits = [
     ['Modules that fit the sheets', `Full-height sides of ${f0(P.H)} do not come out of a 2440 sheet. The wardrobe is two towers on plinths plus a bed cabinet: tower sides ${f0(G.zTopB - G.zPl - P.T)} between a top and bottom, bed-cabinet sides ${f0(G.zBm0)} from the floor to the shelf above the bed and ${f0(G.antClear)} from the shelf to the top. The doubled ${2 * P.T} mm sides of the TikZ stay doubled the full height, one tower side screwed to the bed-cabinet sides, broken only where the shelf and its steel flat pass through; a 6 mm back over the shelf space ties the box together like the towers' backs.`],
-    ['Room to fit and scribe', `${P.sideClear} mm each side and ${P.backGap} mm at the back for packers into the studs; the doors still finish ${P.gap} mm off the walls as drawn. The ${f0(P.gapAbove)} header filler is scribed to the ceiling.`],
+    ['Room to fit and scribe', `The carcass is ${f0(2 * G.cw)} wide and square. Packing at each corner, front / back: left ${r1(G.pack.FL)} / ${r1(G.pack.BL)}, right ${r1(G.pack.FR)} / ${r1(G.pack.BR)} (negative: the side is planed to the wall), and ${P.backGap} mm at the back for packers into the studs. The cavity is ${f0(P.W)} at the front and ${f0(G.pack.Wb)} at the back.${G.wstuds.length ? ` The ${G.wstuds.length === 2 ? 'studs stand' : 'stud stands'} out of the side walls from ${f0(P.wallStudY0)} to ${f0(P.wallStudY1)} back${P.wallStudClad ? `, clad ${f0(P.wallStudClad)} on three faces` : ''}${P.wallStudFronts ? '; the fronts fill the opening between them' : ''}.` : ''} The doors finish ${P.gap} mm off ${P.wallStudFronts && G.wstuds.length ? 'the nearer side of the opening' : 'the walls'}. The ${f0(P.gapAbove)} header filler is scribed to the ceiling.`],
     ['Bed frame where the kit puts it', `The plan puts the pivot 9 in from the rail's head end and 11-3/4 in off the floor, so the kit's frame sits 2-3/4 in (70) up. Here the face panel still starts at ${f0(P.gapBelow)} in line with the drawers, but the frame starts ${f0(P.faceBelowFrame)} higher, behind it, and the mattress end gaps are ${P.gapMy} mm, not 7. The pivot lands at ${f0(G.pivot[1])}, the legs reach the floor as supplied, and the side rails come out at ${f0(G.frameL)} (kit: 81-1/2 in = 2070).`],
     ['Side rail to cabinet side', (() => {
       const X = gapFacts(P, G), r1 = (v) => (Math.round(v * 10) / 10).toString();
@@ -2341,7 +2440,7 @@ function assembly(model, sheets) {
     text: `Runner holes on the tower sides (${holes.join(', ')} from the front edge, on the centre lines on sheet 5); hinge-plate holes 37 back and 32 apart at the hinge heights; ${G.thin.side ? 'the 12 mm doors take thin-front hinges: two 10 mm dowel holes 6 deep, 32 apart, per hinge, at the boss positions on sheet 5' : `35 x 13 cups ${G.hingeDoor.cup} in from the door edges`} and ${G.thin.top ? 'two 10 x 6 dowel holes per hinge in the flaps' : `${G.hingeFlap.cup} below the flaps' top edges`}; shelf-pin holes; the dowel holes with a jig and the screw clearance holes, from the set-out strips in the assembly details; the kit plates on the bed-cabinet sides from sheet 5${P.cableHoles && G.cables ? '; the 20 mm cable holes from the table on sheet 7, each one through all its parts while they are loose, with a backing board so the far face does not splinter' : ''}.` });
 
   st = step({ title: 'Build the plinths', h: 1, parts: (p) => p.mark === 'P1' || p.mark === 'P2',
-    text: `Glue and screw each ladder (two screws a corner), check the diagonals, then set it ${f0(P.sideClear)} off the side wall and ${f0(P.backGap)} off the back and level it from the floor's high point with packers under its members.` });
+    text: `Glue and screw each ladder (two screws a corner), check the diagonals, then set it off the side wall by its packing (front / back: left ${r1(G.pack.FL)} / ${r1(G.pack.BL)}, right ${r1(G.pack.FR)} / ${r1(G.pack.BR)}) and ${f0(P.backGap)} off the back and level it from the floor's high point with packers under its members.` });
   addJ(st, 'plinth');
   st = step({ title: 'Assemble the tower carcasses', h: 3, parts: (p) => ['T1', 'T2', 'T3', 'T4', 'T6'].includes(p.mark),
     text: `Each tower on its back: glue, dowel and screw the two fixed shelves between the sides (through the sides) and the top and bottom over them (through the top and bottom into the sides). Sink the heads on the inner side flush: it goes against the bed-cabinet side. Square it up and glue and screw the back on, every 150.` });
@@ -2648,6 +2747,7 @@ function writeSTEP(model, opts) {
   const rootNode = product(rootName, `${model.P.W} x ${model.P.H} x ${model.P.D} cavity`);
   const groups = new Map();
   for (const p of model.parts) {
+    if (p.ctx) continue;                          // the room's own studs and cladding: context only
     if (p.hw && opts.hardware === false && !p.mattress) continue;
     if (p.mattress && opts.mattress === false) continue;
     const g = GROUP_NAMES[p.grp] || p.grp.toUpperCase();
@@ -2721,7 +2821,7 @@ function makeZip(files) { // files: [{name, data: Uint8Array}]
   return out;
 }
 
-const api = { PILLOW, DEFAULTS, COLORS, SOURCES, HW_ASSUMPTIONS, reviewNotes, assembly, joinery, FAST, TAGS, cyl, box, RUNNER_STD, RUNNER_HW, HINGE_HW, HINGE_FLAP, HINGE_THIN, HINGE_FLAP_THIN, runnerHoles, hingeFit, PLY_DENSITY, normParams, derived, build, cutList, nest, summary, writeSTEP, makeZip, crc32,
+const api = { PILLOW, DEFAULTS, COLORS, wallAt, centreOnOpening, SOURCES, HW_ASSUMPTIONS, reviewNotes, assembly, joinery, FAST, TAGS, cyl, box, RUNNER_STD, RUNNER_HW, HINGE_HW, HINGE_FLAP, HINGE_THIN, HINGE_FLAP_THIN, runnerHoles, hingeFit, PLY_DENSITY, normParams, derived, build, cutList, nest, summary, writeSTEP, makeZip, crc32,
   prismBox, prismCorners, prismVolume, loopPolyline, to3, rot2, rotYZ, rotatePrism, legGeom, legPsi, bedProfile, clearances, hingeZs, springEnds, stayEnds, springSolids, staySolids, linkEnds, linkSolids, rectLoopR01,
   KIT_HW, gapFacts, clearanceSchedule, hingeGapMin, springSegs, staySegs, dynSegs, springCaps };
 if (typeof module !== 'undefined' && module.exports) module.exports = api;

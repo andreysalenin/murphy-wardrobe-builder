@@ -50,8 +50,43 @@ function run(params, label) {
   hits.slice(0, 30).forEach(h => console.log('   ', h));
 }
 run({}, 'default');
-run({ W: 2600, H: 2400, D: 560, drawers: [150, 150, 200, 250, 250], hangClear: 900, sideClear: 0 }, 'variant');
+run({ W: 2600, H: 2400, D: 560, drawers: [150, 150, 200, 250, 250], hangClear: 900, packFL: 0, packFR: 0 }, 'variant');
 run({ mT: 305, gapHydr: 25, kickCentre: 'full', topShelf: false, ledge: false, packer: false }, 'edge');
+run({ wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, Wback: 2457, packBL: 40 }, 'studs, out of square');
+
+// ---------- the cavity: packing at four corners, planing, studs, the opening
+{
+  const probs = [], has = (m, lvl, re) => m.checks.some(c => c.level === lvl && re.test(c.title));
+  const legacy = C.normParams({ sideClear: 7 });
+  if (legacy.packFL !== 7 || legacy.packFR !== 7 || 'sideClear' in legacy) probs.push('an old sideClear does not become the front packing');
+  let m = C.build({});
+  if (Math.abs(m.G.cw * 2 + m.P.packFL + m.P.packFR - m.P.W) > 1e-9) probs.push('carcass + front packing is not the front width');
+  if (!has(m, 'info', /^Symmetric about the opening/)) probs.push('default is not reported symmetric');
+  m = C.build({ Wback: 2455, packBL: 3 });
+  if (Math.abs(m.G.pack.BR - 4) > 1e-9 || Math.abs(m.G.pack.backSum - 2455) > 1e-9) probs.push(`back-right blank should take what is left (got ${m.G.pack.BR})`);
+  m = C.build({ Wback: 2455, packBL: 3, packBR: 6 });
+  if (!has(m, 'bad', /does not add up/)) probs.push('back that does not add up is not flagged');
+  m = C.build({ packFL: 0, packFR: 0, packBL: -2, packBR: 0, Wback: 2456 });
+  if (!has(m, 'info', /planed to the walls/) || has(m, 'bad', /Too much to plane/) || has(m, 'bad', /does not add up/)) probs.push('2 mm planed is not listed cleanly');
+  if (has(m, 'warn', /No room to scribe/) && m.checks.find(c => /No room to scribe/.test(c.title)).text.includes('left')) probs.push('a planed side is also called unscribable');
+  m = C.build({ packFL: 0, packFR: 0, packBL: -10 });
+  if (!has(m, 'bad', /Too much to plane/)) probs.push('planing past half the board is not flagged');
+  m = C.build({ wallStudL: 25, wallStudR: 27 });
+  if (!has(m, 'bad', /left tower runs into the stud/) || !has(m, 'bad', /right tower runs into the stud/)) probs.push('towers into unpacked studs not flagged');
+  if (!has(m, 'info', /^Not symmetric about the opening/) || Math.abs(m.G.openOff - 1) > 1e-9) probs.push(`25/27 studs should put the opening 1 mm left (got ${m.G.openOff})`);
+  const fix = C.centreOnOpening({ wallStudL: 25, wallStudR: 27, packFL: 40, packFR: 43 });
+  m = C.build({ wallStudL: 25, wallStudR: 27, packFL: 40, packFR: 43, ...fix });
+  if (Math.abs(m.G.openOff) > 0.05) probs.push('centre on the opening does not centre it');
+  m = C.build({ wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43 });
+  if (m.checks.some(c => c.level === 'bad') || !has(m, 'info', /^Symmetric about the opening/) || Math.abs(m.G.xA - 1187) > 1e-9) probs.push('41 / 43 packing against 25 / 27 studs should fit, symmetric, 1187 each side');
+  if (m.parts.filter(p => p.mark === 'WS').length !== 4) probs.push('expected a stud and its cladding each side');
+  const step = C.writeSTEP ? C.writeSTEP(m) : '';
+  if (step && /Stud/.test(step)) probs.push('the studs went into the STEP file');
+  m = C.build({ wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, wallStudFronts: false });
+  if (!has(m, 'bad', /door runs into the clad stud/)) probs.push('doors past the clad studs not flagged');
+  console.log(`cavity: ${probs.length} problems`); probs.forEach(p => console.log('   ' + p));
+  if (probs.length) process.exitCode = 1;
+}
 
 // hardware vs plywood overlaps (expected: cups in doors, pins through the shelf, plates on faces)
 const m = C.build({});
@@ -146,7 +181,7 @@ function checkJoinery(params, label) {
   return problems.length;
 }
 let jp = checkJoinery({}, 'joinery default');
-jp += checkJoinery({ W: 2600, H: 2400, D: 560, drawers: [150, 150, 200, 250, 250], hangClear: 900, sideClear: 0, doorHinge: 'inner' }, 'joinery variant');
+jp += checkJoinery({ W: 2600, H: 2400, D: 560, drawers: [150, 150, 200, 250, 250], hangClear: 900, packFL: 0, packFR: 0, doorHinge: 'inner' }, 'joinery variant');
 jp += checkJoinery({ mT: 305, gapHydr: 25, kickCentre: 'none', topShelf: false, ledge: false, packer: false, edgeSteel: false, lockType: 'pins', upstand: 40, drawers: [150, 200, 250] }, 'joinery edge');
 jp += checkJoinery({ gapHydr: 30, packer: true, Tpacker: 18 }, 'joinery pads');
 jp += checkJoinery({ lockType: 'bolts', supportOffset: true, faceReveal: true, doorHinge: 'inner', headAngle: 12, headLip: 20 }, 'joinery options');
@@ -158,6 +193,8 @@ jp += checkJoinery({ headWell: 150 }, 'joinery well 150');
 jp += checkJoinery({ headWell: 0 }, 'joinery no well');
 jp += checkJoinery({ headWell: 50, headHinge: 'front' }, 'joinery well 50, front hinges');
 jp += checkJoinery({ headStore: false, headAngle: 0 }, 'joinery plain headboard');
+jp += checkJoinery({ wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, Wback: 2457, packBL: 40 }, 'joinery studs');
+jp += checkJoinery({ packFL: 0, packFR: 0, packBL: -2 }, 'joinery planed');
 if (jp) process.exitCode = 1;
 
 // ---------- solid overlaps (sampled points, not bounding boxes): hardware against plywood and against other hardware,
@@ -177,7 +214,7 @@ if (jp) process.exitCode = 1;
   // the legs and their rail, the rail closing onto the stop domes
   const ALLOW = new Set(['HG D1', 'HG D2', 'HG HG', 'FH D4', 'FH FH', 'LP LP', 'LP B2', 'LP F4', 'PL B2', 'PL SF', 'PV B1', 'PV F2', 'PV PV', 'PV B8', 'BS B1', 'BS B8', 'BS GS', 'GS BS', 'LG LG', 'ST F2', 'SF PL', 'SB SB', 'SR SB', 'SB SR', 'PP PP']);  // SB, SR: the safety bolt's parts are concentric; PP: the switches sit in pockets in the plate (bores are not seen by the box test)
   let bad = 0;
-  const sets = [['default', {}], ['pads', { gapHydr: 30, packer: true, Tpacker: 18 }], ['options', { lockType: 'bolts', supportOffset: true, faceReveal: true }], ['front hinges', { headHinge: 'front' }], ['fronts 18/12/18', { TfDrawer: 18, TfSide: 12, TfTop: 18 }], ['fronts 12/18/12', { TfDrawer: 12, TfSide: 18, TfTop: 12, edgeSteel: true, doorHinge: 'inner' }], ['fronts all 12', { TfDrawer: 12, TfSide: 12, TfTop: 12 }], ['well 150', { headWell: 150 }], ['no well', { headWell: 0 }], ['well 50 front', { headWell: 50, headHinge: 'front' }]].concat(process.env.OVERLAP_PROBE ? [['probe', JSON.parse(process.env.OVERLAP_PROBE)]] : []);
+  const sets = [['default', {}], ['pads', { gapHydr: 30, packer: true, Tpacker: 18 }], ['options', { lockType: 'bolts', supportOffset: true, faceReveal: true }], ['front hinges', { headHinge: 'front' }], ['fronts 18/12/18', { TfDrawer: 18, TfSide: 12, TfTop: 18 }], ['fronts 12/18/12', { TfDrawer: 12, TfSide: 18, TfTop: 12, edgeSteel: true, doorHinge: 'inner' }], ['fronts all 12', { TfDrawer: 12, TfSide: 12, TfTop: 12 }], ['well 150', { headWell: 150 }], ['no well', { headWell: 0 }], ['well 50 front', { headWell: 50, headHinge: 'front' }], ['studs', { wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43 }], ['planed', { packFL: 0, packFR: 0, packBL: -2 }]].concat(process.env.OVERLAP_PROBE ? [['probe', JSON.parse(process.env.OVERLAP_PROBE)]] : []);
   for (const [label, params] of sets) for (const ang of [0, 45, 90]) {
     const m = C.build(params, { bedAngle: ang }), all = [];
     for (const p of m.parts) if (!p.mattress) p.solids.forEach((sl) => all.push({ p, s: sl, box: C.prismBox(sl), polys: sl.loops.map(l => C.loopPolyline(l, 16)) }));

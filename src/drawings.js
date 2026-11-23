@@ -10,12 +10,13 @@ const ACC = [176, 98, 10], BAD = [176, 40, 31], CABLE = [36, 104, 170];
 const FILL = {
   carcass: [244, 236, 221], front: [252, 249, 243], frame: [235, 220, 196], deck: [240, 228, 207], drawer: [248, 241, 228], back: [236, 228, 214],
   plinth: [230, 220, 203], packer: [222, 199, 166], ledge: [244, 236, 221], mattress: [238, 240, 242], metal: [74, 78, 84], chrome: [190, 194, 199], zinc: [178, 184, 192],
-  block: [181, 136, 92], rubber: [40, 40, 42], strap: [70, 86, 124], plastic: [244, 244, 240], indicator: [232, 84, 26], bronze: [196, 156, 104],
+  block: [181, 136, 92], rubber: [40, 40, 42], strap: [70, 86, 124], plastic: [244, 244, 240], indicator: [232, 84, 26], stud: [205, 170, 125], clad: [246, 246, 244], bronze: [196, 156, 104],
 };
 const CUT = [214, 190, 152], CUT_FRONT = [226, 206, 172];
 const T_RGB = { 6: [123, 92, 196], 12: [19, 138, 126], 18: [196, 122, 18] };
 const LW_VIS = 0.25, LW_THIN = 0.13, LW_DIM = 0.12, LW_CUT = 0.35;
 const f0 = (v) => String(Math.round(v));
+const f1 = (v) => { const r = Math.round(v * 10) / 10; return Number.isInteger(r) ? String(r) : r.toFixed(1); };
 const fh = (v) => { const r = Math.round(v * 2) / 2; return Number.isInteger(r) ? String(r) : r.toFixed(1); }; // to 0.5 mm, for drilling positions
 const mix = (c, k) => c.map(x => Math.round(255 - (255 - x) * k));
 
@@ -363,7 +364,8 @@ function pageOverview(doc, M, S, I, info) {
   let y = s.para(x0, 257, s.wrap(desc, 172, 7), { size: 7 });
   const st = S.sheets;
   const rows = [
-    ['Cavity (W x H x D)', `${f0(P.W)} x ${f0(P.H)} x ${f0(P.D)}`],
+    ['Cavity (W x H x D)', `${f0(P.W)}${G.pack.Wb !== P.W ? ' (' + f1(G.pack.Wb) + ' at the back)' : ''} x ${f0(P.H)} x ${f0(P.D)}`],
+    ['Carcass and opening', `${f1(2 * G.cw)} wide, square; fronts fill ${f1(G.openL + G.openR)}${G.wstuds.length && P.wallStudFronts ? ' between the clad studs' : ''}, ${Math.abs(G.openOff) < 0.05 ? 'symmetric' : f1(Math.abs(G.openOff)) + ' off centre'}`],
     ['Mattress', `${f0(P.mW)} x ${f0(P.mL)} x ${f0(P.mT)}`],
     ['Bed bay, clear', `${f0(G.bayIn)} between the bed-cabinet sides`],
     ['Bed frame', `${f0(G.frameW)} x ${f0(G.frameL)}; face panel ${P.T} mm in two halves, ${f0(2 * (G.xFo + P.faceOverhang))} wide${P.faceOverhang ? `, ${f0(P.faceOverhang)} past the rails` : ''}`],
@@ -401,10 +403,21 @@ function pageOverview(doc, M, S, I, info) {
   s.finish();
 }
 
+// the side walls in a plan: lines from the back corners through the corners at the carcass front, to the mouth
+function planWalls(s, v, M) {
+  const { P, G } = M;
+  for (const S of ['L', 'R']) {
+    const a = v.P([G.walls[S][0], 0, 0]), b = v.P([C.wallAt(G, S, P.D), P.D, 0]);
+    s.line([a[0], b[0]], [a[1], b[1]], { lw: 0.5 });
+  }
+  const a = v.P([G.walls.R[0], 0, 0]), b = v.P([G.walls.L[0], 0, 0]);
+  s.line([a[0], b[0]], [a[1], b[1]], { lw: 0.5 });
+}
+
 function pageElevations(doc, M, S, I, info) {
   const { P, G } = M, sc = 20;
   const s = Sheet(doc, 2, info.total, 'ELEVATIONS AND PLANS', '1:20', info);
-  const parts = M.parts.filter(p => !p.mattress && !(p.hw && p.mark !== 'HD' && p.mark !== 'HR'));
+  const parts = M.parts.filter(p => !p.mattress && (p.ctx || !(p.hw && p.mark !== 'HD' && p.mark !== 'HR')));
   // 1. front elevation, fronts on
   const ox = 30, oz = 134;
   const v1 = View(s, 'front', sc, [ox + P.W / 2 / sc, oz], [0, 0]);
@@ -417,18 +430,23 @@ function pageElevations(doc, M, S, I, info) {
   // reveal line at the joint between the face panels
   s.viewLabel(ox + P.W / 2 / sc, 280, 'FRONT ELEVATION', 'fronts closed; reveals ' + f0(P.gap) + ' mm');
   // heights of the fronts on the right (your right is -x)
-  const xr = v1.P([-P.W / 2, 0, 0])[0] + 4;
+  const wL = G.walls.L[1], wR = G.walls.R[1];   // the side walls at the carcass front
+  // the walls, and the clad studs where they stand in front of them
+  for (const x of [wL, wR]) s.line([v1.P([x, 0, 0])[0], v1.P([x, 0, P.H])[0]], [v1.P([x, 0, 0])[1], v1.P([x, 0, P.H])[1]], { lw: 0.5 });
+  const xr = v1.P([wR, 0, 0])[0] + 4;
   const zsF = [[0, G.kickH]].concat(G.fronts.map(f => [f.z0, f.z1]), [G.midDoor, G.topDoor, [G.zTop, P.H]]);
-  zsF.forEach(([a, b], i) => v1.dimAt([-P.W / 2, 0, a], [-P.W / 2, 0, b], xr, 'v', null, Object.assign({ size: 5.4, noExt: true }, i === 0 ? { side: 'start' } : {})));
-  v1.dimAt([-P.W / 2, 0, 0], [-P.W / 2, 0, P.H], xr + 7, 'v', f0(P.H), { size: 6 });
+  zsF.forEach(([a, b], i) => v1.dimAt([wR, 0, a], [wR, 0, b], xr, 'v', null, Object.assign({ size: 5.4, noExt: true }, i === 0 ? { side: 'start' } : {})));
+  v1.dimAt([wR, 0, 0], [wR, 0, P.H], xr + 7, 'v', f0(P.H), { size: 6 });
   // bed face and flaps on the left
-  const xl = v1.P([P.W / 2, 0, 0])[0] - 4;
-  [[G.zF0, G.zF1], [G.flapZ[0], G.flapZ[1]]].forEach(([a, b]) => v1.dimAt([P.W / 2, 0, a], [P.W / 2, 0, b], xl, 'v', null, { size: 5.4, noExt: true }));
-  v1.dimAt([P.W / 2, 0, 0], [P.W / 2, 0, G.zF0], xl, 'v', null, { size: 5.2, noExt: true, side: 'start' });
+  const xl = v1.P([wL, 0, 0])[0] - 4;
+  [[G.zF0, G.zF1], [G.flapZ[0], G.flapZ[1]]].forEach(([a, b]) => v1.dimAt([wL, 0, a], [wL, 0, b], xl, 'v', null, { size: 5.4, noExt: true }));
+  v1.dimAt([wL, 0, 0], [wL, 0, G.zF0], xl, 'v', null, { size: 5.2, noExt: true, side: 'start' });
   // widths below
   const yb = v1.P([0, 0, 0])[1] - 4;
   [[G.doorX[0], G.doorX[1]], [G.flapX[0], G.flapX[1]], [-G.flapX[1], -G.flapX[0]], [-G.doorX[1], -G.doorX[0]]].forEach(([a, b]) => v1.dimAt([a, 0, 0], [b, 0, 0], yb, 'h', null, { size: 5.4, noExt: true }));
-  v1.dimAt([-P.W / 2, 0, 0], [P.W / 2, 0, 0], yb - 6, 'h', f0(P.W), { size: 6 });
+  const opn = G.wstuds.length && P.wallStudFronts && Math.abs(G.openL - Math.abs(wL)) + Math.abs(G.openR - Math.abs(wR)) > 0.05;
+  if (opn) v1.dimAt([-G.openR, 0, 0], [G.openL, 0, 0], yb - 6, 'h', `${f1(G.openL + G.openR)} between the clad studs`, { size: 5.6 });
+  v1.dimAt([wR, 0, 0], [wL, 0, 0], yb - (opn ? 18 : 6), 'h', f0(P.W), { size: 6 });
   v1.dimAt([-(G.xFo + P.faceOverhang), 0, 0], [G.xFo + P.faceOverhang, 0, 0], yb - 12, 'h', `${f0(2 * (G.xFo + P.faceOverhang))} bed face`, { size: 5.6 });
 
   // 2. carcass elevation, fronts off
@@ -446,6 +464,7 @@ function pageElevations(doc, M, S, I, info) {
     }
   }
   s.viewLabel(ox2 + P.W / 2 / sc, 280, 'CARCASS ELEVATION', 'fronts off, bed frame closed');
+  for (const x of [G.walls.L[1], G.walls.R[1]]) s.line([v2.P([x, 0, 0])[0], v2.P([x, 0, P.H])[0]], [v2.P([x, 0, 0])[1], v2.P([x, 0, P.H])[1]], { lw: 0.5 });
   const xr2 = v2.P([-P.W / 2, 0, 0])[0] + 3;
   v2.levels(xr2, [0, G.zPl, G.zPl + P.T, G.zS1b, G.zS1t, G.zRail, G.zS2b, G.zS2t, G.zTopB, G.zTop, P.H]);
   const xl2 = v2.P([P.W / 2, 0, 0])[0] - 3;
@@ -455,7 +474,8 @@ function pageElevations(doc, M, S, I, info) {
   // 3. plan sections
   const pz = 1300, pb = 92;
   const v3 = View(s, 'top', sc, [ox + P.W / 2 / sc, pb], [0, 0]);
-  v3.parts(M.parts.filter(p => !p.leg), { cut: pz, filter: (p) => !(p.hw && p.mark !== 'MP' && !p.mattress) });
+  v3.parts(M.parts.filter(p => !p.leg), { cut: pz, filter: (p) => p.ctx || !(p.hw && p.mark !== 'MP' && !p.mattress) });
+  planWalls(s, v3, M);
   s.viewLabel(ox + P.W / 2 / sc, pb + 14, `PLAN AT ${pz}`, 'cut through the hanging space; room at the bottom');
   const yb3 = v3.P([0, P.D, 0])[1] - 4;
   v3.dimAt([-G.xOi, P.D, 0], [-G.xT2, P.D, 0], yb3, 'h', null, { size: 5.4 });
@@ -467,9 +487,12 @@ function pageElevations(doc, M, S, I, info) {
   v3.dimAt([G.xA, G.yB1, 0], [G.xA, G.yCs, 0], xd, 'v', null, { size: 5.2 });
   v3.dimAt([G.xA, 0, 0], [G.xA, P.D, 0], xd - 5, 'v', null, { size: 5.2 });
   s.text(ox, pb - 48, `Depth: ${f0(P.backGap)} to the wall, ${f0(P.Tback)} back, then carcass and front: ${[['drawers', 'drawer'], ['tower doors', 'side'], ['flaps', 'top'], ['bed face', 'bed']].map(([n, k]) => `${n} ${f0(G.yFbOf[k] - P.frontGap - G.yB1)} + ${f0(P.frontGap)} + ${f0(G.tf[k])}`).join(', ')}; every front's face in one plane.`, { size: 5.6, color: GREY });
+  const pk = G.pack;
+  s.text(ox, pb - 52, `Width: ${f0(P.W)} at the front, ${f1(pk.Wb)} at the back; carcass ${f1(2 * G.cw)}, square. Tower to wall, front / back: right ${f1(pk.FR)} / ${f1(pk.BR)}, left ${f1(pk.FL)} / ${f1(pk.BL)}${[pk.FL, pk.FR, pk.BL, pk.BR].some(v => v < 0) ? ' (negative: planed off the side)' : ''}.${G.wstuds.length ? ` Clad studs stand out ${G.wstuds.map(q => `${f1(q.p + q.clad)} ${q.S === 'L' ? 'left' : 'right'}`).join(', ')}, ${f0(G.wstuds[0].yc0)} to ${f0(G.wstuds[0].yc1)} from the back wall.` : ''}`, { size: 5.6, color: GREY });
   const pz2 = (G.zBm1 + G.zTopB) / 2;
   const v4 = View(s, 'top', sc, [ox2 + P.W / 2 / sc, pb], [0, 0]);
-  v4.parts(M.parts.filter(p => !p.leg && !p.mattress), { cut: pz2, filter: (p) => !(p.hw && !['FS', 'LP', 'PL'].includes(p.mark)) });
+  v4.parts(M.parts.filter(p => !p.leg && !p.mattress), { cut: pz2, filter: (p) => p.ctx || !(p.hw && !['FS', 'LP', 'PL'].includes(p.mark)) });
+  planWalls(s, v4, M);
   s.viewLabel(ox2 + P.W / 2 / sc, pb + 14, `PLAN AT ${f0(pz2)}`, 'cut through the shelf space above the bed');
   const yb4 = v4.P([0, P.D, 0])[1] - 4;
   v4.dimAt([-G.xJ, P.D, 0], [-P.T / 2, P.D, 0], yb4, 'h', null, { size: 5.4 });
