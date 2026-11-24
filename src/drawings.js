@@ -382,13 +382,13 @@ function pageOverview(doc, M, S, I, info) {
   const yb = s.table(x0, y, [['KEY DATA', 46, 'left'], ['', 126, 'left']], rows, { rowH: 4.6, size: 6.4, hsize: 6 });
   let yy = yb - 8;
   s.text(x0, yy, 'IN THIS SET', { size: 7.5, weight: 'bold' });
-  yy = s.para(x0, yy - 5, [`1 Overview   2 Elevations and plans   3 Sections and the bed swing   4 Bed frame`,
-    `5 Hardware positions   6 Clearances   7 Cut list   ${info.plansFrom}-${info.plansTo} Cutting plans   ${info.seqFrom}-${info.seqFrom + 1} Build sequence`,
+  yy = s.para(x0, yy - 5, [`1 Overview   2 Elevations and plans   3 Sections and the bed swing   4 Sections and clear openings   5 Bed frame`,
+    `6 Hardware positions   7 Clearances   8 Cut list   ${info.plansFrom}-${info.plansTo} Cutting plans   ${info.seqFrom}-${info.seqFrom + 1} Build sequence`,
     `${info.detFrom}-${info.detFrom + info.nDet - 1} Assembly details and fixings key   ${info.fixAt} Fixings schedule   ${info.total} Design review`], { size: 6.2 });
   s.text(x0, yy - 3, 'READ FIRST', { size: 7.5, weight: 'bold', color: ACC });
   const bads = M.checks.filter(c => c.level !== 'info');
   const rf = ['Measure the cavity at the studs before cutting: width, height and depth drive every part.',
-    'The Create-A-Bed positions come from the Deluxe Queen Vertical plan. Drill the bed-cabinet sides from sheet 5, not from the kit booklet: the bed face stands proud of the carcass here, so the depths differ.',
+    'The Create-A-Bed positions come from the Deluxe Queen Vertical plan. Drill the bed-cabinet sides from sheet 6, not from the kit booklet: the bed face stands proud of the carcass here, so the depths differ.',
     'Anchor the bed cabinet to the studs through the wall rails before the bed is fitted. The gas springs pull it forward.'];
   for (const c of bads) rf.push(`${c.title}: ${c.text}`);
   const yEnd = s.numbered(x0, yy - 8.5, rf, 172, { size: 6.2 });
@@ -645,7 +645,7 @@ function pageSections(doc, M, M90, M45, S, info) {
 
   // clearance table
   const cx = 292;
-  s.heading(cx, 262, 'SWING CLEARANCES', 'closest approach while the bed turns 0 to 90 deg; all of them on sheet 6');
+  s.heading(cx, 262, 'SWING CLEARANCES', 'closest approach while the bed turns 0 to 90 deg; all of them on sheet 7');
   const rows = G.clear.list.filter(r => r.name !== 'back wall' && r.min < 60).sort((a, b) => a.min - b.min).map(r => [r.name, r.part, f0(r.angle) + ' deg', (r.min < 0 ? 'CLASH ' : '') + f0(r.min)]);
   let y = s.table(cx, 252, [['FIXED PART', 40, 'left'], ['MOVING PART', 32, 'left'], ['AT', 14, 'right'], ['CLEAR', 16, 'right']], rows, { rowH: 4.4, size: 5.8, hsize: 5.4 });
   y -= 7;
@@ -667,7 +667,7 @@ function pageSections(doc, M, M90, M45, S, info) {
 
 function pageBed(doc, M, S, info) {
   const { P, G } = M;
-  const s = Sheet(doc, 4, info.total, 'BED FRAME', '1:15, 1:5, 1:2.5', info);
+  const s = Sheet(doc, 5, info.total, 'BED FRAME', '1:15, 1:5, 1:2.5', info);
   // 1. frame from behind (mattress and support off)
   const sc = 15, ox = 30, oz = 60;
   const v = View(s, 'back', sc, [ox + G.xFo / sc, oz], [0, G.zF0]);
@@ -757,7 +757,7 @@ function pageBed(doc, M, S, info) {
 
 function pageHardware(doc, M, S, info) {
   const { P, G } = M;
-  const s = Sheet(doc, 5, info.total, 'HARDWARE POSITIONS', '1:10, 1:12, 1:2', info);
+  const s = Sheet(doc, 6, info.total, 'HARDWARE POSITIONS', '1:10, 1:12, 1:2', info);
   const R = (p) => p.name.indexOf('(R)') >= 0;
   // 1. bed-cabinet side from inside the bay (the side on your right)
   const sc = 10, ox = 34, oz = 40;
@@ -791,7 +791,7 @@ function pageHardware(doc, M, S, info) {
     v.dimAt([0, G.yB1, z], [0, y, z], pq[1] - 4, 'h', fh(y - G.yB1), { size: 5.4, color: CABLE });
     v.dimAt([0, G.yB1, 0], [0, G.yB1, z], v.P([0, G.yB1, 0])[0] - 5 - (3 + i) * 6, 'v', fh(z), { size: 5.4, color: CABLE });
     s.text(xR, pq[1] + 6.5, `cable hole ${q.id}, 20`, { size: 5.6, va: 'middle', weight: 'bold', color: CABLE });
-    s.text(xR, pq[1] + 3.5, q.what + ' (sheet 7)', { size: 5, va: 'middle', color: GREY });
+    s.text(xR, pq[1] + 3.5, q.what + ' (sheet 8)', { size: 5, va: 'middle', color: GREY });
   });
   {
     const X = C.gapFacts(P, G), need = X.nut < 2;
@@ -980,7 +980,7 @@ function nutPath(G, v, off) {
 }
 function pageClearances(doc, M, M45, M90, S, info) {
   const { P, G } = M, K = C.KIT_HW;
-  const s = Sheet(doc, 6, info.total, 'CLEARANCES', '1:1, 1:7.5', info);
+  const s = Sheet(doc, 7, info.total, 'CLEARANCES', '1:1, 1:7.5', info);
   const SCH = C.clearanceSchedule(M);
   const ST = { ok: [92, 150, 104], tight: ACC, clash: BAD, info: null };
   const f1 = (v) => { const r = Math.round(v * 10) / 10; return Number.isInteger(r) ? String(r) : r.toFixed(1); };
@@ -1036,7 +1036,7 @@ function pageClearances(doc, M, M45, M90, S, info) {
   s.heading(nx, ny, 'WHERE THE GAS SPRINGS RUN');
   let yy = s.para(nx, ny - 6, s.wrap(`Not in the ${f1(P.gapHydr)} mm gap. Both ball studs point in: the lower one through a tab on its plate that reaches past the rail's top edge, the upper one off the bed-cabinet side${P.packer ? ' (on its pad)' : ''}. So each spring runs along the top edge of its rail, behind it with the bed closed, ${f1(SCH.groups[0].rows[2].here)} from the side. The gap holds the pivot spacer and plates, the bed stops and the lower stud's nut.`, 96, 5.6), { size: 5.6 });
   const nutRow = SCH.groups[0].rows[1];
-  yy = s.para(nx, yy - 2, s.wrap(nutRow.st === 'ok' ? `The lower stud's nut clears the side by ${f1(nutRow.here)} (A2).` : `The lower stud's nut passes the side ${f1(nutRow.here)} away (A2). Measure yours from the plate's face against the rail to the end of the stud: up to ${f1(G.nutX - G.xFo + nutRow.here - 1)} passes with 1 to spare. More needs a relief routed ${f0(Math.max(1, Math.ceil(2 - nutRow.here)))} deep and 20 wide in each bed-cabinet side, on a ${f0(G.springArm)} radius about the pivot hole (drawn on sheet 5), before the sides go in; or a wider gap with pads under the plates.`, 96, 5.6), { size: 5.6, color: nutRow.st === 'ok' ? INK : BAD });
+  yy = s.para(nx, yy - 2, s.wrap(nutRow.st === 'ok' ? `The lower stud's nut clears the side by ${f1(nutRow.here)} (A2).` : `The lower stud's nut passes the side ${f1(nutRow.here)} away (A2). Measure yours from the plate's face against the rail to the end of the stud: up to ${f1(G.nutX - G.xFo + nutRow.here - 1)} passes with 1 to spare. More needs a relief routed ${f0(Math.max(1, Math.ceil(2 - nutRow.here)))} deep and 20 wide in each bed-cabinet side, on a ${f0(G.springArm)} radius about the pivot hole (drawn on sheet 6), before the sides go in; or a wider gap with pads under the plates.`, 96, 5.6), { size: 5.6, color: nutRow.st === 'ok' ? INK : BAD });
   s.heading(nx, yy - 6, 'KIT SIZES USED: MEASURE YOURS', 'the booklet gives positions, not sizes; enter yours under Create-A-Bed hardware');
   s.table(nx, yy - 13, [['', 66, 'left'], ['USED', 18, 'right'], ['ROWS', 14, 'left']], SCH.measure.map(([, what, used, rows]) => [what, used, rows]), { rowH: 4.2, size: 5.2, hsize: 5 });
 
@@ -1127,7 +1127,7 @@ function supportPlan(s, M, x0, y0) {
 
 function pageCutList(doc, M, S, info) {
   const { P } = M;
-  const s = Sheet(doc, 7, info.total, 'CUT LIST', '-', info);
+  const s = Sheet(doc, 8, info.total, 'CUT LIST', '-', info);
   s.heading(14, 280, 'CUT LIST', `lengths along the grain where it matters; kerf ${P.kerf}, ${P.trim} trimmed off each sheet edge`);
   const rows = S.cut.map(r => [T_RGB[r.T] || GREY, r.mark, r.name, r.qty, r.T, f0(r.L), f0(r.W), r.grain ? 'yes' : '', r.band ? (r.band / 1000).toFixed(1) : '']);
   const cols = [['', 6, 'center'], ['MARK', 13, 'left'], ['PART', 70, 'left'], ['QTY', 10, 'right'], ['T', 9, 'right'], ['LENGTH', 16, 'right'], ['WIDTH', 16, 'right'], ['GRAIN', 12, 'center'], ['BAND m', 14, 'right']];
@@ -2480,17 +2480,330 @@ function pagesDetails(doc, M, S, info) {
   }
 }
 
+/* ------------------------------------------------------------------ sections and clear openings
+   Sheet 4, and the page's Section view: a front section with the fronts off (A-A), a plan section (B-B) above it,
+   and side sections through a tower (C-C) and through the bed bay (D-D) to its right. Third-angle projection, one
+   scale, so every width, height and depth projects straight across. Clear sizes are panel face to panel face. */
+PROJ.sideR = { uv: (p) => [-p[1], p[2]], depth: (p) => -p[0] };   // from the right-hand wall, the room on the left
+
+function bboxOf(p) {
+  const b = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
+  for (const q of p.solids) { const c = C.prismBox(q); for (let i = 0; i < 3; i++) { b[i] = Math.min(b[i], c[i]); b[i + 3] = Math.max(b[i + 3], c[i + 3]); } }
+  return b;
+}
+
+// every clear opening, from the model's own parts where it has them
+function openingsData(M) {
+  const { P, G } = M, T = P.T, named = (re) => M.parts.filter(p => re.test(p.name)).map(bboxOf);
+  const D = { P, G };
+  const tb = named(/^Tower bottom \(L\)/)[0];
+  D.zones = [
+    { key: 'drawers', name: 'DRAWERS', z0: tb ? tb[5] : G.zPl + T, z1: G.zS1b },
+    { key: 'hang', name: 'HANGING', z0: G.zS1t, z1: G.zS2b },
+    { key: 'top', name: 'TOP CUPBOARD', z0: G.zS2t, z1: G.zTopB },
+  ].filter(z => z.z1 - z.z0 > 1);
+  D.towerD = G.yCtow - G.yB1;
+  D.bayD = G.yCt - G.yB1;
+  const div = named(/^Centre divider/)[0];
+  D.boxW = G.xB - (div ? div[3] : 0);
+  D.boxH = G.zTopB - G.zBm1;
+  // headboard: compartments between the supports, services zones at the ends
+  const hasHB = G.head && !G.head.skipped && G.head.doors && G.head.supX && M.parts.some(p => p.mark === 'H4');
+  if (hasHB) {
+    const H = G.head, L = G.ledge || {};
+    const faces = [[-Infinity, -G.xB]];
+    H.supX.forEach((x, i) => faces.push([x - H.supT[i] / 2, x + H.supT[i] / 2]));
+    faces.push([G.xB, Infinity]);
+    const segs = [];
+    for (let i = 0; i + 1 < faces.length; i++) segs.push({ x0: faces[i][1], x1: faces[i + 1][0] });
+    segs.forEach((g, i) => { g.w = g.x1 - g.x0; g.serv = (i === 0 || i === segs.length - 1) && segs.length > 3; });
+    const z0 = L.wellTop !== undefined ? L.wellTop : (L.top || H.z0);
+    D.hb = { segs, comps: segs.filter(g => !g.serv), serv: segs.filter(g => g.serv), z0, z1: H.top, h: H.top - z0, sill: L.top, well: L.well || 0,
+      ySill: L.ySill, dWell: (L.well ? L.ySill : H.doors.Bb[0]) - G.yB1, dSill: H.doors.Bb[0] - G.yB1, dTop: H.doors.Id[0] - G.yB1, doors: H.doors };
+  }
+  // the bottom drawer box, inside
+  const ds = named(/^Drawer 1 side \(L\)/).sort((a, b) => a[0] - b[0]), dfb = named(/^Drawer 1 front\/back \(L\)/).sort((a, b) => a[1] - b[1]), dbt = named(/^Drawer 1 bottom \(L\)/)[0];
+  if (ds.length === 2 && dfb.length === 2 && dbt) D.box = { w: ds[1][0] - ds[0][3], l: dfb[1][1] - dfb[0][4], h: ds[0][5] - dbt[5], y0: dfb[0][4], y1: dfb[1][1], z: (dbt[5] + ds[0][5]) / 2 };
+  const rn = named(/runner/i).filter(b => b[0] > 0);
+  if (rn.length) D.runY = [Math.min(...rn.map(b => b[1])), Math.max(...rn.map(b => b[4]))];
+  // the hanging rail
+  const hr = named(/^Hanging rail.*\(L\)/)[0];
+  if (hr) D.rail = { z0: hr[2], z1: hr[5], y: (hr[1] + hr[4]) / 2, under: hr[2] - G.zS1t, over: G.zS2b - hr[5] };
+  // the door hinge arms stand into the tower openings
+  const arms = named(/^Hanging-space door hinge \d+ \(L\) arm/);
+  if (arms.length) D.hingeIn = Math.max(...arms.map(b => P.doorHinge === 'inner' ? b[3] - G.xT2 : G.xOi - b[0]));
+  D.studs = G.wstuds.length && P.wallStudFronts && Math.abs(G.openL + G.openR - (G.walls.L[1] - G.walls.R[1])) > 0.05;
+  return D;
+}
+
+function openingRows(D) {
+  const { P, G } = D, R = [];
+  R.push(['Cavity at the front', f0(P.W), f0(P.H), f0(P.D), G.pack.Wb !== P.W ? `${f1(G.pack.Wb)} wide at the back` : 'wall to wall, floor to ceiling']);
+  if (D.studs) R.push(['Opening between the clad studs', f1(G.openL + G.openR), f0(P.H), '', `the studs stand out ${G.wstuds.map(q => f1(q.p + q.clad)).join(' and ')}`]);
+  R.push(['Bed opening', f0(G.bayIn), f0(G.zBm0), f0(D.bayD), 'between the bed-cabinet sides, floor to the shelf']);
+  R.push(['Box over the bed, each', f0(D.boxW), f0(D.boxH), f0(D.bayD), 'two, either side of the divider, behind the flaps']);
+  if (D.hb) {
+    R.push(['Headboard compartments', D.hb.comps.map(g => f0(g.w)).join(' / '), f0(D.hb.h), `${f0(D.hb.dWell)}`, `${D.hb.well ? `well ${f0(D.hb.well)} below the sill; ` : ''}${f0(D.hb.dSill)} deep at the sill, ${f0(D.hb.dTop)} under the shelf`]);
+    if (D.hb.serv.length) R.push(['Services zone, each end', f0(D.hb.serv[0].w), f0(D.hb.h), `${f0(D.hb.dWell)}`, 'power point and cables, behind the panel']);
+  }
+  R.push(['Drawer space, each tower', f0(G.towerIn), f0(G.drawerZoneClear), f0(D.towerD), `${G.fronts.length} drawers on ${G.runner} runners`]);
+  if (D.box) R.push(['Bottom drawer box, inside', f0(D.box.w), f0(D.box.h), f0(D.box.l), 'inside the box, above its bottom']);
+  if (G.hangClear > 1) R.push(['Hanging space', f0(G.towerIn), f0(G.hangClear), f0(D.towerD), D.rail ? `rail at ${f0((D.rail.z0 + D.rail.z1) / 2)}: ${f0(D.rail.under)} under it, ${f0(D.rail.over)} over it` : '']);
+  if (G.topClear > 1) R.push(['Top cupboard', f0(G.towerIn), f0(G.topClear), f0(D.towerD), P.topShelf ? 'with an adjustable shelf' : '']);
+  if (D.hingeIn) R.push(['Tower door openings, at the hinges', f0(G.towerIn - D.hingeIn), '', '', `the hinge arms stand ${f0(D.hingeIn)} into the opening`]);
+  return R;
+}
+
+function hatchRect(s, x0, y0, x1, y1, step, o) { // 45 deg lines clipped to the rectangle
+  for (let c = y0 - x1 + step / 2; c < y1 - x0; c += step) {
+    const xa = Math.max(x0, y0 - c), xb = Math.min(x1, y1 - c);
+    if (xb > xa + 0.05) s.line([xa, xb], [xa + c, xb + c], o);
+  }
+}
+// a cutting plane: chain line, heavy ends, arrows the way the section looks, its letter
+function cutMark(s, a, b, dir, label) {
+  const L = Math.hypot(b[0] - a[0], b[1] - a[1]), t = [(b[0] - a[0]) / L, (b[1] - a[1]) / L];
+  s.line([a[0], b[0]], [a[1], b[1]], { lw: 0.16, color: ACC, dash: [5, 1, 0.8, 1] });
+  [[a, 1], [b, -1]].forEach(([e, sg]) => {
+    s.line([e[0], e[0] + t[0] * 3 * sg], [e[1], e[1] + t[1] * 3 * sg], { lw: 0.55, color: ACC });
+    const tip = [e[0] + dir[0] * 3.6, e[1] + dir[1] * 3.6];
+    s.line([e[0], tip[0]], [e[1], tip[1]], { lw: 0.22, color: ACC });
+    s.arrow(tip, dir, { color: ACC, L: 1.7, W: 0.6 });
+    s.text(e[0] + dir[0] * 5.9, e[1] + dir[1] * 5.9, label, { size: 7, weight: 'bold', ha: 'center', va: 'middle', color: ACC, box: true });
+  });
+}
+function zoneLabel(s, x, y, name, size, o) {
+  o = o || {};
+  s.text(x, y + 1.7, name, { size: 4.8, ha: 'center', va: 'middle', color: GREY, box: o.box, boxFill: o.boxFill });
+  s.text(x, y - 1.6, size, { size: 6.4, ha: 'center', va: 'middle', weight: 'bold', box: o.box, boxFill: o.boxFill });
+}
+function thirdAngle(s, x, y) { // the third-angle symbol: end view on the left, the cone on the right
+  s.circle(x, y, 2.4, { lw: 0.25 }); s.circle(x, y, 4, { lw: 0.25 });
+  s.poly([[x + 8, y - 2.4], [x + 18, y - 4], [x + 18, y + 4], [x + 8, y + 2.4], [x + 8, y - 2.4]], { lw: 0.25 });
+  s.line([x - 5.5, x + 19.5], [y, y], { lw: 0.1, color: GREY, dash: [2, 0.6, 0.4, 0.6] });
+  s.line([x, x], [y - 5.5, y + 5.5], { lw: 0.1, color: GREY, dash: [2, 0.6, 0.4, 0.6] });
+}
+
+function drawOpenings(s, M) {
+  const { P, G } = M, D = openingsData(M), T = P.T;
+  const sc = P.W <= 2620 && P.H + P.D <= 3240 ? 15 : 20, k = 1 / sc;
+  const wL = G.walls.L[1], wR = -G.walls.R[1];
+  const XC = 30 + wL * k, FLOOR = 54, XR = XC + wR * k, ZT = FLOOR + P.H * k;
+  const PLAN0 = ZT + 16, XS1 = XR + 24 + P.D * k, XS2 = XS1 + 30 + P.D * k;
+  const cutY = G.yC - 0.5, zPlan = Math.round((G.zS1t + G.zS2b) / 20) * 10;
+  const xCC = -(G.xT2 + G.towerIn / 2);
+  const rComp = D.hb && D.hb.comps.length ? D.hb.comps[0] : null;   // the compartment on the right-hand side
+  const xDD = rComp ? (rComp.x0 + rComp.x1) / 2 : -G.xB / 2;
+  const hatchO = { lw: 0.1, color: GREY };
+  const room = (x0, x1, y0, y1, sides) => { // walls, floor and ceiling cut: hatched bands and a firm line
+    if (sides.includes('f')) { hatchRect(s, x0, y0 - 3, x1, y0, 1.6, hatchO); s.line([x0, x1], [y0, y0], { lw: 0.4 }); }
+    if (sides.includes('c')) { hatchRect(s, x0, y1, x1, y1 + 3, 1.6, hatchO); s.line([x0, x1], [y1, y1], { lw: 0.4 }); }
+    if (sides.includes('l')) { hatchRect(s, x0 - 3, y0 - 3, x0, y1 + 3, 1.6, hatchO); s.line([x0, x0], [y0, y1], { lw: 0.4 }); }
+    if (sides.includes('r')) { hatchRect(s, x1, y0 - 3, x1 + 3, y1 + 3, 1.6, hatchO); s.line([x1, x1], [y0, y1], { lw: 0.4 }); }
+  };
+  const dimO = { size: 5.4 }, small = { size: 5 };
+
+  /* ---------- A-A: just behind the fronts, looking at the back wall */
+  const vA = View(s, 'front', sc, [XC, FLOOR], [0, 0]);
+  room(XC - wL * k, XR, FLOOR, ZT, 'fclr');
+  vA.parts(M.parts, { cut: cutY, filter: (p) => !p.bed && !p.mattress && !/^X\d/.test(p.mark) && (p.ctx || !p.hw || p.mark === 'HR') });
+  // where the other sections are cut (under the labels, which mask it)
+  const xl = XC - wL * k, top = ZT + 6, bot = FLOOR - 2;
+  cutMark(s, [vA.P([xCC, 0, 0])[0], bot], [vA.P([xCC, 0, 0])[0], top], [-1, 0], 'C');
+  cutMark(s, [vA.P([xDD, 0, 0])[0], bot], [vA.P([xDD, 0, 0])[0], top], [-1, 0], 'D');
+  { const y = vA.P([0, 0, zPlan])[1]; cutMark(s, [xl - 2, y], [XR + 2, y], [0, -1], 'B'); }
+  // clear-opening labels in each space
+  const zMid = (z) => (z.z0 + z.z1) / 2;
+  for (const sgn of [1, -1]) {
+    const x = sgn * (G.xT2 + G.towerIn / 2);
+    for (const z of D.zones) { const p = vA.P([x, 0, zMid(z) + (z.key === 'hang' ? 150 : 0)]); zoneLabel(s, p[0], p[1], z.name, `${f0(G.towerIn)} x ${f0(z.z1 - z.z0)}`, { box: true }); }
+    if (D.boxH > 40) { const p = vA.P([sgn * (G.xB + (div0(D)) ) / 2, 0, (G.zBm1 + G.zTopB) / 2]); zoneLabel(s, p[0], p[1], 'BOX OVER THE BED', `${f0(D.boxW)} x ${f0(D.boxH)}`, { box: true }); }
+  }
+  { const zl = ((G.head && G.head.top ? G.head.top + 12 : 0) + G.zBm0) / 2 + 60, p = vA.P([0, 0, zl]); zoneLabel(s, p[0], p[1], 'BED OPENING', `${f0(G.bayIn)} x ${f0(G.zBm0)}`, { box: true }); s.text(p[0], p[1] - 5, 'the bed is out of this view', { size: 4.6, ha: 'center', color: GREY }); }
+  if (D.hb) { const p = vA.P([0, 0, (D.hb.z0 + D.hb.z1) / 2]); s.text(p[0], p[1], 'HEADBOARD, BEYOND', { size: 4.6, ha: 'center', va: 'middle', color: GREY, box: true }); }
+  // widths below the floor: clear, then the carcass and its packing, then wall to wall
+  const xs = (x) => [x, 0, 0];
+  [[-G.xOi, -G.xT2], [-G.xB, G.xB], [G.xT2, G.xOi]].forEach(([a, b]) => vA.dimAt(xs(a), xs(b), FLOOR - 7, 'h', `${f0(b - a)}`, dimO));
+  vA.dimAt(xs(-wR), xs(-G.cw), FLOOR - 14, 'h', f1(wR - G.cw), Object.assign({ side: 'end' }, small));
+  vA.dimAt(xs(-G.cw), xs(G.cw), FLOOR - 14, 'h', `${f0(2 * G.cw)} carcass`, dimO);
+  vA.dimAt(xs(G.cw), xs(wL), FLOOR - 14, 'h', f1(wL - G.cw), Object.assign({ side: 'start' }, small));
+  vA.dimAt(xs(-wR), xs(wL), FLOOR - 21, 'h', `${f0(P.W)} wall to wall`, dimO);
+  if (D.studs) vA.dimAt([-G.openR, 0, P.H], [G.openL, 0, P.H], vA.P([0, 0, (G.zTop + P.H) / 2])[1], 'h', `${f1(G.openL + G.openR)} between the clad studs`, Object.assign({ noExt: true }, small));
+  // heights: the left tower's clear spaces, then the carcass and the header
+  D.zones.forEach(z => vA.dimAt([G.xOi, 0, z.z0], [G.xOi, 0, z.z1], xl - 6, 'v', f0(z.z1 - z.z0), dimO));
+  vA.dimAt([G.cw, 0, 0], [G.cw, 0, G.zTop], xl - 13, 'v', f0(G.zTop), dimO);
+  vA.dimAt([G.cw, 0, G.zTop], [G.cw, 0, P.H], xl - 13, 'v', f0(P.H - G.zTop), Object.assign({ side: 'end' }, small));
+  // levels on the right
+  const lv = [0, D.zones.length ? D.zones[0].z0 : G.zPl, G.zS1b, G.zS1t, G.zS2b, G.zS2t, G.zBm0, G.zBm1, G.zTopB, G.zTop, P.H].filter((z, i, a) => a.indexOf(z) === i);
+  vA.levels(XR + 5, lv, { size: 5 });
+  // the bay: the bed opening and the boxes over the bed
+  const xb = -(G.xB - 26);
+  vA.dimAt([xb, 0, 0], [xb, 0, G.zBm0], vA.P([xb, 0, 0])[0], 'v', f0(G.zBm0), Object.assign({ noExt: true }, dimO));
+  vA.dimAt([xb, 0, G.zBm1], [xb, 0, G.zTopB], vA.P([xb, 0, 0])[0], 'v', f0(D.boxH), Object.assign({ noExt: true }, dimO));
+  const zb = G.zTopB - 45, d0 = div0(D);
+  vA.dimAt([-G.xB, 0, zb], [-d0, 0, zb], vA.P([0, 0, zb])[1], 'h', f0(D.boxW), Object.assign({ noExt: true }, dimO));
+  vA.dimAt([d0, 0, zb], [G.xB, 0, zb], vA.P([0, 0, zb])[1], 'h', f0(D.boxW), Object.assign({ noExt: true }, dimO));
+  // the headboard, seen beyond: its compartments across, and their height
+  if (D.hb) {
+    const zt = D.hb.z1 + 12, zd = vA.P([0, 0, zt + 70])[1];
+    D.hb.segs.forEach(g => vA.dimAt([g.x0, 0, zt], [g.x1, 0, zt], zd, 'h', f0(g.w), Object.assign({}, g.serv ? small : dimO)));
+    const xh = rComp ? rComp.x1 - 40 : 0;
+    vA.dimAt([xh, 0, D.hb.z0], [xh, 0, D.hb.z1], vA.P([xh, 0, 0])[0], 'v', f0(D.hb.h), Object.assign({ noExt: true }, dimO));
+  }
+  s.viewLabel(XC + (wL - wR) * k / 2, 19, 'SECTION A-A', 'just behind the fronts, looking at the back wall; the fronts, the bed and the drawers are out');
+
+  /* ---------- B-B: plan, looking down */
+  const vB = View(s, 'top', sc, [XC, PLAN0], [0, -P.D]);
+  vB.parts(M.parts, { cut: zPlan, filter: (p) => p.ctx || p.mattress || !p.hw });
+  planWalls(s, vB, M);
+  const yy = (y) => [G.xOi, y, 0];
+  vB.dimAt(yy(0), yy(G.yB1), xl - 6, 'v', f0(G.yB1), Object.assign({ side: 'end' }, small));
+  vB.dimAt(yy(G.yB1), yy(G.yCtow), xl - 6, 'v', f0(D.towerD), dimO);
+  vB.dimAt(yy(G.yCtow), yy(G.yF), xl - 6, 'v', f0(G.yF - G.yCtow), Object.assign({ side: 'start' }, small));
+  vB.dimAt(yy(0), yy(P.D), xl - 13, 'v', f0(P.D), dimO);
+  const yb = PLAN0 + P.D * k;
+  if (Math.abs(G.pack.Wb - P.W) > 0.05 || Math.abs(G.pack.BL - P.packFL) > 0.05 || Math.abs(G.pack.BR - P.packFR) > 0.05)
+    vB.dimAt([G.walls.R[0], 0, 0], [G.walls.L[0], 0, 0], yb + 4.5, 'h', `${f1(G.pack.Wb)} at the back (packing ${f1(G.pack.BR)} right, ${f1(G.pack.BL)} left)`, dimO);
+  cutMark(s, [xl - 2, vB.P([0, cutY, 0])[1]], [XR + 2, vB.P([0, cutY, 0])[1]], [0, 1], 'A');
+  for (const sgn of [1, -1]) { const p = vB.P([sgn * (G.xT2 + G.towerIn / 2), (G.yB1 + G.yCtow) / 2, 0]); zoneLabel(s, p[0], p[1], 'TOWER', `${f0(G.towerIn)} x ${f0(D.towerD)}`, { box: true }); }
+  s.text(xl, PLAN0 - 5.2, 'SECTION B-B', { size: 8.5, weight: 'bold' });
+  s.text(xl + 26, PLAN0 - 5.2, `plan at ${f0(zPlan)}, through the hanging spaces`, { size: 6.1, color: GREY });
+
+  /* ---------- C-C and D-D: from the right-hand wall */
+  const side = (v, X0, xCut, filter) => {
+    room(X0 - P.D * k, X0, FLOOR, ZT, 'fcr');
+    v.parts(M.parts, { cut: -xCut, filter });
+    cutMark(s, [v.P([0, cutY, 0])[0], FLOOR - 2], [v.P([0, cutY, 0])[0], ZT + 6], [1, 0], 'A');
+    const y = v.P([0, 0, zPlan])[1]; cutMark(s, [X0 - P.D * k - 3, y], [X0 + 4.5, y], [0, -1], 'B');
+    const zz = (y) => [0, y, P.H];
+    v.dimAt(zz(0), zz(G.yB1), ZT + 4.5, 'h', f0(G.yB1), Object.assign({ side: 'end' }, small));
+    v.dimAt(zz(G.yB1), zz(G.yC), ZT + 4.5, 'h', f0(G.yC - G.yB1), dimO);
+    v.dimAt(zz(G.yC), zz(G.yF), ZT + 4.5, 'h', f0(G.yF - G.yC), Object.assign({ side: 'start' }, small));
+  };
+  const vC = View(s, 'sideR', sc, [XS1, FLOOR], [0, 0]);
+  side(vC, XS1, xCC, (p) => !p.bed && (p.ctx || !p.hw || ['HR', 'RN'].includes(p.mark)));
+  if (D.rail) {
+    const xr = XS1 + 9;
+    vC.dimAt([0, 0, G.zS1t], [0, 0, D.rail.z0], xr, 'v', f0(D.rail.under), dimO);
+    vC.dimAt([0, 0, D.rail.z1], [0, 0, G.zS2b], xr, 'v', f0(D.rail.over), Object.assign({ side: 'end' }, small));
+    const zr = D.rail.z0 - 70;
+    vC.dimAt([0, 0, zr], [0, D.rail.y, zr], vC.P([0, 0, zr])[1], 'h', f0(D.rail.y), Object.assign({ noExt: true }, small));
+    s.leader(vC.P([0, D.rail.y, D.rail.z0]), [XS1 - P.D * k * 0.55, vC.P([0, 0, D.rail.z0 - 160])[1]], 'rail', { size: 5, ha: 'right' });
+  }
+  if (D.box) vC.dimAt([0, D.box.y0, D.box.z], [0, D.box.y1, D.box.z], vC.P([0, 0, D.box.z])[1], 'h', `${f0(D.box.l)} inside`, Object.assign({ noExt: true }, small));
+  for (const z of D.zones) { const p = vC.P([0, (G.yB1 + G.yCtow) / 2, zMid(z) + (z.key === 'hang' ? -150 : 0)]); if (z.key !== 'drawers') zoneLabel(s, p[0], p[1], z.name, `${f0(D.towerD)} deep`, { box: true }); }
+  s.viewLabel(XS1 - P.D * k / 2, 47, 'SECTION C-C', 'through the right-hand tower');
+
+  const vD = View(s, 'sideR', sc, [XS2, FLOOR], [0, 0]);
+  side(vD, XS2, xDD, (p) => p.ctx || p.mattress || !p.hw);
+  const xo = XS2 - P.D * k - 5;
+  vD.dimAt([0, P.D, 0], [0, P.D, G.zBm0], xo, 'v', f0(G.zBm0), dimO);
+  vD.dimAt([0, G.yB1 + 30, G.zBm1], [0, G.yB1 + 30, G.zTopB], vD.P([0, G.yB1 + 30, 0])[0], 'v', f0(D.boxH), Object.assign({ noExt: true }, dimO));
+  if (D.hb) {
+    const H = D.hb, yi = G.yB1;
+    if (H.well) {
+      const z1 = H.z0 + 30; vD.dimAt([0, yi, z1], [0, H.ySill, z1], vD.P([0, 0, z1])[1], 'h', f0(H.dWell), Object.assign({ noExt: true }, small));
+    }
+    const z2 = H.doors.Bb[1] + 40; vD.dimAt([0, yi, z2], [0, H.doors.Bb[0], z2], vD.P([0, 0, z2])[1], 'h', f0(H.dSill), Object.assign({ noExt: true }, small));
+    const z3 = H.z1 - 30; vD.dimAt([0, yi, z3], [0, H.doors.Id[0], z3], vD.P([0, 0, z3])[1], 'h', f0(H.dTop), Object.assign({ noExt: true }, small));
+    const yh = yi + 18; vD.dimAt([0, yh, H.z0], [0, yh, H.z1], vD.P([0, yh, 0])[0], 'v', f0(H.h), Object.assign({ noExt: true }, dimO));
+    // between the closed headboard door and the closed mattress
+    const fb = H.doors.Fb, zq = fb[1] + 25, od = H.doors.Od, yq = fb[0] + (od[0] - fb[0]) * (zq - fb[1]) / (od[1] - fb[1]);
+    if (G.yM0 > yq + 1) vD.dimAt([0, yq, zq], [0, G.yM0, zq], vD.P([0, 0, zq])[1], 'h', f0(G.yM0 - yq), Object.assign({ noExt: true, side: 'start' }, small));
+  }
+  s.viewLabel(XS2 - P.D * k / 2, 47, 'SECTION D-D', D.hb ? 'through a headboard compartment, bed closed' : 'through the bed bay, bed closed');
+
+  /* ---------- the clear openings, and how to read the sheet */
+  const rows = openingRows(D);
+  s.heading(212, 286, 'CLEAR OPENINGS', 'panel face to panel face; deep is to the back panel');
+  s.table(212, 279, [['OPENING', 52, 'left'], ['WIDE', 16, 'right'], ['HIGH', 14, 'right'], ['DEEP', 13, 'right'], ['NOTES', 103, 'left']], rows, { rowH: 3.95, size: 5.4, hsize: 5.2 });
+  const nx = XS2 + 13, nw = 410 - nx;
+  let ny = ZT - 2;
+  s.heading(nx, ny, 'READING THE SECTIONS');
+  ny = s.numbered(nx, ny - 6, [
+    `Third-angle projection at 1:${sc}: the plan (B-B) sits above the front section (A-A) and the side sections (C-C, D-D) to its right, so every width, height and depth projects straight across.`,
+    `A-A is cut ${f1(G.yF - cutY)} behind the face of the fronts, looking at the back wall. B-B is cut at ${f0(zPlan)}, looking down. C-C and D-D look from the right-hand wall; the left-hand side is the mirror image.`,
+    `Clear sizes are panel face to panel face and to the back panel's face, before hardware${D.hingeIn ? `: the hinge arms stand ${f0(D.hingeIn)} into the tower openings at the hinges` : ''}${D.runY ? ', and the runners take their 12.7 a side in the drawer spaces' : ''}.`,
+    'The bed swing and its clearances are on sheets 3 and 7.',
+  ], nw, { size: 5.4 });
+  ny -= 4;
+  const sw = (y, fill, t) => { s.rect(nx, y - 1.4, 5, 2.8, { fill, lw: 0.2 }); s.text(nx + 7, y, t, { size: 5.4, va: 'middle' }); };
+  sw(ny, CUT, 'cut by the section plane'); sw(ny - 4.5, FILL.carcass, 'seen beyond it');
+  s.rect(nx, ny - 9 - 1.4, 5, 2.8, { lw: 0.2 }); hatchRect(s, nx, ny - 10.4, nx + 5, ny - 7.6, 1.2, hatchO); s.text(nx + 7, ny - 9, 'walls, floor and ceiling, cut', { size: 5.4, va: 'middle' });
+  s.line([nx, nx + 5], [ny - 13.5, ny - 13.5], { lw: 0.16, color: ACC, dash: [5, 1, 0.8, 1] }); s.text(nx + 7, ny - 13.5, 'where a section is cut; arrows look its way', { size: 5.4, va: 'middle' });
+  thirdAngle(s, 218, 24);
+  s.text(242, 25.5, 'THIRD-ANGLE', { size: 6, weight: 'bold' }); s.text(242, 21.8, 'PROJECTION', { size: 6, weight: 'bold' });
+}
+function div0(D) { return D.G.xB - D.boxW; }
+
+function pageOpenings(doc, M, S, info) {
+  const sc = M.P.W <= 2620 && M.P.H + M.P.D <= 3240 ? '1:15' : '1:20';
+  const s = Sheet(doc, 4, info.total, 'SECTIONS AND CLEAR OPENINGS', sc, info);
+  drawOpenings(s, M);
+  s.finish();
+}
+
+/* ------------------------------------------------------------------ the same sheet as SVG, for the page
+   A stand-in for the few jsPDF calls the sheets use; text is measured with a real jsPDF so it sets the same. */
+function SvgDoc() {
+  let fill = [0, 0, 0], draw = [0, 0, 0], tcol = [0, 0, 0], lw = 0.2, dash = null, fs = 10, style = 'normal';
+  let meas = null;
+  try { meas = new root.jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' }); } catch (e) { meas = null; }
+  const out = [], rgb = (c) => `rgb(${c[0]},${c[1]},${c[2]})`, n = (v) => Math.round(v * 100) / 100;
+  const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const strokeAttr = () => ` stroke="${rgb(draw)}" stroke-width="${n(Math.max(lw, 0.02))}"${dash ? ` stroke-dasharray="${dash.join(' ')}"` : ''}`;
+  const paint = (st) => (st === 'F' ? ` fill="${rgb(fill)}"` : st === 'FD' || st === 'DF' ? ` fill="${rgb(fill)}"${strokeAttr()}` : ` fill="none"${strokeAttr()}`);
+  return {
+    setFillColor(r, g, b) { fill = [r, g, b]; }, setTextColor(r, g, b) { tcol = [r, g, b]; }, setDrawColor(r, g, b) { draw = [r, g, b]; },
+    setLineDashPattern(a) { dash = a && a.length ? a : null; }, setLineWidth(w) { lw = w; },
+    setFont(name, st) { style = st || 'normal'; if (meas) meas.setFont(name, st); }, setFontSize(z) { fs = z; if (meas) meas.setFontSize(z); },
+    getTextWidth(t) { return meas ? meas.getTextWidth(String(t)) : String(t).length * fs * 0.3528 * 0.55; },
+    text(t, x, y, o) {
+      o = o || {};
+      const anchor = o.align === 'center' ? 'middle' : o.align === 'right' ? 'end' : 'start';
+      const base = o.baseline === 'middle' ? ' dominant-baseline="central"' : '';
+      const rot = o.angle ? ` transform="rotate(${-o.angle} ${n(x)} ${n(y)})"` : '';
+      out.push(`<text x="${n(x)}" y="${n(y)}" font-size="${n(fs * 0.3528)}" text-anchor="${anchor}"${base}${rot} fill="${rgb(tcol)}"${style === 'bold' ? ' font-weight="bold"' : style === 'oblique' ? ' font-style="italic"' : ''}>${esc(t)}</text>`);
+    },
+    line(x1, y1, x2, y2) { out.push(`<line x1="${n(x1)}" y1="${n(y1)}" x2="${n(x2)}" y2="${n(y2)}"${strokeAttr()} stroke-linecap="butt"/>`); },
+    lines(segs, x, y, scale, st, closed) {
+      let d = `M${n(x)} ${n(y)}`;
+      for (const q of segs) d += `l${n(q[0])} ${n(q[1])}`;
+      if (closed) d += 'Z';
+      out.push(`<path d="${d}"${paint(st)} stroke-linejoin="round"/>`);
+    },
+    rect(x, y, w, h, st) { out.push(`<rect x="${n(x)}" y="${n(y)}" width="${n(w)}" height="${n(h)}"${paint(st)}/>`); },
+    circle(x, y, r, st) { out.push(`<circle cx="${n(x)}" cy="${n(y)}" r="${n(r)}"${paint(st)}/>`); },
+    triangle(x1, y1, x2, y2, x3, y3, st) { out.push(`<path d="M${n(x1)} ${n(y1)}L${n(x2)} ${n(y2)}L${n(x3)} ${n(y3)}Z"${paint(st)}/>`); },
+    addPage() {}, addImage() {},
+    svg() { return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${PW} ${PH}" font-family="Helvetica, Arial, sans-serif"><rect x="0" y="0" width="${PW}" height="${PH}" fill="#fff"/>${out.join('')}</svg>`; },
+  };
+}
+function sheetInfo(model, summary) {
+  const nPlans = Math.ceil(summary.sheets.reduce((a, q) => a + q.bins.length, 0) / 8) || 0;
+  const halves = detailHalves(model, summary), nDet = Math.ceil(halves.length / 2);
+  const info = { project: 'Murphy wardrobe', date: new Date().toISOString().slice(0, 10), total: 12 + nPlans + nDet, plansFrom: 9, plansTo: 8 + nPlans, seqFrom: 9 + nPlans,
+    detFrom: 11 + nPlans, nDet, halves, fixAt: 11 + nPlans + nDet, detSheet: {} };
+  halves.forEach((hv, i) => { if (hv.key) info.detSheet[hv.key] = info.detFrom + Math.floor(i / 2); });
+  return info;
+}
+// the sections sheet as an SVG string, for the page's Section view
+function openingsSVG(model, summary) {
+  const d = SvgDoc(), info = sheetInfo(model, summary);
+  const sc = model.P.W <= 2620 && model.P.H + model.P.D <= 3240 ? '1:15' : '1:20';
+  const s = Sheet(d, 4, info.total, 'SECTIONS AND CLEAR OPENINGS', sc, info);
+  drawOpenings(s, model);
+  s.finish();
+  return d.svg();
+}
+
 /* ------------------------------------------------------------------ make */
 async function make(model, summary, progress) {
   progress = progress || (() => {});
   const { jsPDF } = root.jspdf;
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3', compress: true });
   const P = model.P;
-  const nPlans = Math.ceil(summary.sheets.reduce((a, q) => a + q.bins.length, 0) / 8) || 0;
-  const halves = detailHalves(model, summary), nDet = Math.ceil(halves.length / 2);
-  const info = { project: 'Murphy wardrobe', date: new Date().toISOString().slice(0, 10), total: 11 + nPlans + nDet, plansFrom: 8, plansTo: 7 + nPlans, seqFrom: 8 + nPlans,
-    detFrom: 10 + nPlans, nDet, halves, fixAt: 10 + nPlans + nDet, detSheet: {} };
-  halves.forEach((hv, i) => { if (hv.key) info.detSheet[hv.key] = info.detFrom + Math.floor(i / 2); });
+  const info = sheetInfo(model, summary);
   const tick = () => new Promise(r => setTimeout(r, 15));
   progress('Rendering views...', 0.1); await tick();
   const I = {};
@@ -2533,6 +2846,8 @@ async function make(model, summary, progress) {
   progress('Drawing sections...', 0.55); await tick();
   const M90 = C.build(P, { bedAngle: 90 }), M45 = C.build(P, { bedAngle: 45 });
   pageSections(doc, model, M90, M45, summary, info);
+  progress('Sections and clear openings...', 0.6); await tick();
+  pageOpenings(doc, model, summary, info);
   progress('Drawing the bed frame...', 0.65); await tick();
   pageBed(doc, model, summary, info);
   progress('Hardware positions...', 0.7); await tick();
@@ -2542,7 +2857,7 @@ async function make(model, summary, progress) {
   progress('Cut list...', 0.78); await tick();
   pageCutList(doc, model, summary, info);
   progress('Cutting plans...', 0.85); await tick();
-  pagesPlans(doc, model, summary, info, 8);
+  pagesPlans(doc, model, summary, info, info.plansFrom);
   progress('Build sequence...', 0.9); await tick();
   pageSequence(doc, model, summary, I, info, 0);
   pageSequence(doc, model, summary, I, info, 1);
@@ -2555,5 +2870,5 @@ async function make(model, summary, progress) {
   return doc;
 }
 
-root.MurphyDrawings = { make };
+root.MurphyDrawings = { make, openingsSVG, openingsData, openingRows };
 })(typeof window !== 'undefined' ? window : globalThis);

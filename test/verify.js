@@ -54,6 +54,31 @@ run({ W: 2600, H: 2400, D: 560, drawers: [150, 150, 200, 250, 250], hangClear: 9
 run({ mT: 305, gapHydr: 25, kickCentre: 'full', topShelf: false, ledge: false, packer: false }, 'edge');
 run({ wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, Wback: 2457, packBL: 40 }, 'studs, out of square');
 
+// ---------- the sections sheet (sheet 4 and the page's Section view): it draws, and its clear sizes are the model's
+{
+  globalThis.MurphyCore = C;
+  try { globalThis.jspdf = require('jspdf'); } catch (e) { /* widths fall back to an estimate */ }
+  require('../src/drawings.js');
+  const Dw = globalThis.MurphyDrawings, probs = [];
+  const sets = [['default', {}], ['studs', { wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, Wback: 2456, packBL: 39 }], ['wide', { W: 2900, H: 2700 }],
+    ['no headboard', { headStore: false, doorHinge: 'inner', headWell: 0 }], ['thin, 5 drawers', { TfDrawer: 12, TfSide: 12, TfTop: 12, drawers: [160, 160, 200, 220, 240], topShelf: false }]];
+  for (const [label, q] of sets) {
+    try {
+      const m = C.build(q), S = C.summary(m), svg = Dw.openingsSVG(m, S), D = Dw.openingsData(m), G = m.G;
+      for (const t of ['SECTION A-A', 'SECTION B-B', 'SECTION C-C', 'SECTION D-D', 'CLEAR OPENINGS', `${Math.round(G.bayIn)} x ${Math.round(G.zBm0)}`])
+        if (!svg.includes(t)) probs.push(`${label}: "${t}" missing from the sheet`);
+      const z = D.zones.find(x => x.key === 'drawers'), h = D.zones.find(x => x.key === 'hang'), tp = D.zones.find(x => x.key === 'top');
+      if (Math.abs(z.z1 - z.z0 - G.drawerZoneClear) > 0.5 || Math.abs(h.z1 - h.z0 - G.hangClear) > 0.5 || Math.abs(tp.z1 - tp.z0 - G.topClear) > 0.5) probs.push(`${label}: tower spaces do not match the model`);
+      if (Math.abs(2 * D.boxW + 2 * (G.xB - D.boxW) - 2 * G.xB) > 0.01 || D.boxW < 100) probs.push(`${label}: box over the bed ${D.boxW}`);
+      if (D.hb && Math.abs(D.hb.comps.reduce((a, g) => a + g.w, 0) + D.hb.serv.reduce((a, g) => a + g.w, 0) + G.head.supT.reduce((a, t) => a + t, 0) - 2 * G.xB) > 0.01) probs.push(`${label}: headboard widths do not add up to the bay`);
+      if (D.box && (D.box.w <= 0 || D.box.w >= G.towerIn - 20)) probs.push(`${label}: drawer box inside ${D.box.w}`);
+      if (/NaN|undefined|Infinity/.test(svg)) probs.push(`${label}: NaN, undefined or Infinity in the drawing`);
+    } catch (e) { probs.push(`${label}: ${e.message}`); }
+  }
+  console.log(`sections sheet: ${sets.length} designs, ${probs.length} problems`); probs.forEach(p => console.log('   ' + p));
+  if (probs.length) process.exitCode = 1;
+}
+
 // ---------- the cavity: packing at four corners, planing, studs, the opening
 {
   const probs = [], has = (m, lvl, re) => m.checks.some(c => c.level === lvl && re.test(c.title));

@@ -155,6 +155,7 @@ function rebuild(keepView, sync) {
   renderSheets();
   renderReview();
   renderClearances();
+  renderSection();
   $('hdr-size').textContent = `${f0(params.W)} x ${f0(params.H)} x ${f0(params.D)}`;
 }
 
@@ -253,6 +254,64 @@ function renderReview() {
 
 /* ---------------------------------------------------------------- bed slider */
 let bedAngle = 0, playing = null;
+
+/* ---------------------------------------------------------------- section view: sheet 4 drawn live, zoom and pan */
+let secOn = false, secVB = null;
+const SEC_FIT = { x: -4, y: -4, w: 428, h: 305 };
+function secApply() {
+  const el = $('sv-svg').querySelector('svg'); if (!el) return;
+  const v = secVB || SEC_FIT; el.setAttribute('viewBox', `${v.x} ${v.y} ${v.w} ${v.h}`);
+}
+function renderSection() {
+  if (!secOn || !model || !window.MurphyDrawings) return;
+  try {
+    $('sv-svg').innerHTML = window.MurphyDrawings.openingsSVG(model, summary);
+    const el = $('sv-svg').querySelector('svg');
+    el.setAttribute('preserveAspectRatio', 'xMidYMid meet'); el.setAttribute('aria-hidden', 'true');
+    secApply();
+  } catch (e) { console.error(e); $('sv-svg').textContent = 'The section view could not be drawn: ' + e.message; }
+}
+function secZoom(f, cx, cy) { // f < 1 zooms in, about the client point (cx, cy), or the middle
+  const host = $('sv-svg'), el = host.querySelector('svg'); if (!el) return;
+  const v = Object.assign({}, secVB || SEC_FIT), r = host.getBoundingClientRect();
+  const s = Math.max(v.w / r.width, v.h / r.height), ox = (r.width - v.w / s) / 2, oy = (r.height - v.h / s) / 2;
+  const px = cx === undefined ? v.x + v.w / 2 : v.x + (cx - r.left - ox) * s, py = cy === undefined ? v.y + v.h / 2 : v.y + (cy - r.top - oy) * s;
+  const w = Math.min(SEC_FIT.w * 1.5, Math.max(18, v.w * f)), k = w / v.w;
+  secVB = { x: px - (px - v.x) * k, y: py - (py - v.y) * k, w, h: v.h * k };
+  secApply();
+}
+function secPan(dx, dy) {
+  const host = $('sv-svg'), v = Object.assign({}, secVB || SEC_FIT), r = host.getBoundingClientRect(), s = Math.max(v.w / r.width, v.h / r.height);
+  secVB = { x: v.x - dx * s, y: v.y - dy * s, w: v.w, h: v.h }; secApply();
+}
+function bindSection() {
+  const host = $('sv-svg'), pts = new Map();
+  let last = null;
+  host.addEventListener('wheel', (e) => { e.preventDefault(); secZoom(Math.exp(e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0016)), e.clientX, e.clientY); }, { passive: false });
+  host.addEventListener('pointerdown', (e) => { host.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); host.classList.add('drag'); last = null; });
+  host.addEventListener('pointermove', (e) => {
+    if (!pts.has(e.pointerId)) return;
+    const prev = pts.get(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pts.size === 1) secPan(e.clientX - prev[0], e.clientY - prev[1]);
+    else if (pts.size === 2) {
+      const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]), m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      if (last) { secZoom(last.d / d, m[0], m[1]); secPan(m[0] - last.m[0], m[1] - last.m[1]); }
+      last = { d, m };
+    }
+  });
+  const up = (e) => { pts.delete(e.pointerId); last = null; if (!pts.size) host.classList.remove('drag'); };
+  host.addEventListener('pointerup', up); host.addEventListener('pointercancel', up);
+  host.addEventListener('dblclick', () => { secVB = null; secApply(); });
+  $('sv-in').addEventListener('click', () => secZoom(1 / 1.4));
+  $('sv-out').addEventListener('click', () => secZoom(1.4));
+  $('sv-fit').addEventListener('click', () => { secVB = null; secApply(); });
+}
+function setView(v) {
+  document.querySelectorAll('.tools [data-view]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.view === v)));
+  secOn = v === 'section';
+  $('viewer').classList.toggle('sec', secOn);
+  if (secOn) renderSection(); else if (viewer) viewer.view(v);
+}
 function viewState() {
   return { fronts: viewOpts.fronts, mattress: viewOpts.mattress, bedding: !!viewOpts.bedding, hw: viewOpts.hw, section: viewOpts.section, bySheet: viewOpts.bySheet, bed: bedAngle };
 }
@@ -380,10 +439,8 @@ function bind() {
   $('dr-equal').addEventListener('click', () => { readInputs(); params.drawers = params.drawers.map(() => params.drawers[0]); drawerInputs(); schedule(true); });
   $('lib-add').addEventListener('click', () => { readInputs(); params.sheets.push({ T: 18, L: 2440, W: 1220, n: 1 }); libRows(); schedule(true); });
   $('lib').addEventListener('click', (e) => { const b = e.target.closest('[data-del]'); if (!b) return; readInputs(); params.sheets.splice(Number(b.dataset.del), 1); libRows(); schedule(true); });
-  document.querySelectorAll('.tools [data-view]').forEach(b => b.addEventListener('click', () => {
-    document.querySelectorAll('.tools [data-view]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-    if (viewer) viewer.view(b.dataset.view);
-  }));
+  document.querySelectorAll('.tools [data-view]').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+  bindSection();
   const vopts = () => {
     viewOpts = { fronts: $('v-fronts').checked, mattress: $('v-mattress').checked, bedding: $('v-bedding').checked, hw: $('v-hw').checked, section: $('v-section').checked, bySheet: $('v-sheet').checked };
     writeLS(LS_VIEW, viewOpts);
@@ -395,7 +452,7 @@ function bind() {
   ['v-fronts', 'v-mattress', 'v-bedding', 'v-hw', 'v-sheet'].forEach(id => $(id).addEventListener('change', vopts));
   $('v-section').addEventListener('change', () => {
     vopts();
-    if ($('v-section').checked && viewer) { document.querySelectorAll('.tools [data-view]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.view === 'side'))); viewer.view('side'); }
+    if ($('v-section').checked) setView('side');
   });
   $('v-open').addEventListener('change', () => { if (viewer) viewer.setAllOpen($('v-open').checked); });
   vopts();

@@ -110,6 +110,19 @@ table.lib button:hover { color: var(--bad); }
 /* viewer */
 .viewer { position: relative; background: var(--viewer); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; min-height: 360px; }
 .viewer canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.secview { position: absolute; inset: 0; display: none; background: var(--viewer); z-index: 1; }
+.viewer .tools { z-index: 2; }
+.viewer.sec .secview { display: block; }
+.viewer.sec canvas, .viewer.sec .chips, .viewer.sec .vbar { visibility: hidden; }
+.sv-svg { position: absolute; left: 0; right: 0; top: 54px; bottom: 52px; overflow: hidden; touch-action: none; cursor: grab; user-select: none; }
+.sv-svg.drag { cursor: grabbing; }
+.sv-svg svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 1px 3px rgba(0,0,0,.18)); }
+.sv-bar { position: absolute; left: 10px; right: 10px; bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.sv-hint { flex: 1 1 auto; min-width: 0; max-width: max-content; font-size: 12px; color: var(--muted); background: color-mix(in srgb, var(--panel) 85%, transparent); padding: 4px 8px; border-radius: var(--r); }
+.sv-tools { flex: none; display: inline-flex; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--panel); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.sv-tools button { border: 0; border-left: 1px solid var(--line); background: transparent; color: var(--ink); font: inherit; font-size: 13px; min-width: 34px; padding: 5px 10px; cursor: pointer; }
+.sv-tools button:first-child { border-left: 0; }
+.sv-tools button:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .tools { position: absolute; left: 10px; right: 10px; top: 10px; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; pointer-events: none; }
 .tools .seg, .tools .chips { pointer-events: auto; background: var(--panel); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
 .chips { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; max-width: 100%; }
@@ -402,7 +415,7 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="field"><div><label for="stopFront">Bed stop back from the face</label><small><span class="src">p.22: 7-3/8 in</span> 0 puts it where the bed closes plumb</small></div><div class="num"><input id="stopFront" type="number" min="0" max="600" step="0.1" inputmode="decimal"><span>mm</span></div></div>
           <div class="field"><div><label for="stopBelowTop">Bed stop below the frame top</label><small><span class="src">p.22: 6 in below the 87-1/8 in vertical</span></small></div><div class="num"><input id="stopBelowTop" type="number" min="10" max="600" step="0.1" inputmode="decimal"><span>mm</span></div></div>
           <div class="sub-hd"><span>Hardware sizes: measure yours</span></div>
-          <div class="hint">The booklet gives positions, not sizes. The clearances (sheet 6 and the table below the view) rest on these.</div>
+          <div class="hint">The booklet gives positions, not sizes. The clearances (sheet 7 and the table below the view) rest on these.</div>
           <div class="field"><div><label for="nutStack">Lower ball-stud nut and stud end</label><small>Standing off the back of the lower plate; plus the plate it has to clear the side</small></div><div class="num"><input id="nutStack" type="number" min="0" max="30" step="0.1" inputmode="decimal"><span>mm</span></div></div>
           <div class="field"><div><label for="plateT">Ball-stud and pivot plates</label><small>Thickness</small></div><div class="num"><input id="plateT" type="number" min="1" max="10" step="0.1" inputmode="decimal"><span>mm</span></div></div>
           <div class="field"><div><label for="studS">Ball stud, plate face to ball centre</label><small><span class="src">p.14</span> about 1/2 in</small></div><div class="num"><input id="studS" type="number" min="4" max="40" step="0.1" inputmode="decimal"><span>mm</span></div></div>
@@ -454,6 +467,7 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
             <button type="button" data-view="front" aria-pressed="false">Front</button>
             <button type="button" data-view="side" aria-pressed="false">Side</button>
             <button type="button" data-view="top" aria-pressed="false">Top</button>
+            <button type="button" data-view="section" aria-pressed="false">Section</button>
           </div>
           <div class="chips" role="group" aria-label="Show">
             <label><input type="checkbox" id="v-fronts" checked> Fronts</label>
@@ -463,6 +477,17 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
             <label><input type="checkbox" id="v-bedding"> Pillows + doona</label>
             <label><input type="checkbox" id="v-hw" checked> Hardware</label>
             <label><input type="checkbox" id="v-sheet"> By thickness</label>
+          </div>
+        </div>
+        <div class="secview" id="secview">
+          <div class="sv-svg" id="sv-svg" role="img" aria-label="Sections A-A to D-D through the design, with the clear openings"></div>
+          <div class="sv-bar">
+            <div class="sv-hint">Scroll or pinch to zoom, drag to pan, double-click to fit. Sheet 4 of the PDF, drawn live.</div>
+            <div class="sv-tools" role="group" aria-label="Zoom">
+              <button type="button" id="sv-out" aria-label="Zoom out">&minus;</button>
+              <button type="button" id="sv-fit">Fit</button>
+              <button type="button" id="sv-in" aria-label="Zoom in">+</button>
+            </div>
           </div>
         </div>
         <div class="vbar">
