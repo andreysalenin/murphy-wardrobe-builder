@@ -246,7 +246,7 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
   <header class="top">
     <div class="brand">
       <h1>Murphy Wardrobe Builder</h1>
-      <div class="sub">Plywood wardrobe around a Create-A-Bed vertical queen, <b id="hdr-size">2458 x 2554 x 600</b>. Change a size and the model, clearances, cut sheets and drawings follow.</div>
+      <div class="sub">Plywood wardrobe around a Create-A-Bed vertical queen, <b id="hdr-size">2522 x 2564 x 600</b>. Change a size and the model, clearances, cut sheets and drawings follow.</div>
     </div>
     <div class="seg" role="group" aria-label="Theme" id="theme-seg">
       <button type="button" data-theme-set="auto" aria-pressed="true">Auto</button>
@@ -306,8 +306,8 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="sub-hd"><span>Towers and shelves</span></div>
           <div class="field"><div><label for="doorHinge">Tower doors hinged on</label><small>Wall side keeps the open door out of the way of the bed.</small></div>
             <select id="doorHinge"><option value="outer">Wall side</option><option value="inner">Bed side</option></select></div>
-          <div class="field"><div><label for="kickCentre">Kick board</label><small>One plank right across. Auto makes it as tall as clears the bed's swing; the drawers drop to sit on it.</small></div>
-            <select id="kickCentre"><option value="auto">One piece, auto height</option><option value="full">One piece, drawer height</option><option value="none">Towers only</option></select></div>
+          <div class="field"><div><label for="kickCentre">Kick board</label><small>Right across: one plank, or two halves butted on the centre line when a sheet is too short. Auto makes it as tall as clears the bed's swing; the drawers drop to sit on it.</small></div>
+            <select id="kickCentre"><option value="auto">Right across, auto height</option><option value="full">Right across, drawer height</option><option value="none">Towers only</option></select></div>
           <label class="check"><input type="checkbox" id="topShelf"> <span>Extra shelf halfway up the top compartment</span></label>
           <label class="check"><input type="checkbox" id="cableHoles"> <span>20 mm cable holes for power and lighting</span></label>
           <label class="check"><input type="checkbox" id="edgeSteel"> <span>Steel flat hidden in the shelf's front edge</span></label>
@@ -325,7 +325,7 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="field"><label for="H">Height, floor to ceiling</label><div class="num"><input id="H" type="number" min="2100" max="3200" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><div><label for="D">Depth</label><small>510 + 90 once the top is opened.</small></div><div class="num"><input id="D" type="number" min="400" max="900" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="sub-hd"><span>Fitting room</span></div>
-          <div class="hint">Tower to wall at each corner; the carcass stays square and the walls do what they do. Negative: that much planed off the outer side instead.</div>
+          <div class="hint">Tower (or its skin) to wall at each corner; the carcass stays square and the walls do what they do. Negative: that much planed off the outer board instead.</div>
           <div class="field"><label for="packFL">Packing, front left</label><div class="num"><input id="packFL" type="number" min="-12" max="80" step="0.5" inputmode="decimal"><span>mm</span></div></div>
           <div class="field"><label for="packFR">Packing, front right</label><div class="num"><input id="packFR" type="number" min="-12" max="80" step="0.5" inputmode="decimal"><span>mm</span></div></div>
           <div class="field"><div><label for="packBL">Packing, back left</label><small>Blank: the same as the front left.</small></div><div class="num"><input id="packBL" type="number" min="-12" max="80" step="0.5" inputmode="decimal"><span>mm</span></div></div>
@@ -334,6 +334,12 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="row-btns"><button type="button" class="btn small" id="pack-centre">Centre on the opening</button></div>
           <div class="field"><label for="backGap">Gap to the back wall</label><div class="num"><input id="backGap" type="number" min="0" max="60" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><div><label for="frontSetback">Fronts set back</label><small>From the room wall face.</small></div><div class="num"><input id="frontSetback" type="number" min="0" max="100" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="sub-hd"><span>Skins on the towers' outer sides</span></div>
+          <div class="hint">A second layer of plywood on each tower's outer side, its edge flush with the fronts. It shows as a plywood stripe beside the doors and it is what gets scribed to the wall. 12 makes "12 + 18". 0: none.</div>
+          <div class="field"><div><label for="skinT">Skin thickness</label><small>Match a thickness in your sheets.</small></div><div class="num"><input id="skinT" type="number" min="0" max="40" step="0.5" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field" data-when="skinT"><div><label for="skinZ0">Skins start</label><small>0: on the floor, the kick board between them. At the kick board's height or more: it runs under them.</small></div><div class="num"><input id="skinZ0" type="number" min="0" max="800" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="skinT"><div><label for="skinZ1">Skins stop</label><small>Blank: at the top of the carcass, the header running over them. The ceiling: the header between them.</small></div><div class="num"><input id="skinZ1" type="number" min="200" max="4000" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="hint" id="skin-note" data-when="skinT"></div>
           <div class="sub-hd"><span>Studs in the side walls</span></div>
           <div class="hint">A stud standing proud of each side wall near the front, floor to ceiling. 0: none.</div>
           <div class="field"><label for="wallStudL">Stands out, left</label><div class="num"><input id="wallStudL" type="number" min="0" max="150" step="0.5" inputmode="decimal"><span>mm</span></div></div>

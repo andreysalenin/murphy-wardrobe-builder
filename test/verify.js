@@ -1,5 +1,6 @@
 // Consistency checks: cut sizes vs solids, and part-to-part interference in the closed model.
 const C = require('../src/core.js');
+const W0 = C.DEFAULTS.W;   // the default cavity width: the cavity tests work from it
 function run(params, label) {
   const m = C.build(params), S = C.summary(m);
   let bad = 0;
@@ -52,7 +53,10 @@ function run(params, label) {
 run({}, 'default');
 run({ W: 2600, H: 2400, D: 560, drawers: [150, 150, 200, 250, 250], hangClear: 900, packFL: 0, packFR: 0 }, 'variant');
 run({ mT: 305, gapHydr: 25, kickCentre: 'full', topShelf: false, ledge: false, packer: false }, 'edge');
-run({ wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, Wback: 2457, packBL: 40 }, 'studs, out of square');
+run({ wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, Wback: W0 - 1, packBL: 40 }, 'studs, out of square');
+run({ skinT: 12, gapAbove: 134 }, 'skins 12 + 18');
+run({ skinT: 18, skinZ0: 45, gapAbove: 89, doorHinge: 'inner', packFL: 0, packFR: 3, packBL: -4 }, 'skins 18 + 18 on the kick');
+run({ skinT: 18, skinZ1: 3000, gapAbove: 54, H: 2400 }, 'skins to the ceiling');
 
 // ---------- the sections sheet (sheet 4 and the page's Section view): it draws, and its clear sizes are the model's
 {
@@ -60,7 +64,7 @@ run({ wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, Wback: 2457, packBL:
   try { globalThis.jspdf = require('jspdf'); } catch (e) { /* widths fall back to an estimate */ }
   require('../src/drawings.js');
   const Dw = globalThis.MurphyDrawings, probs = [];
-  const sets = [['default', {}], ['studs', { wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, Wback: 2456, packBL: 39 }], ['wide', { W: 2900, H: 2700 }],
+  const sets = [['default', {}], ['studs', { wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, Wback: W0 - 2, packBL: 39 }], ['skins', { skinT: 12, gapAbove: 134 }], ['wide', { W: 2900, H: 2700 }],
     ['no headboard', { headStore: false, doorHinge: 'inner', headWell: 0 }], ['thin, 5 drawers', { TfDrawer: 12, TfSide: 12, TfTop: 12, drawers: [160, 160, 200, 220, 240], topShelf: false }]];
   for (const [label, q] of sets) {
     try {
@@ -87,11 +91,11 @@ run({ wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, Wback: 2457, packBL:
   let m = C.build({});
   if (Math.abs(m.G.cw * 2 + m.P.packFL + m.P.packFR - m.P.W) > 1e-9) probs.push('carcass + front packing is not the front width');
   if (!has(m, 'info', /^Symmetric about the opening/)) probs.push('default is not reported symmetric');
-  m = C.build({ Wback: 2455, packBL: 3 });
-  if (Math.abs(m.G.pack.BR - 4) > 1e-9 || Math.abs(m.G.pack.backSum - 2455) > 1e-9) probs.push(`back-right blank should take what is left (got ${m.G.pack.BR})`);
-  m = C.build({ Wback: 2455, packBL: 3, packBR: 6 });
+  m = C.build({ Wback: W0 - 3, packBL: 3 });
+  if (Math.abs(m.G.pack.BR - 4) > 1e-9 || Math.abs(m.G.pack.backSum - (W0 - 3)) > 1e-9) probs.push(`back-right blank should take what is left (got ${m.G.pack.BR})`);
+  m = C.build({ Wback: W0 - 3, packBL: 3, packBR: 6 });
   if (!has(m, 'bad', /does not add up/)) probs.push('back that does not add up is not flagged');
-  m = C.build({ packFL: 0, packFR: 0, packBL: -2, packBR: 0, Wback: 2456 });
+  m = C.build({ packFL: 0, packFR: 0, packBL: -2, packBR: 0, Wback: W0 - 2 });
   if (!has(m, 'info', /planed to the walls/) || has(m, 'bad', /Too much to plane/) || has(m, 'bad', /does not add up/)) probs.push('2 mm planed is not listed cleanly');
   if (has(m, 'warn', /No room to scribe/) && m.checks.find(c => /No room to scribe/.test(c.title)).text.includes('left')) probs.push('a planed side is also called unscribable');
   m = C.build({ packFL: 0, packFR: 0, packBL: -10 });
@@ -103,12 +107,27 @@ run({ wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, Wback: 2457, packBL:
   m = C.build({ wallStudL: 25, wallStudR: 27, packFL: 40, packFR: 43, ...fix });
   if (Math.abs(m.G.openOff) > 0.05) probs.push('centre on the opening does not centre it');
   m = C.build({ wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43 });
-  if (m.checks.some(c => c.level === 'bad') || !has(m, 'info', /^Symmetric about the opening/) || Math.abs(m.G.xA - 1187) > 1e-9) probs.push('41 / 43 packing against 25 / 27 studs should fit, symmetric, 1187 each side');
+  if (m.checks.some(c => c.level === 'bad') || !has(m, 'info', /^Symmetric about the opening/) || Math.abs(m.G.xA - (W0 - 84) / 2) > 1e-9) probs.push('41 / 43 packing against 25 / 27 studs should fit, symmetric, 1187 each side');
   if (m.parts.filter(p => p.mark === 'WS').length !== 4) probs.push('expected a stud and its cladding each side');
   const step = C.writeSTEP ? C.writeSTEP(m) : '';
   if (step && /Stud/.test(step)) probs.push('the studs went into the STEP file');
   m = C.build({ wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, wallStudFronts: false });
   if (!has(m, 'bad', /door runs into the clad stud/)) probs.push('doors past the clad studs not flagged');
+  // skins: the carcass narrows by them, the fronts stop at them, the walls stay where they are
+  m = C.build({ skinT: 12, gapAbove: 134 });
+  const G = m.G, sk = m.parts.filter(p => p.mark === 'T7');
+  if (Math.abs(2 * G.cwo + 10 - W0) > 1e-9 || Math.abs(G.cwo - G.cw - 12) > 1e-9) probs.push('skins: carcass plus skins plus packing is not the width');
+  if (sk.length !== 2 || sk.some(p => Math.abs(p.L - (G.zTop - 0)) > 0.5 || p.T !== 12)) probs.push(`skins: expected two 12 mm skins floor to carcass top (got ${sk.map(p => p.T + ' x ' + p.L)})`);
+  if (Math.abs(G.xA - G.cw) > 1e-9 || G.doorX[1] > G.cw - C.DEFAULTS.gap + 1e-6) probs.push('skins: the fronts do not stop at the skins');
+  if (m.checks.some(c => c.level === 'bad')) probs.push('skins 12 with a 134 header should have no bad checks: ' + m.checks.filter(c => c.level === 'bad').map(c => c.title));
+  if (!has(C.build({ skinT: 12 }), 'bad', /Skins longer than your sheets/)) probs.push('skins: over-long skins not flagged');
+  if (!has(C.build({ skinT: 15 }), 'bad', /No 15 mm sheets/)) probs.push('skins: a thickness with no sheets not flagged');
+  if (!has(C.build({ skinT: 18, skinZ0: 20 }), 'bad', /Skins and the kick board overlap/)) probs.push('skins: overlap with the kick not flagged');
+  if (!has(C.build({ skinT: 12, packFL: 0, packFR: 0, packBL: -7 }), 'bad', /Too much to plane off a tower skin/)) probs.push('skins: planing over half the skin not flagged');
+  // kick board and header: halves when a sheet is too short, one piece when it is not
+  const kh = (q) => C.build(q).parts.filter(p => /^K[13]$/.test(p.mark)).map(p => p.name).sort().join(', ');
+  if (kh({}) !== 'Header filler (L half), Header filler (R half), Kick board (L half), Kick board (R half)') probs.push('planks: default should be halves, got ' + kh({}));
+  if (kh({ W: 2400 }) !== 'Header filler, one piece, Kick board, one piece') probs.push('planks: a 2400 cavity should be one piece each, got ' + kh({ W: 2400 }));
   console.log(`cavity: ${probs.length} problems`); probs.forEach(p => console.log('   ' + p));
   if (probs.length) process.exitCode = 1;
 }
@@ -218,7 +237,9 @@ jp += checkJoinery({ headWell: 150 }, 'joinery well 150');
 jp += checkJoinery({ headWell: 0 }, 'joinery no well');
 jp += checkJoinery({ headWell: 50, headHinge: 'front' }, 'joinery well 50, front hinges');
 jp += checkJoinery({ headStore: false, headAngle: 0 }, 'joinery plain headboard');
-jp += checkJoinery({ wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, Wback: 2457, packBL: 40 }, 'joinery studs');
+jp += checkJoinery({ wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, Wback: W0 - 1, packBL: 40 }, 'joinery studs');
+jp += checkJoinery({ skinT: 12, gapAbove: 134 }, 'joinery skins 12');
+jp += checkJoinery({ skinT: 18, skinZ0: 45, gapAbove: 89, doorHinge: 'inner' }, 'joinery skins 18 on the kick');
 jp += checkJoinery({ packFL: 0, packFR: 0, packBL: -2 }, 'joinery planed');
 if (jp) process.exitCode = 1;
 

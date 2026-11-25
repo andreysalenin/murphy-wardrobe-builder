@@ -4,13 +4,13 @@
 const C = window.MurphyCore, V = window.MurphyViewer;
 const LS_KEY = 'murphy-wardrobe-builder.v3', LS_VIEW = 'murphy-wardrobe-builder.view.v1', LS_THEME = 'murphy-wardrobe-builder.theme';
 const $ = (id) => document.getElementById(id);
-const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'wallStudL', 'wallStudR', 'wallStudY0', 'wallStudY1', 'wallStudClad', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
+const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'skinZ0', 'wallStudL', 'wallStudR', 'wallStudY0', 'wallStudY1', 'wallStudClad', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
   'hangClear', 'railDrop', 'runnerClear', 'runnerLen', 'boxLess', 'gap', 'gapAbove', 'frontGap', 'TfDrawer', 'TfSide', 'TfTop', 'headWell', 'T', 'Tb', 'Tback', 'Tsup', 'Tladder', 'Tplinth', 'Tpacker', 'Tledge', 'Thead',
   'pivotFromRail', 'pivotAboveHead', 'cabPivotZ', 'pinGap', 'springLowAlong', 'springLowOut', 'springUpFront', 'springUpZ', 'stopFront', 'stopBelowTop',
   'springD', 'springRodD', 'springEndD', 'springBodyL', 'studS', 'plateT', 'nutStack', 'stopD', 'stopH', 'legD',
   'railD', 'headRailD', 'footRailD', 'railR', 'legFromFoot', 'legFromTop', 'struts', 'ladderW',
   'ledgeClear', 'headAngle', 'headH', 'headGap', 'headLip', 'headClear', 'headDoorOpen', 'headGPO', 'headZone', 'upstand', 'steelH', 'steelT', 'twinSpacing', 'lockPinX', 'wallRail', 'kerf', 'trim'];
-const OPT_FIELDS = ['Wback', 'packBL', 'packBR'];  // blank: worked out from the others
+const OPT_FIELDS = ['Wback', 'packBL', 'packBR', 'skinZ1'];  // blank: worked out from the others
 const SEL_FIELDS = ['kickCentre', 'doorHinge', 'lockType', 'headHinge'];
 const CHK_FIELDS = ['topShelf', 'cableHoles', 'headStore', 'supportOffset', 'faceReveal', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain', 'wallStudFronts'];
 
@@ -18,6 +18,12 @@ const readLS = (k) => { try { const v = localStorage.getItem(k); return v ? JSON
 const writeLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage off: settings just aren't remembered */ } };
 const defaults = () => JSON.parse(JSON.stringify(C.DEFAULTS));
 let params = Object.assign(defaults(), readLS(LS_KEY) || {});
+// the cavity was remeasured: saved settings still on the old 2458 x 2554 defaults follow, once; sizes someone typed stay
+if (!readLS(LS_KEY + ':cavity2522')) {
+  if (Number(params.W) === 2458) params.W = 2522;
+  if (Number(params.H) === 2554) params.H = 2564;
+  writeLS(LS_KEY + ':cavity2522', 1);
+}
 // the side gap became packing at four corners: a saved gap becomes the front packing both sides, once
 { const saved = readLS(LS_KEY); if (saved && saved.sideClear != null && saved.packFL == null) { params.packFL = params.packFR = Number(saved.sideClear); } delete params.sideClear; }
 // the bed-cabinet sides moved in to the kit's 11 mm gap, with no packers: saved settings still on the old 30 mm
@@ -164,12 +170,22 @@ function renderCavity() {
   const { P, G } = model, pk = G.pack, r1 = (v) => String(Math.round(v * 10) / 10);
   if ($('Wback')) $('Wback').placeholder = r1(P.W);
   if ($('packBL')) $('packBL').placeholder = r1(P.packFL);
-  if ($('packBR')) $('packBR').placeholder = r1(pk.Wb - 2 * G.cw - pk.BL);
+  if ($('packBR')) $('packBR').placeholder = r1(pk.Wb - 2 * G.cwo - pk.BL);
+  if ($('skinZ1')) $('skinZ1').placeholder = r1(G.zTop);
   const off = G.openOff, studs = G.wstuds.length && P.wallStudFronts;
   const add = Math.abs(pk.backSum - pk.Wb) > 0.5 ? ` <b>The back adds up to ${r1(pk.backSum)}, not ${r1(pk.Wb)}.</b>` : '';
-  if ($('pack-note')) $('pack-note').innerHTML = `Carcass <b>${r1(2 * G.cw)}</b> wide. ${studs ? 'Opening between the clad studs' : 'Opening'} <b>${r1(G.openL + G.openR)}</b>, ` +
+  if ($('pack-note')) $('pack-note').innerHTML = `Carcass <b>${r1(2 * G.cw)}</b> wide${G.skin ? `, <b>${r1(2 * G.cwo)}</b> over the skins` : ''}. ${G.skin ? 'Opening between the skins' : studs ? 'Opening between the clad studs' : 'Opening'} <b>${r1(G.openL + G.openR)}</b>, ` +
     (Math.abs(off) < 0.05 ? 'centred on the bed.' : `its centre <b>${r1(Math.abs(off))}</b> ${off > 0 ? 'left' : 'right'} of the bed's.`) + add;
   if ($('pack-centre')) $('pack-centre').disabled = Math.abs(off) < 0.05;
+  if ($('skin-note')) {
+    if (!G.skin) $('skin-note').textContent = '';
+    else {
+      const len = G.skinZ[1] - G.skinZ[0], have = P.sheets.filter(q => q.T === G.skin), maxS = Math.max(0, ...have.map(q => q.L - 2 * P.trim));
+      $('skin-note').innerHTML = `${r1(G.skin)} + ${r1(P.T)}: each skin <b>${r1(len)}</b> tall, ${r1(G.skinZ[0])} to ${r1(G.skinZ[1])}, and ${r1(G.yF - G.yB1 + P.Tback)} deep. ` +
+        (!have.length ? `<b>No ${r1(G.skin)} mm sheets in your stock.</b>` : len > maxS + 0.5 ? `<b>${r1(len - maxS)} longer than your ${r1(G.skin)} mm sheets give (${r1(maxS)}):</b> the checks say how to fit it.` : `Fits your ${r1(G.skin)} mm sheets (${r1(maxS)}).`) +
+        ` The towers are ${r1(G.towerIn)} inside.`;
+    }
+  }
 }
 
 /* ---------------------------------------------------------------- summary */

@@ -365,7 +365,7 @@ function pageOverview(doc, M, S, I, info) {
   const st = S.sheets;
   const rows = [
     ['Cavity (W x H x D)', `${f0(P.W)}${G.pack.Wb !== P.W ? ' (' + f1(G.pack.Wb) + ' at the back)' : ''} x ${f0(P.H)} x ${f0(P.D)}`],
-    ['Carcass and opening', `${f1(2 * G.cw)} wide, square; fronts fill ${f1(G.openL + G.openR)}${G.wstuds.length && P.wallStudFronts ? ' between the clad studs' : ''}, ${Math.abs(G.openOff) < 0.05 ? 'symmetric' : f1(Math.abs(G.openOff)) + ' off centre'}`],
+    ['Carcass and opening', `${f1(2 * G.cw)} wide, square${G.skin ? `, ${f1(G.skin)} skins outside it` : ''}; fronts fill ${f1(G.openL + G.openR)}${G.skin ? ' between the skins' : G.wstuds.length && P.wallStudFronts ? ' between the clad studs' : ''}, ${Math.abs(G.openOff) < 0.05 ? 'symmetric' : f1(Math.abs(G.openOff)) + ' off centre'}`],
     ['Mattress', `${f0(P.mW)} x ${f0(P.mL)} x ${f0(P.mT)}`],
     ['Bed bay, clear', `${f0(G.bayIn)} between the bed-cabinet sides`],
     ['Bed frame', `${f0(G.frameW)} x ${f0(G.frameL)}; face panel ${P.T} mm in two halves, ${f0(2 * (G.xFo + P.faceOverhang))} wide${P.faceOverhang ? `, ${f0(P.faceOverhang)} past the rails` : ''}`],
@@ -488,7 +488,7 @@ function pageElevations(doc, M, S, I, info) {
   v3.dimAt([G.xA, 0, 0], [G.xA, P.D, 0], xd - 5, 'v', null, { size: 5.2 });
   s.text(ox, pb - 48, `Depth: ${f0(P.backGap)} to the wall, ${f0(P.Tback)} back, then carcass and front: ${[['drawers', 'drawer'], ['tower doors', 'side'], ['flaps', 'top'], ['bed face', 'bed']].map(([n, k]) => `${n} ${f0(G.yFbOf[k] - P.frontGap - G.yB1)} + ${f0(P.frontGap)} + ${f0(G.tf[k])}`).join(', ')}; every front's face in one plane.`, { size: 5.6, color: GREY });
   const pk = G.pack;
-  s.text(ox, pb - 52, `Width: ${f0(P.W)} at the front, ${f1(pk.Wb)} at the back; carcass ${f1(2 * G.cw)}, square. Tower to wall, front / back: right ${f1(pk.FR)} / ${f1(pk.BR)}, left ${f1(pk.FL)} / ${f1(pk.BL)}${[pk.FL, pk.FR, pk.BL, pk.BR].some(v => v < 0) ? ' (negative: planed off the side)' : ''}.${G.wstuds.length ? ` Clad studs stand out ${G.wstuds.map(q => `${f1(q.p + q.clad)} ${q.S === 'L' ? 'left' : 'right'}`).join(', ')}, ${f0(G.wstuds[0].yc0)} to ${f0(G.wstuds[0].yc1)} from the back wall.` : ''}`, { size: 5.6, color: GREY });
+  s.text(ox, pb - 52, `Width: ${f0(P.W)} at the front, ${f1(pk.Wb)} at the back; carcass ${f1(2 * G.cw)}${G.skin ? ` with ${f1(G.skin)} skins outside it` : ''}, square. ${G.skin ? 'Skin' : 'Tower'} to wall, front / back: right ${f1(pk.FR)} / ${f1(pk.BR)}, left ${f1(pk.FL)} / ${f1(pk.BL)}${[pk.FL, pk.FR, pk.BL, pk.BR].some(v => v < 0) ? ' (negative: planed off the side)' : ''}.${G.wstuds.length ? ` Clad studs stand out ${G.wstuds.map(q => `${f1(q.p + q.clad)} ${q.S === 'L' ? 'left' : 'right'}`).join(', ')}, ${f0(G.wstuds[0].yc0)} to ${f0(G.wstuds[0].yc1)} from the back wall.` : ''}`, { size: 5.6, color: GREY });
   const pz2 = (G.zBm1 + G.zTopB) / 2;
   const v4 = View(s, 'top', sc, [ox2 + P.W / 2 / sc, pb], [0, 0]);
   v4.parts(M.parts.filter(p => !p.leg && !p.mattress), { cut: pz2, filter: (p) => p.ctx || !(p.hw && !['FS', 'LP', 'PL'].includes(p.mark)) });
@@ -2532,14 +2532,15 @@ function openingsData(M) {
   // the door hinge arms stand into the tower openings
   const arms = named(/^Hanging-space door hinge \d+ \(L\) arm/);
   if (arms.length) D.hingeIn = Math.max(...arms.map(b => P.doorHinge === 'inner' ? b[3] - G.xT2 : G.xOi - b[0]));
-  D.studs = G.wstuds.length && P.wallStudFronts && Math.abs(G.openL + G.openR - (G.walls.L[1] - G.walls.R[1])) > 0.05;
+  D.studs = Math.abs(G.openL + G.openR - (G.walls.L[1] - G.walls.R[1])) > 0.05;   // the fronts fill less than wall to wall
+  D.studsWord = G.skin ? 'skins' : 'clad studs';
   return D;
 }
 
 function openingRows(D) {
   const { P, G } = D, R = [];
   R.push(['Cavity at the front', f0(P.W), f0(P.H), f0(P.D), G.pack.Wb !== P.W ? `${f1(G.pack.Wb)} wide at the back` : 'wall to wall, floor to ceiling']);
-  if (D.studs) R.push(['Opening between the clad studs', f1(G.openL + G.openR), f0(P.H), '', `the studs stand out ${G.wstuds.map(q => f1(q.p + q.clad)).join(' and ')}`]);
+  if (D.studs) R.push([`Opening between the ${D.studsWord}`, f1(G.openL + G.openR), f0(P.H), '', G.skin ? `${f1(G.skin)} skins on the towers' outer sides, flush with the fronts` : `the studs stand out ${G.wstuds.map(q => f1(q.p + q.clad)).join(' and ')}`]);
   R.push(['Bed opening', f0(G.bayIn), f0(G.zBm0), f0(D.bayD), 'between the bed-cabinet sides, floor to the shelf']);
   R.push(['Box over the bed, each', f0(D.boxW), f0(D.boxH), f0(D.bayD), 'two, either side of the divider, behind the flaps']);
   if (D.hb) {
@@ -2624,11 +2625,12 @@ function drawOpenings(s, M) {
   // widths below the floor: clear, then the carcass and its packing, then wall to wall
   const xs = (x) => [x, 0, 0];
   [[-G.xOi, -G.xT2], [-G.xB, G.xB], [G.xT2, G.xOi]].forEach(([a, b]) => vA.dimAt(xs(a), xs(b), FLOOR - 7, 'h', `${f0(b - a)}`, dimO));
-  vA.dimAt(xs(-wR), xs(-G.cw), FLOOR - 14, 'h', f1(wR - G.cw), Object.assign({ side: 'end' }, small));
+  const pkTxt = (w) => G.skin ? `${f1(w - G.cwo)} + ${f1(G.skin)} skin` : f1(w - G.cw);
+  vA.dimAt(xs(-wR), xs(-G.cw), FLOOR - 14, 'h', pkTxt(wR), Object.assign({ side: 'end' }, small));
   vA.dimAt(xs(-G.cw), xs(G.cw), FLOOR - 14, 'h', `${f0(2 * G.cw)} carcass`, dimO);
-  vA.dimAt(xs(G.cw), xs(wL), FLOOR - 14, 'h', f1(wL - G.cw), Object.assign({ side: 'start' }, small));
+  vA.dimAt(xs(G.cw), xs(wL), FLOOR - 14, 'h', pkTxt(wL), Object.assign({ side: 'start' }, small));
   vA.dimAt(xs(-wR), xs(wL), FLOOR - 21, 'h', `${f0(P.W)} wall to wall`, dimO);
-  if (D.studs) vA.dimAt([-G.openR, 0, P.H], [G.openL, 0, P.H], vA.P([0, 0, (G.zTop + P.H) / 2])[1], 'h', `${f1(G.openL + G.openR)} between the clad studs`, Object.assign({ noExt: true }, small));
+  if (D.studs) vA.dimAt([-G.openR, 0, P.H], [G.openL, 0, P.H], vA.P([0, 0, (G.zTop + P.H) / 2])[1], 'h', `${f1(G.openL + G.openR)} between the ${D.studsWord}`, Object.assign({ noExt: true }, small));
   // heights: the left tower's clear spaces, then the carcass and the header
   D.zones.forEach(z => vA.dimAt([G.xOi, 0, z.z0], [G.xOi, 0, z.z1], xl - 6, 'v', f0(z.z1 - z.z0), dimO));
   vA.dimAt([G.cw, 0, 0], [G.cw, 0, G.zTop], xl - 13, 'v', f0(G.zTop), dimO);
@@ -2673,7 +2675,7 @@ function drawOpenings(s, M) {
   const side = (v, X0, xCut, filter) => {
     room(X0 - P.D * k, X0, FLOOR, ZT, 'fcr');
     v.parts(M.parts, { cut: -xCut, filter });
-    cutMark(s, [v.P([0, cutY, 0])[0], FLOOR - 2], [v.P([0, cutY, 0])[0], ZT + 6], [1, 0], 'A');
+    cutMark(s, [v.P([0, cutY, 0])[0], FLOOR - 2], [v.P([0, cutY, 0])[0], ZT + 3], [1, 0], 'A');
     const y = v.P([0, 0, zPlan])[1]; cutMark(s, [X0 - P.D * k - 3, y], [X0 + 4.5, y], [0, -1], 'B');
     const zz = (y) => [0, y, P.H];
     v.dimAt(zz(0), zz(G.yB1), ZT + 4.5, 'h', f0(G.yB1), Object.assign({ side: 'end' }, small));
@@ -2716,7 +2718,8 @@ function drawOpenings(s, M) {
   /* ---------- the clear openings, and how to read the sheet */
   const rows = openingRows(D);
   s.heading(212, 286, 'CLEAR OPENINGS', 'panel face to panel face; deep is to the back panel');
-  s.table(212, 279, [['OPENING', 52, 'left'], ['WIDE', 16, 'right'], ['HIGH', 14, 'right'], ['DEEP', 13, 'right'], ['NOTES', 103, 'left']], rows, { rowH: 3.95, size: 5.4, hsize: 5.2 });
+  const rowH = Math.max(3.1, Math.min(3.95, (279 - (ZT + 14)) / (rows.length + 1)));   // stops clear of the side sections below
+  s.table(212, 279, [['OPENING', 52, 'left'], ['WIDE', 16, 'right'], ['HIGH', 14, 'right'], ['DEEP', 13, 'right'], ['NOTES', 103, 'left']], rows, { rowH, size: rowH < 3.6 ? 5 : 5.4, hsize: 5.2 });
   const nx = XS2 + 13, nw = 410 - nx;
   let ny = ZT - 2;
   s.heading(nx, ny, 'READING THE SECTIONS');
