@@ -226,7 +226,9 @@ class MurphyScene {
     if (!this.houseMats) {
       const m = (col, rough, glow) => new THREE.MeshStandardMaterial({ color: srgb(col), roughness: rough, metalness: 0, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2, emissive: srgb(glow || 0) });
       this.houseMats = { wall: m(0xe9e5dd, 0.95), reveal: m(0xe2ddd3, 0.95), ceiling: m(0xf3f1ec, 0.95, 0x8f8c86), door: m(0xfbfaf6, 0.6),
-        glass: new THREE.MeshStandardMaterial({ color: srgb(0xb9d3e2), roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.4, depthWrite: false, side: THREE.FrontSide }),
+        glass: new THREE.MeshStandardMaterial({ color: srgb(0xb9d3e2), roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.4, depthWrite: false, side: THREE.DoubleSide }),
+        alu: new THREE.MeshStandardMaterial({ color: srgb(0x1e1f21), roughness: 0.45, metalness: 0.35, side: THREE.DoubleSide }),
+        sill: new THREE.MeshStandardMaterial({ color: srgb(0xf1eee7), roughness: 0.6, side: THREE.DoubleSide }),
         swing: new THREE.LineDashedMaterial({ color: 0x8a8378, dashSize: 40, gapSize: 30, transparent: true, opacity: 0.8 }), cornice: new THREE.MeshStandardMaterial({ color: srgb(0xf7f5ef), roughness: 0.7, side: THREE.DoubleSide }),
         carpet: new THREE.MeshStandardMaterial({ color: srgb(0x8d9299), roughness: 1, side: THREE.DoubleSide }), line: new THREE.LineBasicMaterial({ color: 0x8a8378, transparent: true, opacity: 0.55 }) };
     }
@@ -248,6 +250,19 @@ class MurphyScene {
         this.houseCull.push({ objs: [mesh, ed], p: new THREE.Vector3(pr.o[0], pr.o[1], pr.o[2]), n: new THREE.Vector3(pr.u[0], pr.u[1], pr.u[2]) });
       }
       if (R.carpet) this.house.add(new THREE.Mesh(prismGeometry(R.carpet), M.carpet));
+      // the window's sill board, frame and glass, and the furniture: solids with a material by kind, or their own colour
+      for (const it of R.items || []) {
+        const g = prismGeometry(it.solid);
+        let mat = M[it.kind];
+        if (!mat) {
+          const key = 'c' + it.color + (it.rough || '') + (it.metal || '');
+          mat = this.houseMats[key] = this.houseMats[key] || new THREE.MeshStandardMaterial({ color: srgb(it.color || '#999999'), roughness: it.rough == null ? 0.6 : it.rough, metalness: it.metal || 0, side: THREE.DoubleSide });
+        }
+        const mesh = new THREE.Mesh(g, mat), objs = [mesh];
+        if (it.kind !== 'glass') { const ed = new THREE.LineSegments(new THREE.EdgesGeometry(g, 30), this.edgeMat); objs.push(ed); }
+        this.house.add(...objs);
+        if (it.cull) this.houseCull.push({ objs, p: new THREE.Vector3(...it.cull.p), n: new THREE.Vector3(...it.cull.n) });
+      }
       if (R.door) {   // its swing on the floor, and the leaf opened right back
         const d = R.door, h = new THREE.Vector3(d.x, d.y[0], d.swing[0][2]), pts = d.swing.map(p => new THREE.Vector3(p[0], p[1], p[2]));
         const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints([h, ...pts, h]), M.swing); ln.computeLineDistances(); this.house.add(ln);

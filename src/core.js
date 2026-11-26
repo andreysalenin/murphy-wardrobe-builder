@@ -74,6 +74,19 @@ const DEFAULTS = {
   winWall: 'right',   // the window: in the room's 'right' or 'left' wall (as you face the wardrobe), or 'none'
   winAt: 675,         // from the wardrobe wall's face to its near side
   winW: 1800, winH: 1000, winSill: 1200,
+  wallT: 185,         // that wall's thickness (external, 180 to 190)
+  winReveal: 140,     // the sill board's width, room face to the frame; the black aluminium frame takes the rest
+  winVent: 'right',   // two panes side by side: which one is an awning, hung at its top and opening out at the bottom
+                      // ('left' or 'right' as you face the window from inside, or 'none'); the other is fixed
+  winOpen: 15,        // how far it is open, deg
+  // by the far wall: two Castlery Emmerson standing desks pressed into its corners, an IKEA ALEX drawer unit between,
+  // the desks raised just enough to clear it (it runs under the ends of their tops)
+  furniture: true,
+  deskLen: 1400,      // desk top length
+  deskGap: 5,         // desks and the ALEX off the walls
+  deskClear: 5,       // the desks' undersides over the ALEX's top
+  deskH: null,        // top surface height (null: just clear the ALEX)
+  alexColor: '#5fa8a6', // the ALEX's colour (turquoise)
   faceBelowFrame: 10, // face panel runs this far past the frame's head end (kit: about 1/4 in); puts the pivot at the kit's 11-3/4 in
   // side towers
   drawers: [180, 180, 180, 180], // botdrawersize x 4 (bottom first)
@@ -103,8 +116,8 @@ const DEFAULTS = {
   Tkick: 12,          // kick boards: the plinth fronts come forward to meet them, packers on the bed-cabinet sides
   Tshelf: 12,         // adjustable shelves in the top compartments (378 span: no sag to speak of)
   Theader: 12,        // header filler along the ceiling
-  Ttop: 12,           // the towers' tops (the top over the bed stays at T: the flaps' hinge plates screw under it, and
-                      // their overlay needs its 18 mm edge)
+  Ttop: 18,           // the towers' tops, 18 like the top over the bed (which stays at T: the flaps' hinge plates screw
+                      // under it, and their overlay needs its 18 mm edge)
   // drawers
   runnerClear: 12.7,  // side-mount ball-bearing runners, each side
   runnerLen: 0,       // 0 = longest standard length that fits
@@ -320,6 +333,10 @@ function normParams(p) {
   num('doorW', 0, 1500); num('doorAt', 0, 6000);
   if (!['right', 'left', 'none'].includes(P.winWall)) P.winWall = 'right';
   num('winAt', 0, 12000); num('winW', 0, 6000); num('winH', 0, 3000); num('winSill', 0, 3000);
+  num('wallT', 60, 400); num('winReveal', 0, 380); if (P.winReveal > P.wallT - 30) P.winReveal = P.wallT - 30;
+  if (!['right', 'left', 'none'].includes(P.winVent)) P.winVent = 'right'; num('winOpen', 0, 60);
+  P.furniture = P.furniture !== false; num('deskLen', 800, 2400); num('deskGap', 0, 200); num('deskClear', 0, 100); opt('deskH', 500, 1400);
+  if (!/^#[0-9a-fA-F]{6}$/.test(String(P.alexColor))) P.alexColor = DEFAULTS.alexColor;
   P.topShelf = !!P.topShelf; P.headStore = P.headStore !== false; P.cableHoles = P.cableHoles !== false; P.supportOffset = !!P.supportOffset; P.faceReveal = !!P.faceReveal; P.packer = !!P.packer; P.ledge = !!P.ledge; P.grain = !!P.grain; P.headboard = !!P.headboard; P.edgeSteel = !!P.edgeSteel; P.lockTab = !!P.lockTab;
   if (p && p.lockPins === false && !p.lockType) P.lockType = 'none';
   if (!['twin', 'pins', 'bolts', 'none'].includes(P.lockType)) P.lockType = 'twin';
@@ -497,6 +514,12 @@ function rotYZ(p, c, th) {
   const cs = Math.cos(th), sn = Math.sin(th), y = p[1] - c[0], z = p[2] - c[1];
   return [p[0], c[0] + y * cs + z * sn, c[1] - y * sn + z * cs];
 }
+// a prism turned about the line through (x = c[0], z = c[1]) along y: positive th takes a point below the line toward -x
+function rotXZ(pr, c, th) {
+  const cs = Math.cos(th), sn = Math.sin(th), d = (a) => [a[0] * cs + a[2] * sn, a[1], -a[0] * sn + a[2] * cs];
+  const o = d([pr.o[0] - c[0], 0, pr.o[2] - c[1]]), u = d(pr.u), v = d(pr.v);
+  return Object.assign({}, pr, { o: [o[0] + c[0], pr.o[1], o[2] + c[1]], u, v, n: cross(u, v) });
+}
 function rotDir(d, th) { const cs = Math.cos(th), sn = Math.sin(th); return [d[0], d[1] * cs + d[2] * sn, -d[1] * sn + d[2] * cs]; }
 function rotatePrism(pr, c, th) {
   const u = rotDir(pr.u, th), v = rotDir(pr.v, th);
@@ -561,6 +584,93 @@ function roomHits(P, G, b) {
   if (G.bulk && b[4] > G.bulk.y0 + 0.01 && b[1] < G.bulk.y1) out.push({ key: 'head', name: 'the head of the opening', over: b[5] - G.bulk.z0 });
   return out;
 }
+// furniture models (src/furniture/*.js, from the studies in study/furniture): window.Furniture in the page, required here
+function furnitureLib() {
+  if (root.Furniture && root.Furniture.emmerson) return root.Furniture;
+  try { if (typeof require === 'function') return { emmerson: require('./furniture/emmerson.js'), alex: require('./furniture/alex.js') }; } catch (e) { /* not there */ }
+  return {};
+}
+// an item's parts, in its own frame (x along it, y from its back to its front, z up; see study/furniture/FORMAT.md),
+// turned to face away from the wall at y = Yb: local x = 0 lands at world x X1, y = 0 on the wall, z = 0 at z0
+function placeItem(item, X1, Yb, z0, opt) {
+  const out = [], mats = item.materials || {}, M = (p) => [X1 - p[0], Yb - p[1], z0 + p[2]];
+  for (const p of item.parts) {
+    let solid;
+    try {
+      if (p.shape === 'box') solid = box(X1 - p.max[0], X1 - p.min[0], Yb - p.max[1], Yb - p.min[1], z0 + p.min[2], z0 + p.max[2]);
+      else if (p.shape === 'cyl') solid = cyl(p.d, M(p.a), M(p.b));
+      else if (p.shape === 'extrude' && p.axis === 'z') solid = prism([0, 0, z0 + p.from], X, Y, p.to - p.from, [ccwLoop(p.pts.map(q => [X1 - q[0], Yb - q[1]]))]);
+      else if (p.shape === 'extrude' && p.axis === 'x') solid = yzPrism(X1 - p.to, X1 - p.from, ccwLoop(p.pts.map(q => [Yb - q[0], z0 + q[1]])));
+      else if (p.shape === 'extrude' && p.axis === 'y') solid = prism([0, Yb - p.from, 0], X, Z, p.to - p.from, [ccwLoop(p.pts.map(q => [X1 - q[0], z0 + q[1]]))]);
+    } catch (e) { solid = null; }
+    if (!solid) continue;
+    const color = (opt.color && opt.color(p)) || p.color || mats[p.mat] || '#999999';
+    out.push({ name: `${opt.name}: ${p.name}`, color, rough: /frame|steel|metal|alu|leg|column|foot|beam/i.test(p.mat + ' ' + p.name) ? 0.45 : 0.6, metal: /frame|steel|metal|alu/i.test(p.mat) ? 0.3 : 0, solid, mat: p.mat });
+  }
+  return out;
+}
+// the far wall: a desk in each corner, the ALEX between against the wall, the desks just clearing it
+function furnitureItems(P, G, R) {
+  const F = furnitureLib();
+  if (!P.furniture || !F.emmerson || !F.alex) return { items: [], info: null };
+  const gap = P.deskGap, Yb = R.y[1] - gap, z0 = G.legFloor, L = P.deskLen;
+  const alex = F.alex({ color: P.alexColor }), A = alex.dims;
+  const xRd = R.x[0] + gap, xLd = R.x[1] - gap, between = (xLd - L) - (xRd + L), xc = ((xRd + L) + (xLd - L)) / 2;
+  const alexBox = [xc - A.W / 2, Yb - A.D, z0, xc + A.W / 2, Yb, z0 + A.H];
+  const deskAt = (h) => { const d = F.emmerson({ height: h, length: L }); return { d, parts: [...placeItem(d, xRd + L, Yb, z0, { name: 'Desk, right corner' }), ...placeItem(d, xLd, Yb, z0, { name: 'Desk, left corner' })] }; };
+  // how the desks meet the ALEX at height h: what stands over it and how low, what of them reaches its floor
+  const meet = (parts) => {
+    let low = Infinity, blocked = [];
+    for (const it of parts) {
+      const b = prismBox(it.solid);
+      if (b[3] <= alexBox[0] + 0.01 || b[0] >= alexBox[3] - 0.01 || b[4] <= alexBox[1] + 0.01 || b[1] >= alexBox[4] - 0.01) continue;
+      if (b[2] < alexBox[5] - 0.01 && b[2] < z0 + 60) blocked.push(it.name);   // stands on the floor inside its footprint
+      else low = Math.min(low, b[2]);
+    }
+    return { low, blocked };
+  };
+  const D0 = F.emmerson({ length: L }).dims, hMin = D0.hMin, hMax = D0.hMax;
+  let h = P.deskH != null ? P.deskH : hMin, built = deskAt(h), m = meet(built.parts);
+  if (P.deskH == null) for (let k = 0; k < 4 && isFinite(m.low); k++) {
+    const need = alexBox[5] + P.deskClear - m.low;
+    if (need < 0.05) break;
+    h = Math.ceil(h + need); built = deskAt(h); m = meet(built.parts);
+  }
+  const alexItems = placeItem(alex, xc + A.W / 2, Yb, z0, { name: 'ALEX', color: (p) => /body|front|carcass|top|side|drawer/i.test(p.mat) && !/inside|grip|shadow|plinth/i.test(p.mat) ? P.alexColor : null });
+  const info = { h, hMin, hMax, L, D: D0.D, between, over: (A.W - between) / 2, alexTop: alexBox[5] - z0, clear: isFinite(m.low) ? m.low - alexBox[5] : null, blocked: [...new Set(m.blocked)], fits: between >= 0,
+    deskFront: Yb - D0.D, alex: A };
+  return { items: [...built.parts, ...alexItems], info };
+}
+// the window in a side wall whose room face is at xw, the room toward n (+1: +x): the sill board across the reveal, the
+// black aluminium frame in the rest of the wall's thickness with a mullion between two equal panes, one fixed and one
+// an awning, hung at its top and open at the bottom. Items for the 3D view: { name, kind, solid, cull }
+function windowItems(P, win, xw, n) {
+  const out = [], R = P.winReveal, T = P.wallT, fd = T - R, a = win.y0, b = win.y1, s = win.z0, h = win.z1, m = (a + b) / 2;
+  const cull = { p: [xw, a, s], n: [n, 0, 0] };
+  const bx = (t0, t1, y0, y1, z0, z1) => box(xw - n * t0, xw - n * t1, y0, y1, z0, z1);   // t: depth into the wall from the room face
+  const put = (name, kind, solid) => out.push({ name, kind, solid, cull });
+  put('Window sill board', 'sill', bx(0, R, a, b, s - 20, s));
+  const fw = 40, gT = R + fd / 2;                                                // frame members' face width; the glass mid frame
+  put('Window frame, head', 'alu', bx(R, T, a, b, h - fw, h));
+  put('Window frame, sill', 'alu', bx(R, T, a, b, s, s + fw));
+  put('Window frame, jamb', 'alu', bx(R, T, a, a + fw, s + fw, h - fw));
+  put('Window frame, jamb', 'alu', bx(R, T, b - fw, b, s + fw, h - fw));
+  put('Window frame, mullion', 'alu', bx(R, T, m - fw / 2, m + fw / 2, s + fw, h - fw));
+  // the panes as seen from inside: left is toward -y on the right-hand wall (n = +1), toward +y on the left-hand one
+  const leftLow = n > 0, vent = P.winVent, ventLow = vent === 'none' ? null : (vent === 'left') === leftLow;   // is the vent the low-y pane?
+  const panes = [[a + fw, m - fw / 2, true], [m + fw / 2, b - fw, false]];
+  for (const [y0, y1, low] of panes) {
+    if (ventLow === null || low !== ventLow) { put('Window glass, fixed', 'glass', bx(gT - 3, gT + 3, y0, y1, s + fw, h - fw)); continue; }
+    // the awning sash, built shut in the frame's outer half, then turned about its top outside edge: the bottom goes out
+    const sw = 32, sd = Math.min(36, fd - 4), t0 = T - sd, z0 = s + fw, z1 = h - fw, sash = [
+      bx(t0, T, y0, y1, z1 - sw, z1), bx(t0, T, y0, y1, z0, z0 + sw), bx(t0, T, y0, y0 + sw, z0 + sw, z1 - sw), bx(t0, T, y1 - sw, y1, z0 + sw, z1 - sw)];
+    const glass = bx(T - sd / 2 - 3, T - sd / 2 + 3, y0 + sw, y1 - sw, z0 + sw, z1 - sw);
+    const th = n * P.winOpen * Math.PI / 180, ax = [xw - n * T, z1];
+    sash.forEach(pr => put('Window awning sash', 'alu', rotXZ(pr, ax, th)));
+    put('Window glass, awning', 'glass', rotXZ(glass, ax, th));
+  }
+  return out;
+}
 // the room in front of the cavity, for the 3D view: its walls as quads facing in, the ceiling, the floor and the
 // cornices round it; the cavity's own back and side walls and ceiling as well. Never cut, checked or exported.
 function roomModel(P, G) {
@@ -585,15 +695,15 @@ function roomModel(P, G) {
     }
     for (const h of holes) {
       const d = h.depth, A = (y, z) => at(y, z, 0), B = (y, z) => at(y, z, d);
-      if (h.z0 > 0.5) q('reveal', [A(h.y0, h.z0), A(h.y1, h.z0), B(h.y1, h.z0), B(h.y0, h.z0)], [0, 0, 1]);
+      if (h.z0 > 0.5 && !h.sill) q('reveal', [A(h.y0, h.z0), A(h.y1, h.z0), B(h.y1, h.z0), B(h.y0, h.z0)], [0, 0, 1]);
       q('reveal', [A(h.y0, h.z1), A(h.y1, h.z1), B(h.y1, h.z1), B(h.y0, h.z1)], [0, 0, -1]);
       q('reveal', [A(h.y0, h.z0), A(h.y0, h.z1), B(h.y0, h.z1), B(h.y0, h.z0)], [0, 1, 0]);
       q('reveal', [A(h.y1, h.z0), A(h.y1, h.z1), B(h.y1, h.z1), B(h.y1, h.z0)], [0, -1, 0]);
-      q(h.fill, [B(h.y0, h.z0), B(h.y1, h.z0), B(h.y1, h.z1), B(h.y0, h.z1)], N);
+      if (h.fill) q(h.fill, [B(h.y0, h.z0), B(h.y1, h.z0), B(h.y1, h.z1), B(h.y0, h.z1)], N);
     }
   };
   // the window, in the right or left wall
-  const win = P.winWall !== 'none' && P.winW > 0 && P.winH > 0 ? { wall: P.winWall, y0: D + P.winAt, y1: Math.min(y1, D + P.winAt + P.winW), z0: P.winSill, z1: Math.min(rh - 20, P.winSill + P.winH), depth: 60, fill: 'glass' } : null;
+  const win = P.winWall !== 'none' && P.winW > 0 && P.winH > 0 ? { wall: P.winWall, y0: D + P.winAt, y1: Math.min(y1, D + P.winAt + P.winW), z0: P.winSill, z1: Math.min(rh - 20, P.winSill + P.winH), depth: P.winReveal, fill: null, sill: true } : null;
   const holesOf = (S) => [...(S === 'left' && door ? [{ y0: d0, y1: d1, z0: 0, z1: dh, depth: 20, fill: 'door' }] : []), ...(win && win.wall === S ? [win] : [])];
   // the wardrobe wall, room side, either side of the opening (above it is the head, drawn as a part)
   if (xr - xR > 1) q('wall', [[xR, D, 0], [xr, D, 0], [xr, D, rh], [xR, D, rh]], [0, 1, 0]);
@@ -618,7 +728,10 @@ function roomModel(P, G) {
   // the door's swing on the floor, closed to open right back against the wardrobe wall
   const swing = [];
   if (door) for (let i = 0; i <= 24; i++) { const a = (Math.PI / 2) * i / 24; swing.push([xL - (d1 - d0) * Math.sin(a), d0 + (d1 - d0) * Math.cos(a), P.carpetT + 1]); }
-  return { quads, coves, rh, x: [xR, xL], y: [D, y1], opening: [xr, xl], door: door ? { x: xL, y: [d0, d1], h: dh, swing } : null,
+  const items = win ? windowItems(P, win, win.wall === 'left' ? xL : xR, win.wall === 'left' ? -1 : 1) : [];
+  const furn = furnitureItems(P, G, { x: [xR, xL], y: [D, y1] });
+  items.push(...furn.items);
+  return { quads, coves, items, furn: furn.info, rh, x: [xR, xL], y: [D, y1], opening: [xr, xl], door: door ? { x: xL, y: [d0, d1], h: dh, swing } : null,
     window: win ? { wall: win.wall, x: win.wall === 'left' ? xL : xR, y: [win.y0, win.y1], z: [win.z0, win.z1] } : null,
     carpet: P.carpetT > 0 ? box(xR, xL, D + P.frontSetback, y1, 0, P.carpetT) : null };
 }
@@ -2048,6 +2161,21 @@ function checks(model) {
       const txt = (G.bulk ? `The head of the opening (the 90x42 and the plasterboard left on it) comes ${f0(P.headDrop)} down from the ${f0(P.H)} ceiling, ${f0(P.headD)} deep at the mouth${under ? `; the carcass top at ${f0(G.zTop)} slides in ${r1(slide)} under it` : ''}${G.hasHeader ? `, and the ${f0(G.headerH)} header filler fills ${under ? 'that' : 'the gap'}.` : under ? ', a shadow line under its cornice (too little for a header filler).' : '.'} ` : '')
         + (kept.length ? `${f0(P.cornice)} cove cornices on ${kept.length > 1 ? kept.slice(0, -1).join(', ') + ' and ' + kept[kept.length - 1] : kept[0]}, ${P.corniceLip > 0 ? `their ${f0(P.corniceLip)} lip ${f0(P.H - P.cornice)} off the floor, out to ${f0(P.corniceLip)} from the wall, and the cove rising from there (${f0(G.coveZ(P.corniceLip + 10))} at ${f0(P.corniceLip + 10)} out)` : `their bottom edge ${f0(P.H - P.cornice)} off the floor at the wall itself, the cove rising away from it (${f0(G.coveZ(10))} at 10 out)`}${cl.length ? `. The carcass stays ${cl.map(([k, r]) => `${r1(r.clr)} clear of the one on the ${named[k]} (${r.near.replace(/^./, c => c.toLowerCase())})`).join(', ')}` : ''}.` : 'No cornices in the cavity.');
       w('info', G.bulk ? `Head of the opening at ${f0(G.zHead)}` : 'Cornices in the cavity', txt, 'layout');
+    }
+  }
+  // the desks and the ALEX by the far wall
+  {
+    const R = model.room, fi = R && R.furn;
+    if (fi) {
+      const reach = G.clear.open.reach, toBed = fi.deskFront - reach;
+      if (!fi.fits) w('bad', 'No room for two desks across the far wall', `Two ${f0(fi.L)} desks and their ${f0(P.deskGap)} gaps need ${f0(2 * fi.L + 2 * P.deskGap)}; the room is ${f0(P.roomW)}.`, 'room');
+      else if (fi.blocked.length) w('bad', 'The ALEX runs into the desks\' legs', `The tops are ${f0(fi.between)} apart, so the ${f0(fi.alex.W)} wide ALEX runs ${r1(fi.over)} under each, into ${fi.blocked.slice(0, 2).join(' and ')}: shorter desks, or the ALEX pulled forward.`, 'room');
+      else {
+        if (fi.h > fi.hMax + 0.5) w('bad', 'The desks cannot rise that high', `Clearing the ALEX needs the tops at ${f0(fi.h)}; the Emmerson goes to ${f0(fi.hMax)}.`, 'room');
+        if (P.deskH != null && fi.clear != null && fi.clear < 0) w('bad', 'The desks sit on the ALEX', `At ${f0(fi.h)} the desks come ${r1(-fi.clear)} down into the ALEX's top: raise them to ${f0(fi.h - fi.clear + P.deskClear)}.`, 'room');
+        w('info', `Desks at ${f0(fi.h)}, just over the ALEX`, `Two ${f0(fi.L)} Emmerson desks in the far corners, ${f0(P.deskGap)} off the walls, with their tops ${f0(fi.h)} off the floor${P.deskH == null ? ` (the lowest that clears the ALEX by ${f0(P.deskClear)}; the desk goes down to ${f0(fi.hMin)})` : ''}. The tops are ${f0(fi.between)} apart, so the ${f0(fi.alex.W)} wide, ${f0(fi.alexTop)} tall ALEX between them runs ${r1(fi.over)} under each${fi.clear != null ? `, ${r1(fi.clear)} under the lowest part over it` : ''}. With the bed down, its foot is ${f0(toBed)} from the desks' front edges.`, 'room');
+        if (toBed < 600) w('warn', 'Tight between the bed and the desks', `With the bed down its foot is only ${f0(toBed)} from the desks' front edges.`, 'room');
+      }
     }
   }
   // the room's door: hinged by the wardrobe wall, opening back against it

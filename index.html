@@ -80,6 +80,7 @@ details.grp[open] > summary .chev { transform: rotate(45deg); }
 .num input:focus { outline: none; }
 .num:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 select { border: 1px solid var(--line); border-radius: var(--r); background: var(--bg); padding: 6px 8px; font-size: 14px; max-width: 190px; }
+input.swatch { width: 64px; height: 34px; padding: 2px; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg); cursor: pointer; }
 select:disabled { opacity: 0.55; cursor: not-allowed; background: color-mix(in srgb, var(--line) 35%, var(--bg)); }
 .stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--bg); }
 .stepper button { border: 0; background: transparent; width: 34px; height: 34px; cursor: pointer; font-size: 18px; color: var(--ink); }
@@ -377,6 +378,17 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="field" data-when="!winWall=none"><label for="winW">Window width</label><div class="num"><input id="winW" type="number" min="0" max="6000" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field" data-when="!winWall=none"><label for="winH">Window height</label><div class="num"><input id="winH" type="number" min="0" max="3000" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field" data-when="!winWall=none"><div><label for="winSill">Window sill</label><small>Off the floor.</small></div><div class="num"><input id="winSill" type="number" min="0" max="3000" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="!winWall=none"><div><label for="wallT">That wall's thickness</label><small>External: 180 to 190.</small></div><div class="num"><input id="wallT" type="number" min="60" max="400" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="!winWall=none"><div><label for="winReveal">Sill board width</label><small>Room face to the frame; the black aluminium frame takes the rest of the wall.</small></div><div class="num"><input id="winReveal" type="number" min="0" max="380" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="!winWall=none"><div><label for="winVent">Pane that opens</label><small>Two equal panes: one hung at its top, opening out at the bottom; the other fixed.</small></div><select id="winVent"><option value="right">The right one</option><option value="left">The left one</option><option value="none">Neither</option></select></div>
+          <div class="field" data-when="!winWall=none !winVent=none"><label for="winOpen">Open by</label><div class="num"><input id="winOpen" type="number" min="0" max="60" step="1" inputmode="numeric"><span>deg</span></div></div>
+          <label class="check"><input type="checkbox" id="furniture"> <span>By the far wall: two Castlery Emmerson desks in its corners, an IKEA ALEX between, the desks just clearing it</span></label>
+          <div class="field" data-when="furniture"><label for="deskLen">Desk length</label><div class="num"><input id="deskLen" type="number" min="800" max="2400" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="furniture"><div><label for="deskGap">Off the walls</label><small>Desks and the ALEX.</small></div><div class="num"><input id="deskGap" type="number" min="0" max="200" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="furniture"><div><label for="deskH">Desk height</label><small>To the top surface. Blank: just clear the ALEX.</small></div><div class="num"><input id="deskH" type="number" min="500" max="1400" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="furniture"><div><label for="deskClear">Clear over the ALEX</label><small>When the height works itself out.</small></div><div class="num"><input id="deskClear" type="number" min="0" max="100" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="furniture"><label for="alexColor">ALEX colour</label><input id="alexColor" type="color" class="swatch"></div>
+          <div class="hint" id="furn-note" data-when="furniture"></div>
           <div class="sub-hd"><span>Studs in the side walls</span></div>
           <div class="hint">A stud standing proud of each side wall near the front, floor to ceiling. 0: none.</div>
           <div class="field"><label for="wallStudL">Stands out, left</label><div class="num"><input id="wallStudL" type="number" min="0" max="150" step="0.5" inputmode="decimal"><span>mm</span></div></div>
@@ -441,7 +453,7 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="field"><div><label for="Tkick">Kick boards</label><small>The plinth fronts come forward to meet a thinner kick; it stands on packers at the bed-cabinet sides.</small></div><div class="num"><input id="Tkick" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><label for="Theader">Header filler</label><div class="num"><input id="Theader" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><div><label for="Tshelf">Adjustable shelves</label><small>In the top compartments, 378 across: 12 does not sag.</small></div><div class="num"><input id="Tshelf" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <div class="field"><div><label for="Ttop">Tower tops</label><small>The top over the bed stays at the carcass thickness: the flaps' hinges screw under it and lap its edge.</small></div><div class="num"><input id="Ttop" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="Ttop">Tower tops</label><small>18 like the top over the bed, which stays at the carcass thickness: the flaps' hinges screw under it and lap its edge.</small></div><div class="num"><input id="Ttop" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
         </div>
       </details>
       <details class="grp" data-tab="kit">
@@ -1083,6 +1095,19 @@ const DEFAULTS = {
   winWall: 'right',   // the window: in the room's 'right' or 'left' wall (as you face the wardrobe), or 'none'
   winAt: 675,         // from the wardrobe wall's face to its near side
   winW: 1800, winH: 1000, winSill: 1200,
+  wallT: 185,         // that wall's thickness (external, 180 to 190)
+  winReveal: 140,     // the sill board's width, room face to the frame; the black aluminium frame takes the rest
+  winVent: 'right',   // two panes side by side: which one is an awning, hung at its top and opening out at the bottom
+                      // ('left' or 'right' as you face the window from inside, or 'none'); the other is fixed
+  winOpen: 15,        // how far it is open, deg
+  // by the far wall: two Castlery Emmerson standing desks pressed into its corners, an IKEA ALEX drawer unit between,
+  // the desks raised just enough to clear it (it runs under the ends of their tops)
+  furniture: true,
+  deskLen: 1400,      // desk top length
+  deskGap: 5,         // desks and the ALEX off the walls
+  deskClear: 5,       // the desks' undersides over the ALEX's top
+  deskH: null,        // top surface height (null: just clear the ALEX)
+  alexColor: '#5fa8a6', // the ALEX's colour (turquoise)
   faceBelowFrame: 10, // face panel runs this far past the frame's head end (kit: about 1/4 in); puts the pivot at the kit's 11-3/4 in
   // side towers
   drawers: [180, 180, 180, 180], // botdrawersize x 4 (bottom first)
@@ -1112,8 +1137,8 @@ const DEFAULTS = {
   Tkick: 12,          // kick boards: the plinth fronts come forward to meet them, packers on the bed-cabinet sides
   Tshelf: 12,         // adjustable shelves in the top compartments (378 span: no sag to speak of)
   Theader: 12,        // header filler along the ceiling
-  Ttop: 12,           // the towers' tops (the top over the bed stays at T: the flaps' hinge plates screw under it, and
-                      // their overlay needs its 18 mm edge)
+  Ttop: 18,           // the towers' tops, 18 like the top over the bed (which stays at T: the flaps' hinge plates screw
+                      // under it, and their overlay needs its 18 mm edge)
   // drawers
   runnerClear: 12.7,  // side-mount ball-bearing runners, each side
   runnerLen: 0,       // 0 = longest standard length that fits
@@ -1329,6 +1354,10 @@ function normParams(p) {
   num('doorW', 0, 1500); num('doorAt', 0, 6000);
   if (!['right', 'left', 'none'].includes(P.winWall)) P.winWall = 'right';
   num('winAt', 0, 12000); num('winW', 0, 6000); num('winH', 0, 3000); num('winSill', 0, 3000);
+  num('wallT', 60, 400); num('winReveal', 0, 380); if (P.winReveal > P.wallT - 30) P.winReveal = P.wallT - 30;
+  if (!['right', 'left', 'none'].includes(P.winVent)) P.winVent = 'right'; num('winOpen', 0, 60);
+  P.furniture = P.furniture !== false; num('deskLen', 800, 2400); num('deskGap', 0, 200); num('deskClear', 0, 100); opt('deskH', 500, 1400);
+  if (!/^#[0-9a-fA-F]{6}$/.test(String(P.alexColor))) P.alexColor = DEFAULTS.alexColor;
   P.topShelf = !!P.topShelf; P.headStore = P.headStore !== false; P.cableHoles = P.cableHoles !== false; P.supportOffset = !!P.supportOffset; P.faceReveal = !!P.faceReveal; P.packer = !!P.packer; P.ledge = !!P.ledge; P.grain = !!P.grain; P.headboard = !!P.headboard; P.edgeSteel = !!P.edgeSteel; P.lockTab = !!P.lockTab;
   if (p && p.lockPins === false && !p.lockType) P.lockType = 'none';
   if (!['twin', 'pins', 'bolts', 'none'].includes(P.lockType)) P.lockType = 'twin';
@@ -1506,6 +1535,12 @@ function rotYZ(p, c, th) {
   const cs = Math.cos(th), sn = Math.sin(th), y = p[1] - c[0], z = p[2] - c[1];
   return [p[0], c[0] + y * cs + z * sn, c[1] - y * sn + z * cs];
 }
+// a prism turned about the line through (x = c[0], z = c[1]) along y: positive th takes a point below the line toward -x
+function rotXZ(pr, c, th) {
+  const cs = Math.cos(th), sn = Math.sin(th), d = (a) => [a[0] * cs + a[2] * sn, a[1], -a[0] * sn + a[2] * cs];
+  const o = d([pr.o[0] - c[0], 0, pr.o[2] - c[1]]), u = d(pr.u), v = d(pr.v);
+  return Object.assign({}, pr, { o: [o[0] + c[0], pr.o[1], o[2] + c[1]], u, v, n: cross(u, v) });
+}
 function rotDir(d, th) { const cs = Math.cos(th), sn = Math.sin(th); return [d[0], d[1] * cs + d[2] * sn, -d[1] * sn + d[2] * cs]; }
 function rotatePrism(pr, c, th) {
   const u = rotDir(pr.u, th), v = rotDir(pr.v, th);
@@ -1570,6 +1605,93 @@ function roomHits(P, G, b) {
   if (G.bulk && b[4] > G.bulk.y0 + 0.01 && b[1] < G.bulk.y1) out.push({ key: 'head', name: 'the head of the opening', over: b[5] - G.bulk.z0 });
   return out;
 }
+// furniture models (src/furniture/*.js, from the studies in study/furniture): window.Furniture in the page, required here
+function furnitureLib() {
+  if (root.Furniture && root.Furniture.emmerson) return root.Furniture;
+  try { if (typeof require === 'function') return { emmerson: require('./furniture/emmerson.js'), alex: require('./furniture/alex.js') }; } catch (e) { /* not there */ }
+  return {};
+}
+// an item's parts, in its own frame (x along it, y from its back to its front, z up; see study/furniture/FORMAT.md),
+// turned to face away from the wall at y = Yb: local x = 0 lands at world x X1, y = 0 on the wall, z = 0 at z0
+function placeItem(item, X1, Yb, z0, opt) {
+  const out = [], mats = item.materials || {}, M = (p) => [X1 - p[0], Yb - p[1], z0 + p[2]];
+  for (const p of item.parts) {
+    let solid;
+    try {
+      if (p.shape === 'box') solid = box(X1 - p.max[0], X1 - p.min[0], Yb - p.max[1], Yb - p.min[1], z0 + p.min[2], z0 + p.max[2]);
+      else if (p.shape === 'cyl') solid = cyl(p.d, M(p.a), M(p.b));
+      else if (p.shape === 'extrude' && p.axis === 'z') solid = prism([0, 0, z0 + p.from], X, Y, p.to - p.from, [ccwLoop(p.pts.map(q => [X1 - q[0], Yb - q[1]]))]);
+      else if (p.shape === 'extrude' && p.axis === 'x') solid = yzPrism(X1 - p.to, X1 - p.from, ccwLoop(p.pts.map(q => [Yb - q[0], z0 + q[1]])));
+      else if (p.shape === 'extrude' && p.axis === 'y') solid = prism([0, Yb - p.from, 0], X, Z, p.to - p.from, [ccwLoop(p.pts.map(q => [X1 - q[0], z0 + q[1]]))]);
+    } catch (e) { solid = null; }
+    if (!solid) continue;
+    const color = (opt.color && opt.color(p)) || p.color || mats[p.mat] || '#999999';
+    out.push({ name: `${opt.name}: ${p.name}`, color, rough: /frame|steel|metal|alu|leg|column|foot|beam/i.test(p.mat + ' ' + p.name) ? 0.45 : 0.6, metal: /frame|steel|metal|alu/i.test(p.mat) ? 0.3 : 0, solid, mat: p.mat });
+  }
+  return out;
+}
+// the far wall: a desk in each corner, the ALEX between against the wall, the desks just clearing it
+function furnitureItems(P, G, R) {
+  const F = furnitureLib();
+  if (!P.furniture || !F.emmerson || !F.alex) return { items: [], info: null };
+  const gap = P.deskGap, Yb = R.y[1] - gap, z0 = G.legFloor, L = P.deskLen;
+  const alex = F.alex({ color: P.alexColor }), A = alex.dims;
+  const xRd = R.x[0] + gap, xLd = R.x[1] - gap, between = (xLd - L) - (xRd + L), xc = ((xRd + L) + (xLd - L)) / 2;
+  const alexBox = [xc - A.W / 2, Yb - A.D, z0, xc + A.W / 2, Yb, z0 + A.H];
+  const deskAt = (h) => { const d = F.emmerson({ height: h, length: L }); return { d, parts: [...placeItem(d, xRd + L, Yb, z0, { name: 'Desk, right corner' }), ...placeItem(d, xLd, Yb, z0, { name: 'Desk, left corner' })] }; };
+  // how the desks meet the ALEX at height h: what stands over it and how low, what of them reaches its floor
+  const meet = (parts) => {
+    let low = Infinity, blocked = [];
+    for (const it of parts) {
+      const b = prismBox(it.solid);
+      if (b[3] <= alexBox[0] + 0.01 || b[0] >= alexBox[3] - 0.01 || b[4] <= alexBox[1] + 0.01 || b[1] >= alexBox[4] - 0.01) continue;
+      if (b[2] < alexBox[5] - 0.01 && b[2] < z0 + 60) blocked.push(it.name);   // stands on the floor inside its footprint
+      else low = Math.min(low, b[2]);
+    }
+    return { low, blocked };
+  };
+  const D0 = F.emmerson({ length: L }).dims, hMin = D0.hMin, hMax = D0.hMax;
+  let h = P.deskH != null ? P.deskH : hMin, built = deskAt(h), m = meet(built.parts);
+  if (P.deskH == null) for (let k = 0; k < 4 && isFinite(m.low); k++) {
+    const need = alexBox[5] + P.deskClear - m.low;
+    if (need < 0.05) break;
+    h = Math.ceil(h + need); built = deskAt(h); m = meet(built.parts);
+  }
+  const alexItems = placeItem(alex, xc + A.W / 2, Yb, z0, { name: 'ALEX', color: (p) => /body|front|carcass|top|side|drawer/i.test(p.mat) && !/inside|grip|shadow|plinth/i.test(p.mat) ? P.alexColor : null });
+  const info = { h, hMin, hMax, L, D: D0.D, between, over: (A.W - between) / 2, alexTop: alexBox[5] - z0, clear: isFinite(m.low) ? m.low - alexBox[5] : null, blocked: [...new Set(m.blocked)], fits: between >= 0,
+    deskFront: Yb - D0.D, alex: A };
+  return { items: [...built.parts, ...alexItems], info };
+}
+// the window in a side wall whose room face is at xw, the room toward n (+1: +x): the sill board across the reveal, the
+// black aluminium frame in the rest of the wall's thickness with a mullion between two equal panes, one fixed and one
+// an awning, hung at its top and open at the bottom. Items for the 3D view: { name, kind, solid, cull }
+function windowItems(P, win, xw, n) {
+  const out = [], R = P.winReveal, T = P.wallT, fd = T - R, a = win.y0, b = win.y1, s = win.z0, h = win.z1, m = (a + b) / 2;
+  const cull = { p: [xw, a, s], n: [n, 0, 0] };
+  const bx = (t0, t1, y0, y1, z0, z1) => box(xw - n * t0, xw - n * t1, y0, y1, z0, z1);   // t: depth into the wall from the room face
+  const put = (name, kind, solid) => out.push({ name, kind, solid, cull });
+  put('Window sill board', 'sill', bx(0, R, a, b, s - 20, s));
+  const fw = 40, gT = R + fd / 2;                                                // frame members' face width; the glass mid frame
+  put('Window frame, head', 'alu', bx(R, T, a, b, h - fw, h));
+  put('Window frame, sill', 'alu', bx(R, T, a, b, s, s + fw));
+  put('Window frame, jamb', 'alu', bx(R, T, a, a + fw, s + fw, h - fw));
+  put('Window frame, jamb', 'alu', bx(R, T, b - fw, b, s + fw, h - fw));
+  put('Window frame, mullion', 'alu', bx(R, T, m - fw / 2, m + fw / 2, s + fw, h - fw));
+  // the panes as seen from inside: left is toward -y on the right-hand wall (n = +1), toward +y on the left-hand one
+  const leftLow = n > 0, vent = P.winVent, ventLow = vent === 'none' ? null : (vent === 'left') === leftLow;   // is the vent the low-y pane?
+  const panes = [[a + fw, m - fw / 2, true], [m + fw / 2, b - fw, false]];
+  for (const [y0, y1, low] of panes) {
+    if (ventLow === null || low !== ventLow) { put('Window glass, fixed', 'glass', bx(gT - 3, gT + 3, y0, y1, s + fw, h - fw)); continue; }
+    // the awning sash, built shut in the frame's outer half, then turned about its top outside edge: the bottom goes out
+    const sw = 32, sd = Math.min(36, fd - 4), t0 = T - sd, z0 = s + fw, z1 = h - fw, sash = [
+      bx(t0, T, y0, y1, z1 - sw, z1), bx(t0, T, y0, y1, z0, z0 + sw), bx(t0, T, y0, y0 + sw, z0 + sw, z1 - sw), bx(t0, T, y1 - sw, y1, z0 + sw, z1 - sw)];
+    const glass = bx(T - sd / 2 - 3, T - sd / 2 + 3, y0 + sw, y1 - sw, z0 + sw, z1 - sw);
+    const th = n * P.winOpen * Math.PI / 180, ax = [xw - n * T, z1];
+    sash.forEach(pr => put('Window awning sash', 'alu', rotXZ(pr, ax, th)));
+    put('Window glass, awning', 'glass', rotXZ(glass, ax, th));
+  }
+  return out;
+}
 // the room in front of the cavity, for the 3D view: its walls as quads facing in, the ceiling, the floor and the
 // cornices round it; the cavity's own back and side walls and ceiling as well. Never cut, checked or exported.
 function roomModel(P, G) {
@@ -1594,15 +1716,15 @@ function roomModel(P, G) {
     }
     for (const h of holes) {
       const d = h.depth, A = (y, z) => at(y, z, 0), B = (y, z) => at(y, z, d);
-      if (h.z0 > 0.5) q('reveal', [A(h.y0, h.z0), A(h.y1, h.z0), B(h.y1, h.z0), B(h.y0, h.z0)], [0, 0, 1]);
+      if (h.z0 > 0.5 && !h.sill) q('reveal', [A(h.y0, h.z0), A(h.y1, h.z0), B(h.y1, h.z0), B(h.y0, h.z0)], [0, 0, 1]);
       q('reveal', [A(h.y0, h.z1), A(h.y1, h.z1), B(h.y1, h.z1), B(h.y0, h.z1)], [0, 0, -1]);
       q('reveal', [A(h.y0, h.z0), A(h.y0, h.z1), B(h.y0, h.z1), B(h.y0, h.z0)], [0, 1, 0]);
       q('reveal', [A(h.y1, h.z0), A(h.y1, h.z1), B(h.y1, h.z1), B(h.y1, h.z0)], [0, -1, 0]);
-      q(h.fill, [B(h.y0, h.z0), B(h.y1, h.z0), B(h.y1, h.z1), B(h.y0, h.z1)], N);
+      if (h.fill) q(h.fill, [B(h.y0, h.z0), B(h.y1, h.z0), B(h.y1, h.z1), B(h.y0, h.z1)], N);
     }
   };
   // the window, in the right or left wall
-  const win = P.winWall !== 'none' && P.winW > 0 && P.winH > 0 ? { wall: P.winWall, y0: D + P.winAt, y1: Math.min(y1, D + P.winAt + P.winW), z0: P.winSill, z1: Math.min(rh - 20, P.winSill + P.winH), depth: 60, fill: 'glass' } : null;
+  const win = P.winWall !== 'none' && P.winW > 0 && P.winH > 0 ? { wall: P.winWall, y0: D + P.winAt, y1: Math.min(y1, D + P.winAt + P.winW), z0: P.winSill, z1: Math.min(rh - 20, P.winSill + P.winH), depth: P.winReveal, fill: null, sill: true } : null;
   const holesOf = (S) => [...(S === 'left' && door ? [{ y0: d0, y1: d1, z0: 0, z1: dh, depth: 20, fill: 'door' }] : []), ...(win && win.wall === S ? [win] : [])];
   // the wardrobe wall, room side, either side of the opening (above it is the head, drawn as a part)
   if (xr - xR > 1) q('wall', [[xR, D, 0], [xr, D, 0], [xr, D, rh], [xR, D, rh]], [0, 1, 0]);
@@ -1627,7 +1749,10 @@ function roomModel(P, G) {
   // the door's swing on the floor, closed to open right back against the wardrobe wall
   const swing = [];
   if (door) for (let i = 0; i <= 24; i++) { const a = (Math.PI / 2) * i / 24; swing.push([xL - (d1 - d0) * Math.sin(a), d0 + (d1 - d0) * Math.cos(a), P.carpetT + 1]); }
-  return { quads, coves, rh, x: [xR, xL], y: [D, y1], opening: [xr, xl], door: door ? { x: xL, y: [d0, d1], h: dh, swing } : null,
+  const items = win ? windowItems(P, win, win.wall === 'left' ? xL : xR, win.wall === 'left' ? -1 : 1) : [];
+  const furn = furnitureItems(P, G, { x: [xR, xL], y: [D, y1] });
+  items.push(...furn.items);
+  return { quads, coves, items, furn: furn.info, rh, x: [xR, xL], y: [D, y1], opening: [xr, xl], door: door ? { x: xL, y: [d0, d1], h: dh, swing } : null,
     window: win ? { wall: win.wall, x: win.wall === 'left' ? xL : xR, y: [win.y0, win.y1], z: [win.z0, win.z1] } : null,
     carpet: P.carpetT > 0 ? box(xR, xL, D + P.frontSetback, y1, 0, P.carpetT) : null };
 }
@@ -3059,6 +3184,21 @@ function checks(model) {
       w('info', G.bulk ? `Head of the opening at ${f0(G.zHead)}` : 'Cornices in the cavity', txt, 'layout');
     }
   }
+  // the desks and the ALEX by the far wall
+  {
+    const R = model.room, fi = R && R.furn;
+    if (fi) {
+      const reach = G.clear.open.reach, toBed = fi.deskFront - reach;
+      if (!fi.fits) w('bad', 'No room for two desks across the far wall', `Two ${f0(fi.L)} desks and their ${f0(P.deskGap)} gaps need ${f0(2 * fi.L + 2 * P.deskGap)}; the room is ${f0(P.roomW)}.`, 'room');
+      else if (fi.blocked.length) w('bad', 'The ALEX runs into the desks\' legs', `The tops are ${f0(fi.between)} apart, so the ${f0(fi.alex.W)} wide ALEX runs ${r1(fi.over)} under each, into ${fi.blocked.slice(0, 2).join(' and ')}: shorter desks, or the ALEX pulled forward.`, 'room');
+      else {
+        if (fi.h > fi.hMax + 0.5) w('bad', 'The desks cannot rise that high', `Clearing the ALEX needs the tops at ${f0(fi.h)}; the Emmerson goes to ${f0(fi.hMax)}.`, 'room');
+        if (P.deskH != null && fi.clear != null && fi.clear < 0) w('bad', 'The desks sit on the ALEX', `At ${f0(fi.h)} the desks come ${r1(-fi.clear)} down into the ALEX's top: raise them to ${f0(fi.h - fi.clear + P.deskClear)}.`, 'room');
+        w('info', `Desks at ${f0(fi.h)}, just over the ALEX`, `Two ${f0(fi.L)} Emmerson desks in the far corners, ${f0(P.deskGap)} off the walls, with their tops ${f0(fi.h)} off the floor${P.deskH == null ? ` (the lowest that clears the ALEX by ${f0(P.deskClear)}; the desk goes down to ${f0(fi.hMin)})` : ''}. The tops are ${f0(fi.between)} apart, so the ${f0(fi.alex.W)} wide, ${f0(fi.alexTop)} tall ALEX between them runs ${r1(fi.over)} under each${fi.clear != null ? `, ${r1(fi.clear)} under the lowest part over it` : ''}. With the bed down, its foot is ${f0(toBed)} from the desks' front edges.`, 'room');
+        if (toBed < 600) w('warn', 'Tight between the bed and the desks', `With the bed down its foot is only ${f0(toBed)} from the desks' front edges.`, 'room');
+      }
+    }
+  }
   // the room's door: hinged by the wardrobe wall, opening back against it
   {
     const R = model.room;
@@ -4409,7 +4549,9 @@ class MurphyScene {
     if (!this.houseMats) {
       const m = (col, rough, glow) => new THREE.MeshStandardMaterial({ color: srgb(col), roughness: rough, metalness: 0, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2, emissive: srgb(glow || 0) });
       this.houseMats = { wall: m(0xe9e5dd, 0.95), reveal: m(0xe2ddd3, 0.95), ceiling: m(0xf3f1ec, 0.95, 0x8f8c86), door: m(0xfbfaf6, 0.6),
-        glass: new THREE.MeshStandardMaterial({ color: srgb(0xb9d3e2), roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.4, depthWrite: false, side: THREE.FrontSide }),
+        glass: new THREE.MeshStandardMaterial({ color: srgb(0xb9d3e2), roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.4, depthWrite: false, side: THREE.DoubleSide }),
+        alu: new THREE.MeshStandardMaterial({ color: srgb(0x1e1f21), roughness: 0.45, metalness: 0.35, side: THREE.DoubleSide }),
+        sill: new THREE.MeshStandardMaterial({ color: srgb(0xf1eee7), roughness: 0.6, side: THREE.DoubleSide }),
         swing: new THREE.LineDashedMaterial({ color: 0x8a8378, dashSize: 40, gapSize: 30, transparent: true, opacity: 0.8 }), cornice: new THREE.MeshStandardMaterial({ color: srgb(0xf7f5ef), roughness: 0.7, side: THREE.DoubleSide }),
         carpet: new THREE.MeshStandardMaterial({ color: srgb(0x8d9299), roughness: 1, side: THREE.DoubleSide }), line: new THREE.LineBasicMaterial({ color: 0x8a8378, transparent: true, opacity: 0.55 }) };
     }
@@ -4431,6 +4573,19 @@ class MurphyScene {
         this.houseCull.push({ objs: [mesh, ed], p: new THREE.Vector3(pr.o[0], pr.o[1], pr.o[2]), n: new THREE.Vector3(pr.u[0], pr.u[1], pr.u[2]) });
       }
       if (R.carpet) this.house.add(new THREE.Mesh(prismGeometry(R.carpet), M.carpet));
+      // the window's sill board, frame and glass, and the furniture: solids with a material by kind, or their own colour
+      for (const it of R.items || []) {
+        const g = prismGeometry(it.solid);
+        let mat = M[it.kind];
+        if (!mat) {
+          const key = 'c' + it.color + (it.rough || '') + (it.metal || '');
+          mat = this.houseMats[key] = this.houseMats[key] || new THREE.MeshStandardMaterial({ color: srgb(it.color || '#999999'), roughness: it.rough == null ? 0.6 : it.rough, metalness: it.metal || 0, side: THREE.DoubleSide });
+        }
+        const mesh = new THREE.Mesh(g, mat), objs = [mesh];
+        if (it.kind !== 'glass') { const ed = new THREE.LineSegments(new THREE.EdgesGeometry(g, 30), this.edgeMat); objs.push(ed); }
+        this.house.add(...objs);
+        if (it.cull) this.houseCull.push({ objs, p: new THREE.Vector3(...it.cull.p), n: new THREE.Vector3(...it.cull.n) });
+      }
       if (R.door) {   // its swing on the floor, and the leaf opened right back
         const d = R.door, h = new THREE.Vector3(d.x, d.y[0], d.swing[0][2]), pts = d.swing.map(p => new THREE.Vector3(p[0], p[1], p[2]));
         const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints([h, ...pts, h]), M.swing); ln.computeLineDistances(); this.house.add(ln);
@@ -8127,15 +8282,16 @@ root.MurphyDrawings = { make, openingsSVG, openingsData, openingRows };
 const C = window.MurphyCore, V = window.MurphyViewer;
 const LS_KEY = 'murphy-wardrobe-builder.v3', LS_VIEW = 'murphy-wardrobe-builder.view.v1', LS_THEME = 'murphy-wardrobe-builder.theme';
 const $ = (id) => document.getElementById(id);
-const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'skinZ0', 'carpetT', 'carpetSink', 'headDrop', 'headD', 'cornice', 'corniceLip', 'roomW', 'roomD', 'roomRight', 'doorW', 'doorAt', 'winAt', 'winW', 'winH', 'winSill', 'wallStudL', 'wallStudR', 'wallStudY0', 'wallStudY1', 'wallStudClad', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
+const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'skinZ0', 'carpetT', 'carpetSink', 'headDrop', 'headD', 'cornice', 'corniceLip', 'roomW', 'roomD', 'roomRight', 'doorW', 'doorAt', 'winAt', 'winW', 'winH', 'winSill', 'wallT', 'winReveal', 'winOpen', 'deskLen', 'deskGap', 'deskClear', 'wallStudL', 'wallStudR', 'wallStudY0', 'wallStudY1', 'wallStudClad', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
   'hangClear', 'railDrop', 'runnerClear', 'runnerLen', 'boxLess', 'gap', 'gapAbove', 'frontGap', 'TfDrawer', 'TfSide', 'TfTop', 'headWell', 'T', 'Tb', 'Tback', 'Tsup', 'Tladder', 'Tplinth', 'Tpacker', 'Tledge', 'Thead', 'Tkick', 'Theader', 'Tshelf', 'Ttop',
   'pivotFromRail', 'pivotAboveHead', 'cabPivotZ', 'pinGap', 'springLowAlong', 'springLowOut', 'springUpFront', 'springUpZ', 'stopFront', 'stopBelowTop',
   'springD', 'springRodD', 'springEndD', 'springBodyL', 'studS', 'plateT', 'nutStack', 'stopD', 'stopH', 'legD',
   'railD', 'headRailD', 'footRailD', 'railR', 'legFromFoot', 'legFromTop', 'struts', 'ladderW',
   'ledgeClear', 'headAngle', 'headH', 'headGap', 'headLip', 'headClear', 'headDoorOpen', 'headGPO', 'headZone', 'upstand', 'steelH', 'steelT', 'twinSpacing', 'lockPinX', 'wallRail', 'kerf', 'trim'];
-const OPT_FIELDS = ['Wback', 'packBL', 'packBR', 'skinZ1', 'kickTower', 'roomH'];  // blank: worked out from the others
-const SEL_FIELDS = ['kickCentre', 'doorHinge', 'lockType', 'headHinge', 'winWall'];
-const CHK_FIELDS = ['topShelf', 'cableHoles', 'headStore', 'supportOffset', 'faceReveal', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain', 'wallStudFronts', 'kickBevel', 'carpetLift', 'corniceBack', 'corniceSides', 'corniceHeadIn', 'corniceHeadOut'];
+const OPT_FIELDS = ['Wback', 'packBL', 'packBR', 'skinZ1', 'kickTower', 'roomH', 'deskH'];
+const COL_FIELDS = ['alexColor'];  // colours, #rrggbb  // blank: worked out from the others
+const SEL_FIELDS = ['kickCentre', 'doorHinge', 'lockType', 'headHinge', 'winWall', 'winVent'];
+const CHK_FIELDS = ['topShelf', 'cableHoles', 'headStore', 'supportOffset', 'faceReveal', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain', 'wallStudFronts', 'kickBevel', 'carpetLift', 'corniceBack', 'corniceSides', 'corniceHeadIn', 'corniceHeadOut', 'furniture'];
 
 const readLS = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } };
 const writeLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage off: settings just aren't remembered */ } };
@@ -8232,6 +8388,7 @@ function fillInputs() {
   for (const k of OPT_FIELDS) if ($(k)) $(k).value = params[k] == null ? '' : params[k];
   for (const k of SEL_FIELDS) if ($(k)) $(k).value = params[k];
   for (const k of CHK_FIELDS) if ($(k)) $(k).checked = !!params[k];
+  for (const k of COL_FIELDS) if ($(k)) $(k).value = params[k];
   drawerInputs();
   libRows();
   whenFields();
@@ -8256,6 +8413,7 @@ function readInputs() {
   for (const k of OPT_FIELDS) { const el = $(k); if (el) params[k] = el.value === '' || !isFinite(Number(el.value)) ? null : Number(el.value); }
   for (const k of SEL_FIELDS) if ($(k)) params[k] = $(k).value;
   for (const k of CHK_FIELDS) if ($(k)) params[k] = $(k).checked;
+  for (const k of COL_FIELDS) if ($(k)) params[k] = $(k).value;
   params.drawers = [...document.querySelectorAll('#drawers input')].map(i => Number(i.value) || 180);
   params.sheets = [...document.querySelectorAll('#lib tr')].map(tr => ({ T: Number(tr.querySelector('[data-k=T]').value), L: Number(tr.querySelector('[data-k=L]').value), W: Number(tr.querySelector('[data-k=W]').value), n: Number(tr.querySelector('[data-k=n]').value) }));
 }
@@ -8312,6 +8470,10 @@ function renderCavity() {
   if ($('skinZ1')) $('skinZ1').placeholder = r1(G.zTop);
   if ($('kickTower')) $('kickTower').placeholder = r1(G.kickC || G.gapBelow - P.gap);
   if ($('roomH')) $('roomH').placeholder = r1(P.H);
+  const fi = model.room.furn;
+  if ($('deskH')) $('deskH').placeholder = fi ? r1(fi.h) : '';
+  if ($('furn-note')) $('furn-note').innerHTML = !fi ? (P.furniture ? 'The desk and ALEX models are not loaded.' : '')
+    : `Desk tops at <b>${r1(fi.h)}</b>, ${fi.clear != null ? `${r1(fi.clear)} over the ALEX's ${r1(fi.alexTop)} top` : `the ALEX ${r1(fi.alexTop)} tall`}; the tops are ${r1(fi.between)} apart, so it runs ${r1(fi.over)} under each. Bed down: <b>${r1(fi.deskFront - model.G.clear.open.reach)}</b> from its foot to the desks.`;
   if ($('head-note')) {
     const pr = (l) => l.length > 1 ? l.slice(0, -1).join(', ') + ' and ' + l[l.length - 1] : l[0] || '';
     const k = G.coves.map(c => c.key), named = [k.includes('back') ? 'back wall' : '', k.includes('sideL') ? 'side walls' : '', k.includes('headIn') && k.includes('headOut') ? 'both faces of the head' : k.includes('headIn') ? 'the head, inside' : k.includes('headOut') ? 'the head, room side' : ''].filter(Boolean);

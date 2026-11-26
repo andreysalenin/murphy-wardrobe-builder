@@ -150,8 +150,9 @@ run({ skinT: 18, skinZ1: 3000, gapAbove: 61, H: 2400 }, 'skins up to the head');
     const area = (qs) => qs.reduce((a, q) => { const ys = q.pts.map(p => p[1]), zs = q.pts.map(p => p[2]); return a + (Math.max(...ys) - Math.min(...ys)) * (Math.max(...zs) - Math.min(...zs)); }, 0);
     if (Math.abs(R.x[0] - m.G.walls.R[1]) > 0.01 || Math.abs(R.x[1] - R.x[0] - 3116) > 0.01 || R.coves.length !== 4) probs.push(`room: expected the right wall flush with the right jamb and 4 cornice runs (got ${R.x}, ${R.coves.length})`);
     if (Math.abs(area(side(R.x[0], 'wall')) - (3168 * H0 - 1800 * 1000)) > 1) probs.push(`room: the right wall should be whole but for the 1800 x 1000 window (got ${area(side(R.x[0], 'wall'))})`);
-    const gl = R.quads.filter(q => q.kind === 'glass'), gy = gl.length ? gl[0].pts.map(p => p[1]) : [], gz = gl.length ? gl[0].pts.map(p => p[2]) : [];
-    if (gl.length !== 1 || Math.min(...gy) !== 600 + 675 || Math.max(...gy) !== 600 + 675 + 1800 || Math.min(...gz) !== 1200 || Math.max(...gz) !== 2200 || !(gl[0].pts[0][0] < R.x[0])) probs.push('room: the window should be 675 from the wardrobe wall, 1800 x 1000 with its sill at 1200, set back in the right wall');
+    const it = (re) => R.items.filter(i => re.test(i.name)).map(i => C.prismBox(i.solid)), sb = it(/sill board/)[0], head = it(/frame, head/)[0], aw = it(/glass, awning/)[0], fx = it(/glass, fixed/)[0];
+    if (!sb || sb[1] !== 600 + 675 || sb[4] !== 600 + 675 + 1800 || sb[5] !== 1200 || Math.abs(sb[3] - sb[0] - 140) > 0.01 || !head || head[5] !== 2200 || Math.abs(R.x[0] - head[0] - 185) > 0.01) probs.push('room: the window should be 675 from the wardrobe wall, 1800 x 1000 with its sill at 1200, a 140 sill board and the frame out to the 185 wall\'s outer face');
+    if (!aw || !fx || !(aw[1] > fx[4]) || !(aw[0] < R.x[0] - 185 - 100)) probs.push('room: the right pane (from inside) should be the awning, open out at the bottom');
     if (Math.abs(area(side(R.x[1], 'wall')) - (3168 * H0 - 820 * 2040)) > 1 || R.quads.filter(q => q.kind === 'door').length !== 1) probs.push('room: the left wall should be whole but for the 820 door');
   }
   if (!has(m, 'warn', /room door opens across the left tower/)) probs.push('room: the door opening across the left tower is not flagged');

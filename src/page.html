@@ -76,6 +76,7 @@ details.grp[open] > summary .chev { transform: rotate(45deg); }
 .num input:focus { outline: none; }
 .num:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 select { border: 1px solid var(--line); border-radius: var(--r); background: var(--bg); padding: 6px 8px; font-size: 14px; max-width: 190px; }
+input.swatch { width: 64px; height: 34px; padding: 2px; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg); cursor: pointer; }
 select:disabled { opacity: 0.55; cursor: not-allowed; background: color-mix(in srgb, var(--line) 35%, var(--bg)); }
 .stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--bg); }
 .stepper button { border: 0; background: transparent; width: 34px; height: 34px; cursor: pointer; font-size: 18px; color: var(--ink); }
@@ -372,6 +373,17 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="field" data-when="!winWall=none"><label for="winW">Window width</label><div class="num"><input id="winW" type="number" min="0" max="6000" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field" data-when="!winWall=none"><label for="winH">Window height</label><div class="num"><input id="winH" type="number" min="0" max="3000" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field" data-when="!winWall=none"><div><label for="winSill">Window sill</label><small>Off the floor.</small></div><div class="num"><input id="winSill" type="number" min="0" max="3000" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="!winWall=none"><div><label for="wallT">That wall's thickness</label><small>External: 180 to 190.</small></div><div class="num"><input id="wallT" type="number" min="60" max="400" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="!winWall=none"><div><label for="winReveal">Sill board width</label><small>Room face to the frame; the black aluminium frame takes the rest of the wall.</small></div><div class="num"><input id="winReveal" type="number" min="0" max="380" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="!winWall=none"><div><label for="winVent">Pane that opens</label><small>Two equal panes: one hung at its top, opening out at the bottom; the other fixed.</small></div><select id="winVent"><option value="right">The right one</option><option value="left">The left one</option><option value="none">Neither</option></select></div>
+          <div class="field" data-when="!winWall=none !winVent=none"><label for="winOpen">Open by</label><div class="num"><input id="winOpen" type="number" min="0" max="60" step="1" inputmode="numeric"><span>deg</span></div></div>
+          <label class="check"><input type="checkbox" id="furniture"> <span>By the far wall: two Castlery Emmerson desks in its corners, an IKEA ALEX between, the desks just clearing it</span></label>
+          <div class="field" data-when="furniture"><label for="deskLen">Desk length</label><div class="num"><input id="deskLen" type="number" min="800" max="2400" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="furniture"><div><label for="deskGap">Off the walls</label><small>Desks and the ALEX.</small></div><div class="num"><input id="deskGap" type="number" min="0" max="200" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="furniture"><div><label for="deskH">Desk height</label><small>To the top surface. Blank: just clear the ALEX.</small></div><div class="num"><input id="deskH" type="number" min="500" max="1400" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="furniture"><div><label for="deskClear">Clear over the ALEX</label><small>When the height works itself out.</small></div><div class="num"><input id="deskClear" type="number" min="0" max="100" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="furniture"><label for="alexColor">ALEX colour</label><input id="alexColor" type="color" class="swatch"></div>
+          <div class="hint" id="furn-note" data-when="furniture"></div>
           <div class="sub-hd"><span>Studs in the side walls</span></div>
           <div class="hint">A stud standing proud of each side wall near the front, floor to ceiling. 0: none.</div>
           <div class="field"><label for="wallStudL">Stands out, left</label><div class="num"><input id="wallStudL" type="number" min="0" max="150" step="0.5" inputmode="decimal"><span>mm</span></div></div>
@@ -436,7 +448,7 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="field"><div><label for="Tkick">Kick boards</label><small>The plinth fronts come forward to meet a thinner kick; it stands on packers at the bed-cabinet sides.</small></div><div class="num"><input id="Tkick" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><label for="Theader">Header filler</label><div class="num"><input id="Theader" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><div><label for="Tshelf">Adjustable shelves</label><small>In the top compartments, 378 across: 12 does not sag.</small></div><div class="num"><input id="Tshelf" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <div class="field"><div><label for="Ttop">Tower tops</label><small>The top over the bed stays at the carcass thickness: the flaps' hinges screw under it and lap its edge.</small></div><div class="num"><input id="Ttop" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="Ttop">Tower tops</label><small>18 like the top over the bed, which stays at the carcass thickness: the flaps' hinges screw under it and lap its edge.</small></div><div class="num"><input id="Ttop" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
         </div>
       </details>
       <details class="grp" data-tab="kit">

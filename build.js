@@ -15,7 +15,9 @@ const page = rd('src/page.html').replace(/^<meta name="claude:[^>]*>\n/m, '');
 const cut = page.indexOf('</style>') + '</style>'.length;
 const headPart = page.slice(0, cut).trim();
 const bodyPart = page.slice(cut).trim();
-const own = ['core.js', 'viewer.js', 'drawings.js', 'app.js'].map(f => `<script>\n${guard(rd('src/' + f), f)}\n</script>`).join('\n');
+// the furniture models (studied in study/furniture) register themselves on window.Furniture before the core needs them
+const furn = ['furniture/emmerson.js', 'furniture/alex.js'].filter(f => fs.existsSync(path.join(here, 'src', f)));
+const own = [...furn, 'core.js', 'viewer.js', 'drawings.js', 'app.js'].map(f => `<script>\n${guard(rd('src/' + f), f)}\n</script>`).join('\n');
 const three = guard(strip(rd('node_modules/three/build/three.min.js')), 'three');
 const jspdf = guard(strip(rd('node_modules/jspdf/dist/jspdf.umd.min.js')), 'jspdf');
 const libs = `<!-- three.js r128 (MIT) -->
