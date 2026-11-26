@@ -131,7 +131,11 @@ run({ skinT: 18, skinZ1: 3000, gapAbove: 61, H: 2400 }, 'skins up to the head');
     if (Math.abs(Math.min(...k.map(b => b[0])) - G.walls.R[1]) > 0.01 || Math.abs(Math.max(...k.map(b => b[3])) - G.walls.L[1]) > 0.01) probs.push('skins: the kick should run under them to the walls'); }
   { const m2 = C.build({}), G = m2.G, rt = m2.parts.filter(p => p.mark === 'P3'), sk = m2.parts.filter(p => p.mark === 'T7');
     if (m2.P.skinT !== 12 || sk.length !== 2) probs.push('skins: 12 mm skins should be the default');
-    if (rt.length !== 2 || rt.some(p => { const b = C.prismBox(p.solids[0]); return Math.abs(b[5] - G.skinZ[0]) > 0.01 || b[2] !== 0 || Math.abs(Math.abs(b[0] + b[3]) / 2 - (G.cw + G.cwo) / 2) > 0.01 || b[4] > G.yKb; })) probs.push('skins: a return under each skin, floor to its bottom edge, behind the kick, expected');
+    const rb = rt.map(p => C.prismBox(p.solids[0])), side = (sg) => rb.filter(b => Math.sign(b[0] + b[3]) === sg);
+    if (rt.length !== 4 || rt.some(p => p.T !== 6) || rb.some(b => Math.abs(b[5] - G.skinZ[0]) > 0.01 || b[2] !== 0 || b[4] > G.yKb)
+      || [-1, 1].some(sg => Math.abs(Math.min(...side(sg).map(b => Math.abs(sg > 0 ? b[0] : b[3]))) - G.cw) > 0.01 || Math.abs(Math.max(...side(sg).map(b => Math.abs(sg > 0 ? b[3] : b[0]))) - G.cwo) > 0.01))
+      probs.push('skins: a return of two 6 mm layers under each skin, floor to its bottom edge, the skin\'s width, behind the kick, expected');
+    if (C.build({ returnT: 0 }).parts.filter(p => p.mark === 'P3').some(p => p.T !== 12)) probs.push('skins: returnT 0 should give one-piece returns of the skin\'s plywood');
     if (C.build({ skinZ0: 0 }).parts.some(p => p.mark === 'P3')) probs.push('skins: no return when the skins stand on the floor'); }
   if (!has(C.build({ skinT: 15 }), 'bad', /No 15 mm sheets/)) probs.push('skins: a thickness with no sheets not flagged');
   if (!has(C.build({ skinT: 18, skinZ0: 20 }), 'bad', /Skins and the kick board overlap/)) probs.push('skins: overlap with the kick not flagged');
