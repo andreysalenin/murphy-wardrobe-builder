@@ -347,6 +347,12 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="field" data-when="skinT"><div><label for="skinZ0">Skins start</label><small>0: on the floor, the kick board between them. At the kick board's height or more: it runs under them.</small></div><div class="num"><input id="skinZ0" type="number" min="0" max="800" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field" data-when="skinT"><div><label for="skinZ1">Skins stop</label><small>Blank: at the top of the carcass, the header running over them. The ceiling: the header between them.</small></div><div class="num"><input id="skinZ1" type="number" min="200" max="4000" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="hint" id="skin-note" data-when="skinT"></div>
+          <div class="sub-hd"><span>Carpet in the room</span></div>
+          <div class="hint">The cavity floor stays bare and the carpet butts the kick board, so the bed's leg feet land on the carpet. 0: no carpet.</div>
+          <div class="field"><div><label for="carpetT">Carpet and underlay</label><small>Its thickness in front of the unit.</small></div><div class="num"><input id="carpetT" type="number" min="0" max="60" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="carpetT"><div><label for="carpetSink">Leg feet sink in</label><small>How far the bed's weight presses them into it.</small></div><div class="num"><input id="carpetSink" type="number" min="0" max="60" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <label class="check" data-when="carpetT"><input type="checkbox" id="carpetLift"> <span>Lift the bed for the carpet, and the fronts' bottom line and kick board with it, so the bed lands level</span></label>
+          <div class="hint" id="carpet-note" data-when="carpetT"></div>
           <div class="sub-hd"><span>Studs in the side walls</span></div>
           <div class="hint">A stud standing proud of each side wall near the front, floor to ceiling. 0: none.</div>
           <div class="field"><label for="wallStudL">Stands out, left</label><div class="num"><input id="wallStudL" type="number" min="0" max="150" step="0.5" inputmode="decimal"><span>mm</span></div></div>
@@ -368,7 +374,7 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="field"><div><label for="gapMy">Mattress to head and foot rails</label><small>2 makes the side rails the kit's 81-1/2 in.</small></div><div class="num"><input id="gapMy" type="number" min="0" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><div><label for="gapHydr">Side rail to cabinet side</label><small>Your "gaphydr". The kit's pivot spacers fill 11 (7/16 in); wider needs pads under its plates. The gas springs run behind the rails, not in this gap.</small></div><div class="num"><input id="gapHydr" type="number" min="5" max="80" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><label for="gapHolder">Bed top to the shelf above</label><div class="num"><input id="gapHolder" type="number" min="0" max="80" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <div class="field"><div><label for="gapBelow">Floor to face panel and first drawer</label><small>The drawer fronts and the bed face line up here.</small></div><div class="num"><input id="gapBelow" type="number" min="0" max="200" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="gapBelow">Floor to face panel and first drawer</label><small>The drawer fronts and the bed face line up here, on the cavity's bare floor; the carpet lift adds to it.</small></div><div class="num"><input id="gapBelow" type="number" min="0" max="200" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><div><label for="faceBelowFrame">Face panel past the frame's head end</label><small>Lifts the frame so the pivot lands at the kit's 11-3/4 in.</small></div><div class="num"><input id="faceBelowFrame" type="number" min="0" max="60" step="0.5" inputmode="decimal"><span>mm</span></div></div>
           <div class="field"><label for="faceOverhang">Face panel past the rails</label><div class="num"><input id="faceOverhang" type="number" min="0" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
         </div>
@@ -1020,7 +1026,12 @@ const DEFAULTS = {
   gapMy: 2,           // gapmattressy: mattress to head and foot rails (2 makes the side rails the kit's 81-1/2 in)
   gapHolder: 12,      // gapholder: frame top to the shelf above the bed
   gapHydr: 11,        // gaphydr: frame side rail to bed-cabinet side. 11 is the kit's 7/16 in; your TikZ had 30
-  gapBelow: 60,       // gapbelow: floor to the bottom of the face panel and the first drawer
+  gapBelow: 60,       // gapbelow: floor to the bottom of the face panel and the first drawer, on the cavity's bare floor
+  // carpet in the room: the cavity floor is bare and the carpet butts the kick board, so the bed's leg feet land on it.
+  // Lifting the bed (and the fronts' bottom line with it) by what it adds under the feet keeps the bed level when down.
+  carpetT: 15,        // carpet and underlay in front of the unit
+  carpetSink: 5,      // how far the leg feet sink into it
+  carpetLift: true,
   faceBelowFrame: 10, // face panel runs this far past the frame's head end (kit: about 1/4 in); puts the pivot at the kit's 11-3/4 in
   // side towers
   drawers: [180, 180, 180, 180], // botdrawersize x 4 (bottom first)
@@ -1252,6 +1263,7 @@ function normParams(p) {
   P.drawers = P.drawers.slice(0, 10).map(h => { const v = Number(h); return isFinite(v) ? Math.min(600, Math.max(80, v)) : 180; });
   if (!['auto', 'full', 'none'].includes(P.kickCentre)) P.kickCentre = 'auto';
   opt('kickTower', 15, 250);
+  num('carpetT', 0, 60); num('carpetSink', 0, 60); if (P.carpetSink > P.carpetT) P.carpetSink = P.carpetT; P.carpetLift = P.carpetLift !== false;
   P.kickBevel = P.kickBevel !== false;
   P.topShelf = !!P.topShelf; P.headStore = P.headStore !== false; P.cableHoles = P.cableHoles !== false; P.supportOffset = !!P.supportOffset; P.faceReveal = !!P.faceReveal; P.packer = !!P.packer; P.ledge = !!P.ledge; P.grain = !!P.grain; P.headboard = !!P.headboard; P.edgeSteel = !!P.edgeSteel; P.lockTab = !!P.lockTab;
   if (p && p.lockPins === false && !p.lockType) P.lockType = 'none';
@@ -1358,7 +1370,7 @@ const CABLE_D = 20;
 function cableSpec(P, G) {
   const T = P.T, out = [], yIn = G.yB1 + 85, h = G.head && !G.head.skipped ? G.head : null;
   const zA = h ? h.top - 60 : Math.min(G.zS1t + 200, G.zS2b - 60);
-  const zC = G.zBm0 - 52, zD = Math.max(G.zBm1 + 60, P.topShelf ? (G.zS2t + G.zTopB) / 2 + T / 2 + 25 : 0);
+  const zC = G.zBm0 - 52, zD = Math.max(G.zBm1 + 60, P.topShelf ? G.zAdj + T / 2 + 25 : 0);
   for (const [S, s] of [['R', -1], ['L', 1]]) {
     out.push({ id: 'a', S, axis: 'x', x: [s * (G.xB - (h ? P.Thead : 0)), s * G.xT2], c: [yIn, zA], what: 'headboard space to the tower' });
     out.push({ id: 'b', S, axis: 'z', z: [G.zS2b, G.zTopB], c: [s * (G.xT2 + 70), G.yB1 + 29], what: 'up the tower\'s back corner' });
@@ -1524,8 +1536,11 @@ function derived(P) {
   G.zTopB = G.zTop - T;
   if (G.skin) G.skinZ = [P.skinZ0, Math.min(P.H, P.skinZ1 != null ? P.skinZ1 : G.zTop)];
   // bed frame (closed). The face panel starts at gapBelow; the frame's head end sits faceBelowFrame higher.
-  G.zFace0 = P.gapBelow;
-  G.zF0 = P.gapBelow + P.faceBelowFrame;
+  G.legFloor = P.carpetT - P.carpetSink;        // where the leg feet come to rest: on the carpet, sunk in
+  G.lift = P.carpetLift ? G.legFloor : 0;        // the bed, and the fronts' bottom line, lifted by that much
+  G.gapBelow = P.gapBelow + G.lift;
+  G.zFace0 = G.gapBelow;
+  G.zF0 = G.gapBelow + P.faceBelowFrame;
   G.zF1 = G.zF0 + P.mL + 2 * P.gapMy + 2 * T;                 // topofmattressholder
   G.frameL = G.zF1 - G.zF0;                                   // side rail length
   G.faceL = G.zF1 - G.zFace0;                                 // mattresspanely
@@ -1552,10 +1567,10 @@ function derived(P) {
   G.zM0 = G.zF0 + T + P.gapMy; G.zM1 = G.zF1 - T - P.gapMy;
   G.pivot = [G.yFb - P.pivotFromRail, G.zF0 + P.pivotAboveHead]; // (y, z)
   G.pivotBehindFace = G.yF - G.pivot[0];
-  G.deckDelta = G.pivot[1] - P.cabPivotZ;
+  G.deckDelta = G.pivot[1] - (P.cabPivotZ + G.legFloor);   // + : the kit's legs fall short of the carpet
   // kick board: one plank right across, as tall as clears the face panel's swing (its bottom edge sweeps a circle
   // about the pivot); the towers' drawers and plinths drop to sit on it, and the drop goes to the hanging space.
-  const kickFull = P.gapBelow - g;
+  const kickFull = G.gapBelow - g;
   const rMax = Math.max(Math.hypot(G.yFb - G.pivot[0], G.zFace0 - G.pivot[1]), Math.hypot(G.yF - G.pivot[0], G.zFace0 - G.pivot[1]));
   const dyK = Math.max(0, G.yFb - G.pivot[0], G.pivot[0] - G.yF);
   G.kickMax = G.pivot[1] - Math.sqrt(Math.max(0, (rMax + 6) * (rMax + 6) - dyK * dyK));
@@ -1594,7 +1609,7 @@ function derived(P) {
   }
   G.headPl = plank(G.skin > 0 && G.skinZ[1] <= G.zTop + 0.5);
   const zD0 = G.kickH + g;                      // first drawer front
-  G.drawerDrop = P.gapBelow - zD0;
+  G.drawerDrop = G.gapBelow - zD0;
   G.zPl = zD0;                                  // tower bottom panel, underside (plinth top)
   // drawer fronts, bottom up
   G.fronts = [];
@@ -1604,6 +1619,16 @@ function derived(P) {
   G.zS1b = G.topFronts - g; G.zS1t = G.zS1b + T;              // shelf over the drawers (topofdrawersy)
   G.hangClear = P.hangClear + G.drawerDrop;
   G.zS2b = G.zS1t + G.hangClear; G.zS2t = G.zS2b + T;         // shelf over the hanging space
+  // the adjustable shelf in the top compartment, where it starts: halfway up, unless that puts it on the screws that
+  // hold the box over the bed from inside the towers (at the shelf over the bed), then just clear of them
+  {
+    const mid = (G.zS2t + G.zTopB) / 2, a = mid - T / 2 - 20, b = mid + T / 2 + 20, s0 = G.zBm0 - 10, s1 = G.zBm1 + 10;
+    G.zAdj = mid;
+    if (b > s0 && a < s1) {
+      const up = s1 + 20 + T / 2, dn = s0 - 20 - T / 2;
+      G.zAdj = up <= G.zTopB - 80 ? up : dn >= G.zS2t + 80 ? dn : mid;
+    }
+  }
   G.midDoor = [G.topFronts + g, G.zS2t - 2 * g];
   G.topDoor = [G.zS2t - g, G.zTop - g];
   G.topFront = G.topDoor[1] - G.topDoor[0];                  // 700 in the TikZ (topcompartment)
@@ -1636,7 +1661,7 @@ function derived(P) {
   G.legPivot = [G.yRail + P.legFromTop, G.zF1 - P.legFromFoot];
   G.legArm = (G.zF1 + 20) - G.legPivot[1];
   G.legD = P.legD;
-  G.legPost = G.pivot[1] - (G.legPivot[0] - G.pivot[0]);       // height of the leg pivot once the bed is down
+  G.legPost = G.pivot[1] - G.legFloor - (G.legPivot[0] - G.pivot[0]);   // leg pivot above the feet once the bed is down
   G.legPostCab = P.cabPivotZ - (G.legPivot[0] - G.pivot[0]);
   // flap gas stays: the flap end a quarter of the way down the flap's back, the fixed end low and well back on the side
   // panel, so the stroke suits a real stay (closed length well over its stroke); force to hold the flap level
@@ -1666,7 +1691,8 @@ function derived(P) {
 }
 
 /* ------------------------------------------------------------------ model */
-const COLORS = { // RGB 0..1 for STEP; the viewer has matching styles
+const COLORS = {
+  carpet: [0.55, 0.57, 0.6], // RGB 0..1 for STEP; the viewer has matching styles
   carcass: [0.86, 0.76, 0.59], front: [0.91, 0.84, 0.70], frame: [0.80, 0.66, 0.46], deck: [0.84, 0.72, 0.53],
   drawer: [0.89, 0.80, 0.64], back: [0.80, 0.71, 0.55], plinth: [0.74, 0.63, 0.47], packer: [0.70, 0.55, 0.36],
   ledge: [0.86, 0.76, 0.59], mattress: [0.93, 0.93, 0.91], metal: [0.20, 0.21, 0.23], chrome: [0.78, 0.79, 0.81], zinc: [0.70, 0.73, 0.77],
@@ -1807,7 +1833,7 @@ function build(params, opts) {
     put({ mark: 'T4', name: nm('Fixed shelf over drawers'), cutName: 'Fixed shelf over drawers', grp, kind: 'carcass', T, L: G.towerIn, W: yS1 - G.yB1, band: G.towerIn, solids: [box(hx0, hx1, G.yB1, yS1, G.zS1b, G.zS1t)] });
     put({ mark: 'T4', name: nm('Fixed shelf over hanging'), cutName: 'Fixed shelf over hanging', grp, kind: 'carcass', T, L: G.towerIn, W: G.cDs, band: G.towerIn, solids: [box(hx0, hx1, G.yB1, G.yCs, G.zS2b, G.zS2t)] });
     if (P.topShelf) {
-      const zc = (G.zS2t + G.zTopB) / 2;
+      const zc = G.zAdj;
       const [ax0, ax1] = sx(s, G.xT2 + 1, G.xOi - 1);
       put({ mark: 'T5', name: nm('Adjustable shelf, top compartment'), grp, kind: 'carcass', T, L: G.towerIn - 2, W: G.cDs - 20, band: G.towerIn - 2,
         solids: [box(ax0, ax1, G.yB1, G.yCs - 20, zc - T / 2, zc + T / 2)] });
@@ -1875,7 +1901,7 @@ function build(params, opts) {
     const sideFace = inner ? G.xT2 : G.xOi;
     for (const [mk, nmD, zr] of [['D2', 'Hanging-space door', G.midDoor], ['D1', 'Top door', G.topDoor]]) {
       const anim = { type: 'door', id: `door-${S}-${mk}`, axis: [s * hingeEdge, G.yF], sign: inner ? -s : s };
-      const zc5 = (G.zS2t + G.zTopB) / 2, hz = hingeZs(zr, G.thin.side, mk === 'D1' && P.topShelf ? [[zc5 - T / 2 - 40, zc5 + T / 2 + 40]] : []);
+      const zc5 = G.zAdj, hz = hingeZs(zr, G.thin.side, mk === 'D1' && P.topShelf ? [[zc5 - T / 2 - 40, zc5 + T / 2 + 40]] : []);
       put({ mark: mk, name: nm(nmD), grp: 'fronts-' + S, kind: 'front', T: P.TfSide, L: zr[1] - zr[0], W: G.doorW, grain: true,
         band: 2 * (zr[1] - zr[0] + G.doorW), solids: [box(dx0, dx1, G.yFbOf.side, G.yF, zr[0], zr[1])], anim, hinges: hz, hingeEdge });
       hz.forEach((z, k) => cupHinge(s, hingeEdge, sideFace, inner ? 1 : -1, z, nm(`${nmD} hinge ${k + 1}`), anim, 'side'));
@@ -2354,6 +2380,8 @@ function build(params, opts) {
         solids: [box(fx0, fx1, st.yc0, st.yc1, 0, zH), box(ex0, ex1, st.yc0, st.y0, 0, zH), box(ex0, ex1, st.y1, st.yc1, 0, zH)] });
     }
   }
+  if (P.carpetT > 0) put({ mark: 'WC', name: `Carpet in the room, ${Math.round(P.carpetT)}`, grp: 'room', kind: 'carpet', T: P.carpetT, L: P.W, W: 2600, hw: true, ctx: true,
+    solids: [box(G.walls.R[1], G.walls.L[1], G.yF + P.frontSetback, G.yF + P.frontSetback + 2600, 0, P.carpetT)] });
   G.bedding = bedding(P, G);
   const model = { P, G, parts, bedAngle: opts.bedAngle || 0 };
   model.checks = checks(model);
@@ -2690,7 +2718,7 @@ function clearanceSchedule(model) {
     const need = soft(r.part) ? 10 : 5;
     Cr.push(row(`${cap(r.part)} to the ${r.name}`, `${need} or more`, r.min, atLeast(r.min, need), `at ${Math.round(r.angle)} deg`));
   }
-  Cr.push(row('Leg feet with the bed down', 'on the floor', C.legs.floorAt90, Math.abs(C.legs.floorAt90) <= 3 ? 'ok' : 'tight', `${Math.round(C.legs.floorBefore)} up just before`));
+  Cr.push(row('Leg feet with the bed down', G.legFloor ? `on the carpet, ${r1(G.legFloor)} up` : 'on the floor', C.legs.floorAt90, Math.abs(C.legs.floorAt90 - G.legFloor) <= 3 ? 'ok' : 'tight', `${Math.round(C.legs.floorBefore)} up just before${P.carpetT ? `; the carpet is ${r1(P.carpetT)}` : ''}`));
   { // the leg arms swing past the back of the foot rail (both on the bed)
     const fr = [G.yFb - P.footRailD, G.yFb, G.zF1 - P.T, G.zF1];
     let d = Infinity; for (let psi = 0; psi <= 180; psi += 2) { const [p0, p1, p2] = legGeom(G, psi); d = Math.min(d, segRectDist(p0, p1, fr), segRectDist(p1, p2, fr)); }
@@ -2821,13 +2849,14 @@ function checks(model) {
   const sp = G.clear.spring;
   if (sp.fitted - sp.open > 0 && (sp.closed - sp.open) / (sp.fitted - sp.open) > 1.001) w('warn', 'Gas springs over-extended when closed', `Ball to ball the springs measure ${f0(sp.closed)} closed but are fitted at ${f0(sp.fitted)}.`, 'hardware');
   if (G.clear.fit && G.clear.fit.min < 3) w(G.clear.fit.min < 0 ? 'bad' : 'warn', 'No room to fit the gas springs', `The kit fits the springs with the bed pushed 3 in back at the top (${Math.abs(G.clear.fitAngle).toFixed(1)} deg past upright), mattress off and stops out: then the ${G.clear.fit.part} comes ${f1(G.clear.fit.min)} mm from the ${G.clear.fit.name}.`, 'swing');
+  if (P.carpetT && G.clear.legs.floorBefore >= 0 && G.clear.legs.floorBefore < P.carpetT) w('warn', 'Leg feet drag on the carpet', `Just before the bed is down the leg feet are ${f0(G.clear.legs.floorBefore)} off the floor, inside the ${f0(P.carpetT)} carpet: they scuff it as the bed lands. Lifting the bed for the carpet clears it.`, 'swing');
   if (G.clear.legs.floorBefore < 0) w('bad', 'Legs hit the floor before the bed is down', `The leg feet reach ${f0(-G.clear.legs.floorBefore)} mm into the floor while the bed is still turning.`, 'swing');
   if (Math.abs(G.bedReveal - P.gap) > 1) {
     const want = P.faceOverhang + G.bedReveal - P.gap, ok = want >= 0 && want <= gapNow - 5;
     w('info', `Reveal beside the bed face is ${f0(G.bedReveal)} mm`, `The other fronts have ${P.gap} mm.${ok ? ` A face panel overhang of ${f0(want)} would match them.` : P.doorHinge === 'inner' ? ' With the doors hinged on the bed side they stop at the tower side, so the bed-cabinet side\'s front edge shows between them and the bed.' : ` The face panel can only grow to ${f0(Math.max(0, gapNow - 5))} past the rails without coming too close to the cabinet sides.`}`, 'layout');
   }
   if (Math.abs(G.deckDelta) > 3) w('warn', G.deckDelta > 0 ? `Legs ${f0(G.deckDelta)} mm short` : `Legs ${f0(-G.deckDelta)} mm long`,
-    `The pivot sits ${f0(G.pivot[1])} above the floor; the kit's legs suit ${f0(P.cabPivotZ)} (11-3/4 in). Set "face panel past the frame's head end" to ${(P.faceBelowFrame - G.deckDelta).toFixed(0)} to put the frame where the kit has it${G.deckDelta > 0 ? ', or pad the leg feet' : ''}.`, 'hardware');
+    `The pivot sits ${f0(G.pivot[1])} above the floor; the kit's legs suit ${f0(P.cabPivotZ)} (11-3/4 in)${G.legFloor ? ` above where they land, here ${f0(G.legFloor)} up on the carpet, so ${f0(P.cabPivotZ + G.legFloor)}` : ''}. ${G.legFloor && !P.carpetLift && G.deckDelta < 0 ? `With the feet on the carpet the bed stops ${f0(-G.deckDelta)} short of level at its foot end. Turn on "Lift the bed for the carpet", or set "face panel` : 'Set "face panel'} past the frame's head end" to ${(P.faceBelowFrame - G.deckDelta).toFixed(0)} to put the frame where the kit has it${G.deckDelta > 0 ? ', or pad the leg feet' : ''}.`, 'hardware');
   if (G.pinY < G.yFb - P.footRailD + 5 || G.pinY > G.yFb - 5) w('warn', 'Safety pins miss the foot rail', `Pins at ${f0(G.yF - G.pinY)} from the front; the foot rail is ${f0(P.footRailD)} deep.`, 'hardware');
   if (G.bedding && G.bedding.squeezed) w('warn', 'Pillows do not stand up in the headboard',
     `Your ${PILLOW.L / 10} x ${PILLOW.W / 10} x ${PILLOW.T / 10} cm pillows want ${PILLOW.L} inside to stand up; the compartments are ${Math.floor(G.bedding.inside)}. Sink them ${Math.min(150, Math.max(50, Math.ceil((PILLOW.L - G.bedding.inside + (G.ledge && G.ledge.well || 0)) / 5) * 5))} into the ledge (Compartments sunk into the ledge), or they go in squashed or bent.`, 'layout');
@@ -3173,7 +3202,7 @@ function joinery(model) {
           ops2.push({ title: 'Pads onto the bed-cabinet side', bench: true, add: pads.map(p => [p, [-s * E, 0, 0]]), fast: f,
             setout: 'glued; screws clear of the kit plates, which bolt through pad and side' });
         }
-        const zAdj = (G.zS2t + G.zTopB) / 2;   // the adjustable shelf in the top compartment, where it starts
+        const zAdj = G.zAdj;   // the adjustable shelf in the top compartment, where it starts
         const avoidZ = [[G.zPl, G.zPl + T + 28], [G.zS1b - 16, G.zS1t + 16], [G.zS2b - 16, G.zS2t + 16], ...(G.runnerZ || []).map(z => [z - 31, z + 31])].concat(P.topShelf ? [[zAdj - T / 2 - 14, zAdj + T / 2 + 14]] : []);
         const rows = [G.yB1 + 35, G.yC - 35]; // off the lines of the carcass screws in the side's ends
         const hingeAvoid = P.doorHinge === 'inner' ? parts.filter(p => p.hinges && p.name.indexOf(`(${S})`) >= 0).flatMap(p => p.hinges.map(z => [z - 40, z + 40])) : [];
@@ -3188,7 +3217,7 @@ function joinery(model) {
       // ---------- the tower against its skin, screwed from inside (the skin went on the wall first)
       const sk = one(`Skin on the outer side (${S})`), key = G.skin >= 18 ? 's30' : G.skin >= 12 ? 'b25' : null;
       if (sk && key) {
-        const zc = (G.zS2t + G.zTopB) / 2;
+        const zc = G.zAdj;
         const avoid = [[G.zS1b - 30, G.zS1t + 30], [G.zS2b - 30, G.zS2t + 30], ...(G.runnerZ || []).map(z => [z - 30, z + 30]), [G.zRail - 40, G.zRail + 40]]
           .concat(P.topShelf ? [[zc - 45, zc + 45]] : []);
         const hz = P.doorHinge === 'outer' ? parts.filter(p => p.hinges && p.name.indexOf(`(${S})`) >= 0).flatMap(p => p.hinges.map(z => [z - 45, z + 45])) : [];
@@ -3927,7 +3956,7 @@ const KIND_STYLE = {
   mattress: { color: 0xeeeeea, rough: 0.95, edges: false }, metal: { color: 0x2f3236, rough: 0.45, metal: 0.4 },
   chrome: { color: 0xc9ccd0, rough: 0.38, metal: 0.35 }, zinc: { color: 0xc4ccd6, rough: 0.32, metal: 0.25 },
   block: { color: 0x8c6239, rough: 0.7 }, rubber: { color: 0x1c1c1e, rough: 0.9, edges: false }, strap: { color: 0x3d4c70, rough: 0.9, edges: false },
-  plastic: { color: 0xf3f2ee, rough: 0.45 }, indicator: { color: 0xe8541a, rough: 0.45, edges: false }, stud: { color: 0xc9a476, rough: 0.9 }, clad: { color: 0xf4f4f2, rough: 0.5 }, bronze: { color: 0xb88f57, rough: 0.4, metal: 0.4 },
+  plastic: { color: 0xf3f2ee, rough: 0.45 }, indicator: { color: 0xe8541a, rough: 0.45, edges: false }, stud: { color: 0xc9a476, rough: 0.9 }, clad: { color: 0xf4f4f2, rough: 0.5 }, carpet: { color: 0x8d9299, rough: 1, edges: false, opacity: 0.55 }, bronze: { color: 0xb88f57, rough: 0.4, metal: 0.4 },
 };
 const T_COL = { 6: 0x7b5cc4, 12: 0x138a7e, 18: 0xc47a12 };
 
@@ -4034,7 +4063,8 @@ class MurphyScene {
     const k = key + (clipped ? '-c' : '');
     if (!this.materials[k]) {
       this.materials[k] = new THREE.MeshStandardMaterial({ color: srgb(style.color), roughness: style.rough === undefined ? 0.8 : style.rough, metalness: style.metal || 0,
-        side: THREE.DoubleSide, clippingPlanes: clipped ? [this.clip] : null, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+        side: THREE.DoubleSide, clippingPlanes: clipped ? [this.clip] : null, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1,
+        transparent: style.opacity !== undefined, opacity: style.opacity === undefined ? 1 : style.opacity, depthWrite: style.opacity === undefined });
     }
     return this.materials[k];
   }
@@ -4929,7 +4959,7 @@ const ACC = [176, 98, 10], BAD = [176, 40, 31], CABLE = [36, 104, 170];
 const FILL = {
   carcass: [244, 236, 221], front: [252, 249, 243], frame: [235, 220, 196], deck: [240, 228, 207], drawer: [248, 241, 228], back: [236, 228, 214],
   plinth: [230, 220, 203], packer: [222, 199, 166], ledge: [244, 236, 221], mattress: [238, 240, 242], metal: [74, 78, 84], chrome: [190, 194, 199], zinc: [178, 184, 192],
-  block: [181, 136, 92], rubber: [40, 40, 42], strap: [70, 86, 124], plastic: [244, 244, 240], indicator: [232, 84, 26], stud: [205, 170, 125], clad: [246, 246, 244], bronze: [196, 156, 104],
+  block: [181, 136, 92], rubber: [40, 40, 42], strap: [70, 86, 124], plastic: [244, 244, 240], indicator: [232, 84, 26], stud: [205, 170, 125], carpet: [200, 203, 208], clad: [246, 246, 244], bronze: [196, 156, 104],
 };
 const CUT = [214, 190, 152], CUT_FRONT = [226, 206, 172];
 const T_RGB = { 6: [123, 92, 196], 12: [19, 138, 126], 18: [196, 122, 18] };
@@ -7803,7 +7833,7 @@ root.MurphyDrawings = { make, openingsSVG, openingsData, openingRows };
 const C = window.MurphyCore, V = window.MurphyViewer;
 const LS_KEY = 'murphy-wardrobe-builder.v3', LS_VIEW = 'murphy-wardrobe-builder.view.v1', LS_THEME = 'murphy-wardrobe-builder.theme';
 const $ = (id) => document.getElementById(id);
-const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'skinZ0', 'wallStudL', 'wallStudR', 'wallStudY0', 'wallStudY1', 'wallStudClad', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
+const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'skinZ0', 'carpetT', 'carpetSink', 'wallStudL', 'wallStudR', 'wallStudY0', 'wallStudY1', 'wallStudClad', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
   'hangClear', 'railDrop', 'runnerClear', 'runnerLen', 'boxLess', 'gap', 'gapAbove', 'frontGap', 'TfDrawer', 'TfSide', 'TfTop', 'headWell', 'T', 'Tb', 'Tback', 'Tsup', 'Tladder', 'Tplinth', 'Tpacker', 'Tledge', 'Thead',
   'pivotFromRail', 'pivotAboveHead', 'cabPivotZ', 'pinGap', 'springLowAlong', 'springLowOut', 'springUpFront', 'springUpZ', 'stopFront', 'stopBelowTop',
   'springD', 'springRodD', 'springEndD', 'springBodyL', 'studS', 'plateT', 'nutStack', 'stopD', 'stopH', 'legD',
@@ -7811,7 +7841,7 @@ const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'skinZ0', 'wallS
   'ledgeClear', 'headAngle', 'headH', 'headGap', 'headLip', 'headClear', 'headDoorOpen', 'headGPO', 'headZone', 'upstand', 'steelH', 'steelT', 'twinSpacing', 'lockPinX', 'wallRail', 'kerf', 'trim'];
 const OPT_FIELDS = ['Wback', 'packBL', 'packBR', 'skinZ1', 'kickTower'];  // blank: worked out from the others
 const SEL_FIELDS = ['kickCentre', 'doorHinge', 'lockType', 'headHinge'];
-const CHK_FIELDS = ['topShelf', 'cableHoles', 'headStore', 'supportOffset', 'faceReveal', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain', 'wallStudFronts', 'kickBevel'];
+const CHK_FIELDS = ['topShelf', 'cableHoles', 'headStore', 'supportOffset', 'faceReveal', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain', 'wallStudFronts', 'kickBevel', 'carpetLift'];
 
 const readLS = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } };
 const writeLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage off: settings just aren't remembered */ } };
@@ -7971,7 +8001,10 @@ function renderCavity() {
   if ($('packBL')) $('packBL').placeholder = r1(P.packFL);
   if ($('packBR')) $('packBR').placeholder = r1(pk.Wb - 2 * G.cwo - pk.BL);
   if ($('skinZ1')) $('skinZ1').placeholder = r1(G.zTop);
-  if ($('kickTower')) $('kickTower').placeholder = r1(G.kickC || P.gapBelow - P.gap);
+  if ($('kickTower')) $('kickTower').placeholder = r1(G.kickC || G.gapBelow - P.gap);
+  if ($('carpet-note')) $('carpet-note').innerHTML = !P.carpetT ? '' : `Feet land <b>${r1(G.legFloor)}</b> up. ` + (G.lift
+    ? `Bed and fronts lifted ${r1(G.lift)}: the face and drawers start at <b>${r1(G.zFace0)}</b>, and the kick board shows <b>${r1(G.kickC - P.carpetT)}</b> above the carpet.`
+    : `Not lifted: the bed stops ${r1(-G.deckDelta)} short of level at its foot end, and the kick board shows ${r1(G.kickC - P.carpetT)} above the carpet.`);
   const off = G.openOff, studs = G.wstuds.length && P.wallStudFronts;
   const add = Math.abs(pk.backSum - pk.Wb) > 0.5 ? ` <b>The back adds up to ${r1(pk.backSum)}, not ${r1(pk.Wb)}.</b>` : '';
   if ($('pack-note')) $('pack-note').innerHTML = `Carcass <b>${r1(2 * G.cw)}</b> wide${G.skin ? `, <b>${r1(2 * G.cwo)}</b> over the skins` : ''}. ${G.skin ? 'Opening between the skins' : studs ? 'Opening between the clad studs' : 'Opening'} <b>${r1(G.openL + G.openR)}</b>, ` +

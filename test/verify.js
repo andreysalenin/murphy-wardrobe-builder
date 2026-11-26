@@ -57,7 +57,7 @@ run({ wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, Wback: W0 - 1, packB
 run({ skinT: 12, gapAbove: 134 }, 'skins 12 + 18');
 run({ kickTower: 100 }, 'kick 100 under the towers');
 run({ kickTower: 100, skinT: 12, skinZ0: 100 }, 'tower kick under the skins');
-run({ skinT: 18, skinZ0: 54, gapAbove: 89, doorHinge: 'inner', packFL: 0, packFR: 3, packBL: -4 }, 'skins 18 + 18 on the kick');
+run({ skinT: 18, skinZ0: 64, gapAbove: 89, doorHinge: 'inner', packFL: 0, packFR: 3, packBL: -4 }, 'skins 18 + 18 on the kick');
 run({ skinT: 18, skinZ1: 3000, gapAbove: 54, H: 2400 }, 'skins to the ceiling');
 
 // ---------- the sections sheet (sheet 4 and the page's Section view): it draws, and its clear sizes are the model's
@@ -132,10 +132,16 @@ run({ skinT: 18, skinZ1: 3000, gapAbove: 54, H: 2400 }, 'skins to the ceiling');
   if (kh({ W: 2400 }) !== 'Header filler, one piece, Kick board, one piece') probs.push('planks: a 2400 cavity should be one piece each, got ' + kh({ W: 2400 }));
   // the bevelled kick: up to a reveal under the bed face, clear of the face panel's swing; square at that height it is hit
   m = C.build({});
-  if (m.G.kickC !== C.DEFAULTS.gapBelow - C.DEFAULTS.gap || !(m.G.kickCb < m.G.kickC) || m.G.zPl !== m.G.zFace0) probs.push(`bevelled kick: expected ${C.DEFAULTS.gapBelow - C.DEFAULTS.gap} at the face with the drawers level with the bed face (got ${m.G.kickC} / ${m.G.kickCb}, drawers ${m.G.zPl})`);
+  if (m.G.kickC !== m.G.gapBelow - C.DEFAULTS.gap || !(m.G.kickCb < m.G.kickC) || m.G.zPl !== m.G.zFace0) probs.push(`bevelled kick: expected ${m.G.gapBelow - C.DEFAULTS.gap} at the face with the drawers level with the bed face (got ${m.G.kickC} / ${m.G.kickCb}, drawers ${m.G.zPl})`);
   { const r = m.G.clear.list.find(q => q.name === 'kick board under the bed'); if (!r || r.min < 5) probs.push(`bevelled kick: the bed passes ${r && r.min} from it`); }
   if (!has(C.build({ kickCentre: 'full', kickBevel: false }), 'bad', /Bed hits the kick board/)) probs.push('square kick at full height: the bed hitting it is not flagged');
-  if (C.build({ kickBevel: false }).G.kickC !== 45) probs.push('square kick: auto should still be 45');
+  if (C.build({ kickBevel: false, carpetT: 0 }).G.kickC !== 45) probs.push('square kick: auto should still be 45');
+  // carpet: the feet land on it, the bed and the fronts' bottom line lift by what it adds, and the kit's legs fit again
+  { const a = C.build({ carpetT: 0 }).G, b = C.build({ carpetT: 15, carpetSink: 5 }).G, c = C.build({ carpetT: 15, carpetSink: 5, carpetLift: false });
+    if (b.lift !== 10 || b.zFace0 !== a.zFace0 + 10 || b.kickC !== a.kickC + 10 || b.zPl !== a.zPl + 10 || Math.abs(b.deckDelta) > 0.5) probs.push(`carpet: expected everything 10 up with the legs fitting (lift ${b.lift}, face ${b.zFace0}, kick ${b.kickC}, legs ${b.deckDelta})`);
+    if (Math.abs(b.clear.legs.floorAt90 - 10) > 1) probs.push(`carpet: the feet should rest 10 up (got ${b.clear.legs.floorAt90})`);
+    if (!has(c, 'warn', /Legs 10 mm long/)) probs.push('carpet without the lift: the long legs are not flagged'); }
+  for (const q of [{}, { carpetT: 0 }, { carpetLift: false }, { skinT: 12, gapAbove: 134, kickTower: 100 }]) { try { C.clearanceSchedule(C.build(q)); } catch (e) { probs.push(`clearance schedule ${JSON.stringify(q)}: ${e.message}`); } }
   // the towers' own kick height: the drawers sit a reveal above it, the bed keeps the height its swing allows
   m = C.build({ kickTower: 100 });
   { const G = m.G, k = m.parts.filter(p => p.mark === 'K1');
@@ -256,7 +262,7 @@ jp += checkJoinery({ headStore: false, headAngle: 0 }, 'joinery plain headboard'
 jp += checkJoinery({ wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, Wback: W0 - 1, packBL: 40 }, 'joinery studs');
 jp += checkJoinery({ skinT: 12, gapAbove: 134 }, 'joinery skins 12');
 jp += checkJoinery({ kickTower: 100, skinT: 12, gapAbove: 134 }, 'joinery tower kick 100');
-jp += checkJoinery({ skinT: 18, skinZ0: 54, gapAbove: 89, doorHinge: 'inner' }, 'joinery skins 18 on the kick');
+jp += checkJoinery({ skinT: 18, skinZ0: 64, gapAbove: 89, doorHinge: 'inner' }, 'joinery skins 18 on the kick');
 jp += checkJoinery({ packFL: 0, packFR: 0, packBL: -2 }, 'joinery planed');
 if (jp) process.exitCode = 1;
 
@@ -275,7 +281,7 @@ if (jp) process.exitCode = 1;
   // [hardware mark, other mark]: cups in doors, pins through block, shelf and foot rail, latches drilled in, the pivot bar
   // in its pocket and bush, the bush through the rail, the upper stud's nut in its hole, balls in the spring sockets,
   // the legs and their rail, the rail closing onto the stop domes
-  const ALLOW = new Set(['HG D1', 'HG D2', 'HG HG', 'FH D4', 'FH FH', 'LP LP', 'LP B2', 'LP F4', 'PL B2', 'PL SF', 'PV B1', 'PV F2', 'PV PV', 'PV B8', 'BS B1', 'BS B8', 'BS GS', 'GS BS', 'LG LG', 'ST F2', 'SF PL', 'SB SB', 'SR SB', 'SB SR', 'PP PP']);  // SB, SR: the safety bolt's parts are concentric; PP: the switches sit in pockets in the plate (bores are not seen by the box test)
+  const ALLOW = new Set(['HG D1', 'HG D2', 'HG HG', 'FH D4', 'FH FH', 'LP LP', 'LP B2', 'LP F4', 'PL B2', 'PL SF', 'PV B1', 'PV F2', 'PV PV', 'PV B8', 'BS B1', 'BS B8', 'BS GS', 'GS BS', 'LG LG', 'ST F2', 'SF PL', 'SB SB', 'SR SB', 'SB SR', 'PP PP', 'LG WC', 'WC LG']);  // LG, WC: the leg feet sink into the carpet by design; SB, SR: the safety bolt's parts are concentric; PP: the switches sit in pockets in the plate (bores are not seen by the box test)
   let bad = 0;
   const sets = [['default', {}], ['pads', { gapHydr: 30, packer: true, Tpacker: 18 }], ['options', { lockType: 'bolts', supportOffset: true, faceReveal: true }], ['front hinges', { headHinge: 'front' }], ['fronts 18/12/18', { TfDrawer: 18, TfSide: 12, TfTop: 18 }], ['fronts 12/18/12', { TfDrawer: 12, TfSide: 18, TfTop: 12, edgeSteel: true, doorHinge: 'inner' }], ['fronts all 12', { TfDrawer: 12, TfSide: 12, TfTop: 12 }], ['well 150', { headWell: 150 }], ['no well', { headWell: 0 }], ['well 50 front', { headWell: 50, headHinge: 'front' }], ['studs', { wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43 }], ['planed', { packFL: 0, packFR: 0, packBL: -2 }]].concat(process.env.OVERLAP_PROBE ? [['probe', JSON.parse(process.env.OVERLAP_PROBE)]] : []);
   for (const [label, params] of sets) for (const ang of [0, 45, 90]) {

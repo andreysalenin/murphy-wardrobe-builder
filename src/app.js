@@ -4,7 +4,7 @@
 const C = window.MurphyCore, V = window.MurphyViewer;
 const LS_KEY = 'murphy-wardrobe-builder.v3', LS_VIEW = 'murphy-wardrobe-builder.view.v1', LS_THEME = 'murphy-wardrobe-builder.theme';
 const $ = (id) => document.getElementById(id);
-const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'skinZ0', 'wallStudL', 'wallStudR', 'wallStudY0', 'wallStudY1', 'wallStudClad', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
+const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'skinZ0', 'carpetT', 'carpetSink', 'wallStudL', 'wallStudR', 'wallStudY0', 'wallStudY1', 'wallStudClad', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
   'hangClear', 'railDrop', 'runnerClear', 'runnerLen', 'boxLess', 'gap', 'gapAbove', 'frontGap', 'TfDrawer', 'TfSide', 'TfTop', 'headWell', 'T', 'Tb', 'Tback', 'Tsup', 'Tladder', 'Tplinth', 'Tpacker', 'Tledge', 'Thead',
   'pivotFromRail', 'pivotAboveHead', 'cabPivotZ', 'pinGap', 'springLowAlong', 'springLowOut', 'springUpFront', 'springUpZ', 'stopFront', 'stopBelowTop',
   'springD', 'springRodD', 'springEndD', 'springBodyL', 'studS', 'plateT', 'nutStack', 'stopD', 'stopH', 'legD',
@@ -12,7 +12,7 @@ const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'skinZ0', 'wallS
   'ledgeClear', 'headAngle', 'headH', 'headGap', 'headLip', 'headClear', 'headDoorOpen', 'headGPO', 'headZone', 'upstand', 'steelH', 'steelT', 'twinSpacing', 'lockPinX', 'wallRail', 'kerf', 'trim'];
 const OPT_FIELDS = ['Wback', 'packBL', 'packBR', 'skinZ1', 'kickTower'];  // blank: worked out from the others
 const SEL_FIELDS = ['kickCentre', 'doorHinge', 'lockType', 'headHinge'];
-const CHK_FIELDS = ['topShelf', 'cableHoles', 'headStore', 'supportOffset', 'faceReveal', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain', 'wallStudFronts', 'kickBevel'];
+const CHK_FIELDS = ['topShelf', 'cableHoles', 'headStore', 'supportOffset', 'faceReveal', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain', 'wallStudFronts', 'kickBevel', 'carpetLift'];
 
 const readLS = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } };
 const writeLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage off: settings just aren't remembered */ } };
@@ -172,7 +172,10 @@ function renderCavity() {
   if ($('packBL')) $('packBL').placeholder = r1(P.packFL);
   if ($('packBR')) $('packBR').placeholder = r1(pk.Wb - 2 * G.cwo - pk.BL);
   if ($('skinZ1')) $('skinZ1').placeholder = r1(G.zTop);
-  if ($('kickTower')) $('kickTower').placeholder = r1(G.kickC || P.gapBelow - P.gap);
+  if ($('kickTower')) $('kickTower').placeholder = r1(G.kickC || G.gapBelow - P.gap);
+  if ($('carpet-note')) $('carpet-note').innerHTML = !P.carpetT ? '' : `Feet land <b>${r1(G.legFloor)}</b> up. ` + (G.lift
+    ? `Bed and fronts lifted ${r1(G.lift)}: the face and drawers start at <b>${r1(G.zFace0)}</b>, and the kick board shows <b>${r1(G.kickC - P.carpetT)}</b> above the carpet.`
+    : `Not lifted: the bed stops ${r1(-G.deckDelta)} short of level at its foot end, and the kick board shows ${r1(G.kickC - P.carpetT)} above the carpet.`);
   const off = G.openOff, studs = G.wstuds.length && P.wallStudFronts;
   const add = Math.abs(pk.backSum - pk.Wb) > 0.5 ? ` <b>The back adds up to ${r1(pk.backSum)}, not ${r1(pk.Wb)}.</b>` : '';
   if ($('pack-note')) $('pack-note').innerHTML = `Carcass <b>${r1(2 * G.cw)}</b> wide${G.skin ? `, <b>${r1(2 * G.cwo)}</b> over the skins` : ''}. ${G.skin ? 'Opening between the skins' : studs ? 'Opening between the clad studs' : 'Opening'} <b>${r1(G.openL + G.openR)}</b>, ` +
