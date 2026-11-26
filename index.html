@@ -505,7 +505,7 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <table class="lib"><thead><tr><th>Thick</th><th>Length</th><th>Width</th><th>Qty</th><th></th></tr></thead><tbody id="lib"></tbody></table>
           <div class="row-btns"><button type="button" class="btn small" id="lib-add">Add a sheet size</button></div>
           <div class="field"><label for="kerf">Saw kerf</label><div class="num"><input id="kerf" type="number" min="0" max="8" step="0.1" inputmode="decimal"><span>mm</span></div></div>
-          <div class="field"><label for="trim">Trim off each sheet edge</label><div class="num"><input id="trim" type="number" min="0" max="30" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="trim">Off each sheet edge</label><small>0.5 for a sanding pass on good factory edges; 5 to trim them straight.</small></div><div class="num"><input id="trim" type="number" min="0" max="30" step="0.5" inputmode="decimal"><span>mm</span></div></div>
           <label class="check"><input type="checkbox" id="grain"> <span>Keep the grain running up the visible parts</span></label>
         </div>
       </details>
@@ -1209,7 +1209,7 @@ const DEFAULTS = {
   doorHinge: 'outer',   // tower doors hinged on the wall side (outer) or the bed side (inner)
   // cutting
   kerf: 3.2,
-  trim: 5,              // trimmed off each sheet edge
+  trim: 0.5,            // off each sheet edge: the factory edges are good, a sanding pass at most
   grain: true,          // visible parts keep their grain along the sheet length
   sheets: [
     { T: 6, L: 2440, W: 1220, n: 5 },
@@ -8314,6 +8314,11 @@ if (!readLS(LS_KEY + ':head61')) {
 if (!readLS(LS_KEY + ':nibsGone')) {
   params.wallStudL = 0; params.wallStudR = 0;
   writeLS(LS_KEY + ':nibsGone', 1);
+}
+// the sheets' factory edges are good: saved settings still trimming 5 off each edge follow, once
+if (!readLS(LS_KEY + ':trim05')) {
+  if (Number(params.trim) === 5) params.trim = 0.5;
+  writeLS(LS_KEY + ':trim05', 1);
 }
 // you have eight sheets of 18: saved settings still on the old default of nine follow, once
 if (!readLS(LS_KEY + ':eight18')) {

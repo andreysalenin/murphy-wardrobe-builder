@@ -500,7 +500,7 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <table class="lib"><thead><tr><th>Thick</th><th>Length</th><th>Width</th><th>Qty</th><th></th></tr></thead><tbody id="lib"></tbody></table>
           <div class="row-btns"><button type="button" class="btn small" id="lib-add">Add a sheet size</button></div>
           <div class="field"><label for="kerf">Saw kerf</label><div class="num"><input id="kerf" type="number" min="0" max="8" step="0.1" inputmode="decimal"><span>mm</span></div></div>
-          <div class="field"><label for="trim">Trim off each sheet edge</label><div class="num"><input id="trim" type="number" min="0" max="30" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="trim">Off each sheet edge</label><small>0.5 for a sanding pass on good factory edges; 5 to trim them straight.</small></div><div class="num"><input id="trim" type="number" min="0" max="30" step="0.5" inputmode="decimal"><span>mm</span></div></div>
           <label class="check"><input type="checkbox" id="grain"> <span>Keep the grain running up the visible parts</span></label>
         </div>
       </details>

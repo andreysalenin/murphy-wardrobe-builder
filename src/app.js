@@ -35,6 +35,11 @@ if (!readLS(LS_KEY + ':nibsGone')) {
   params.wallStudL = 0; params.wallStudR = 0;
   writeLS(LS_KEY + ':nibsGone', 1);
 }
+// the sheets' factory edges are good: saved settings still trimming 5 off each edge follow, once
+if (!readLS(LS_KEY + ':trim05')) {
+  if (Number(params.trim) === 5) params.trim = 0.5;
+  writeLS(LS_KEY + ':trim05', 1);
+}
 // you have eight sheets of 18: saved settings still on the old default of nine follow, once
 if (!readLS(LS_KEY + ':eight18')) {
   if (Array.isArray(params.sheets)) for (const q of params.sheets) if (Number(q.T) === 18 && Number(q.n) === 9 && Number(q.L) === 2440) q.n = 8;

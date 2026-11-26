@@ -187,7 +187,7 @@ const DEFAULTS = {
   doorHinge: 'outer',   // tower doors hinged on the wall side (outer) or the bed side (inner)
   // cutting
   kerf: 3.2,
-  trim: 5,              // trimmed off each sheet edge
+  trim: 0.5,            // off each sheet edge: the factory edges are good, a sanding pass at most
   grain: true,          // visible parts keep their grain along the sheet length
   sheets: [
     { T: 6, L: 2440, W: 1220, n: 5 },
