@@ -313,6 +313,7 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
             <select id="doorHinge"><option value="outer">Wall side</option><option value="inner">Bed side</option></select></div>
           <div class="field"><div><label for="kickCentre">Kick board</label><small>Right across: one plank, or two halves butted on the centre line when a sheet is too short. Auto makes it as tall as clears the bed's swing; the drawers drop to sit on it.</small></div>
             <select id="kickCentre"><option value="auto">Right across, auto height</option><option value="full">Right across, drawer height</option><option value="none">Towers only</option></select></div>
+          <label class="check"><input type="checkbox" id="kickBevel"> <span>Bevel the kick board's top edge toward the back, so it comes up to a reveal under the bed face</span></label>
           <div class="field"><div><label for="kickTower">Kick under the towers</label><small>Blank: the same as under the bed, one line right across. A height (100, say) gives the towers their own; the drawers start a reveal above it and the step falls in the gap beside the bed face.</small></div><div class="num"><input id="kickTower" type="number" min="15" max="250" step="1" inputmode="numeric"><span>mm</span></div></div>
           <label class="check"><input type="checkbox" id="topShelf"> <span>Extra shelf halfway up the top compartment</span></label>
           <label class="check"><input type="checkbox" id="cableHoles"> <span>20 mm cable holes for power and lighting</span></label>
@@ -1031,6 +1032,8 @@ const DEFAULTS = {
   gap: 6,             // gapdraw: reveal between fronts
   gapAbove: 54,       // gapabove: header filler height
   kickCentre: 'auto', // kick board under the bed: auto (lowered to clear the swing) | full | none
+  kickBevel: true,    // bevel the kick's top edge down toward the back, at about the angle the face panel's bottom corner
+                      // moves as the bed starts to turn: its front edge then comes up to a reveal under the bed face
   kickTower: null,    // kick under the towers: null = the same as under the bed, one line right across; a height (100,
                       // say) gives the towers their own, the drawers a reveal above it and the step at the bed face's reveal
   // plywood
@@ -1249,6 +1252,7 @@ function normParams(p) {
   P.drawers = P.drawers.slice(0, 10).map(h => { const v = Number(h); return isFinite(v) ? Math.min(600, Math.max(80, v)) : 180; });
   if (!['auto', 'full', 'none'].includes(P.kickCentre)) P.kickCentre = 'auto';
   opt('kickTower', 15, 250);
+  P.kickBevel = P.kickBevel !== false;
   P.topShelf = !!P.topShelf; P.headStore = P.headStore !== false; P.cableHoles = P.cableHoles !== false; P.supportOffset = !!P.supportOffset; P.faceReveal = !!P.faceReveal; P.packer = !!P.packer; P.ledge = !!P.ledge; P.grain = !!P.grain; P.headboard = !!P.headboard; P.edgeSteel = !!P.edgeSteel; P.lockTab = !!P.lockTab;
   if (p && p.lockPins === false && !p.lockType) P.lockType = 'none';
   if (!['twin', 'pins', 'bolts', 'none'].includes(P.lockType)) P.lockType = 'twin';
@@ -1556,7 +1560,20 @@ function derived(P) {
   const dyK = Math.max(0, G.yFb - G.pivot[0], G.pivot[0] - G.yF);
   G.kickMax = G.pivot[1] - Math.sqrt(Math.max(0, (rMax + 6) * (rMax + 6) - dyK * dyK));
   G.kickC = P.kickCentre === 'none' ? 0 : P.kickCentre === 'auto' ? Math.min(kickFull, Math.floor(G.kickMax)) : kickFull;
-  if (G.kickC < 15) G.kickC = 0;
+  G.kickCb = G.kickC;                            // its top at the back face: lower when bevelled
+  G.kickDip = G.pivot[1] - Math.sqrt(Math.max(0, rMax * rMax - dyK * dyK));   // the face's bottom corner over the kick's back face
+  // bevelled: the corner of the face panel moves back and down as the bed starts to turn, so the kick's top can slope
+  // down toward the back under it and its front edge come up to the reveal. Kept 5 clear of that corner's circle.
+  G.kickClr = (y, z) => Math.hypot(y - G.pivot[0], z - G.pivot[1]) - rMax;
+  const bevelMin = (hF, hB) => { let m = Infinity; for (let i = 0; i <= 18; i++) { const t = i / 18; m = Math.min(m, G.kickClr(G.yFb + t * (G.yF - G.yFb), hB + t * (hF - hB))); } return m; };
+  if (P.kickBevel && G.kickC && P.kickCentre !== 'none' && G.yF > G.pivot[0]) {
+    const hB = Math.floor(G.kickMax);
+    let hF = kickFull;
+    if (P.kickCentre === 'auto') while (hF > hB && bevelMin(hF, Math.min(hF, hB)) < 5) hF--;
+    if (hF > hB + 0.5) { G.kickC = hF; G.kickCb = Math.min(hF, hB); }
+  }
+  G.kickBevelClr = G.kickCb < G.kickC - 0.5 ? bevelMin(G.kickC, G.kickCb) : null;
+  if (G.kickC < 15) G.kickC = G.kickCb = 0;
   G.kickH = P.kickTower != null ? P.kickTower : (G.kickC || kickFull);   // kick height in front of the towers
   G.kickStep = G.kickC > 0 && Math.abs(G.kickH - G.kickC) > 0.5;        // two heights: the bed's, and the towers' own
   G.kickXm = (G.doorX[0] + G.xFo + P.faceOverhang) / 2;                  // where they meet: mid reveal, bed face to doors
@@ -1703,9 +1720,11 @@ function build(params, opts) {
   const put = (o) => { parts.push(Object.assign({ grain: false, band: 0 }, o)); return o; };
   const sides = [['R', -1], ['L', 1]]; // facing the wall from the room, -x is on your right
   // kick board and header: one plank right across, or two halves butted on the centre line
-  const plankParts = (pl, mark, name, z0, z1) => {
-    if (!pl.split) { put({ mark, name: `${name}, one piece`, cutName: name, grp: 'fronts-C', kind: 'front', T: P.T, L: pl.L, W: z1 - z0, grain: false, band: pl.L, solids: [box(-pl.L / 2, pl.L / 2, G.yFb, G.yF, z0, z1)] }); return; }
-    for (const [S, s] of sides) { const [a, b] = sx(s, 0, pl.L); put({ mark, name: `${name} (${S} half)`, cutName: `${name}, half`, grp: 'fronts-C', kind: 'front', T: P.T, L: pl.L, W: z1 - z0, grain: false, band: pl.L, solids: [box(a, b, G.yFb, G.yF, z0, z1)] }); }
+  const plankParts = (pl, mark, name, z0, z1, zBack) => {  // zBack: its top at the back face, for a bevelled top edge
+    const bev = zBack != null && zBack < z1 - 0.5, note = bev ? `, top bevelled ${Math.round(z1 - zBack)} to the back` : '';
+    const solid = (a, b) => bev ? yzPrism(a, b, ccwLoop([[G.yFb, z0], [G.yF, z0], [G.yF, z1], [G.yFb, zBack]])) : box(a, b, G.yFb, G.yF, z0, z1);
+    if (!pl.split) { put({ mark, name: `${name}, one piece`, cutName: name + note, grp: 'fronts-C', kind: 'front', T: P.T, L: pl.L, W: z1 - z0, grain: false, band: pl.L, solids: [solid(-pl.L / 2, pl.L / 2)] }); return; }
+    for (const [S, s] of sides) { const [a, b] = sx(s, 0, pl.L); put({ mark, name: `${name} (${S} half)`, cutName: `${name}, half${note}`, grp: 'fronts-C', kind: 'front', T: P.T, L: pl.L, W: z1 - z0, grain: false, band: pl.L, solids: [solid(Math.min(a, b), Math.max(a, b))] }); }
   };
   const sx = (s, x0, x1) => s < 0 ? [-x1, -x0] : [x0, x1];
   // Blum CLIP top BLUMOTION 110 deg (71B3550) on a CLIP cruciform plate. The cup, its flange and screws go with the
@@ -2315,7 +2334,7 @@ function build(params, opts) {
   }
   if (P.cableHoles) cableHoles(P, G, parts);
   // kick board: one plank across the towers and under the bed (none under the bed: a kick board per tower)
-  if (G.kickC) plankParts(G.kickPl, 'K1', G.kickStep ? 'Kick board under the bed' : 'Kick board', 0, G.kickC);
+  if (G.kickC) plankParts(G.kickPl, 'K1', G.kickStep ? 'Kick board under the bed' : 'Kick board', 0, G.kickC, G.kickCb);
   // re-run the checks with the ledge, backrest and kick in place (they are obstacles now)
   G.clear = clearances(P, G, true);
 
@@ -2469,7 +2488,8 @@ function obstacles(P, G, withAdded) {
   // the side rail closes onto the stops: that contact is the point of them, so only other parts are checked
   add('bed stops', around(G.stop, P.stopD, P.stopD), [G.xMount - P.stopH, G.xMount], { skip: ['side rail'] });
   if (withAdded) {
-    if (G.kickC >= 15) add('kick board under the bed', [G.yFb, G.yF, 0, G.kickC], [0, G.kickStep ? G.kickXm : G.kickPl.n === 2 ? G.kickPl.L : G.kickPl.L / 2]);
+    if (G.kickC >= 15) add('kick board under the bed', [G.yFb, G.yF, 0, G.kickC], [0, G.kickStep ? G.kickXm : G.kickPl.n === 2 ? G.kickPl.L : G.kickPl.L / 2],
+      G.kickCb < G.kickC - 0.5 ? { poly: [[G.yFb, 0], [G.yF, 0], [G.yF, G.kickC], [G.yFb, G.kickCb]] } : undefined);
     if (G.ledge && !G.ledge.skipped) add('headboard ledge', [G.yB1, G.ledge.y, 0, G.ledge.top], [0, G.xB]);
     if (G.ledge && !G.ledge.skipped && G.ledge.yFloor > G.ledge.y) {
       const L = G.ledge, nb = L.nose || 0, Tg = P.Tledge;
@@ -2574,7 +2594,7 @@ function clearances(P, G, withAdded) {
         const o = ob[k];
         if (!xOverlap(sh.x, o.x) || (o.skip && o.skip.includes(sh.name)) || (sh.legs && o.name === 'floor') || (sh.nut && o.side)) continue;
         let d = Infinity;
-        for (let e = 0; e < m; e++) d = Math.min(d, segRectDist(q[e], q[(e + 1) % n], o.rect) - (sh.r || 0));
+        for (let e = 0; e < m; e++) d = Math.min(d, (o.poly ? segPolyDist(q[e], q[(e + 1) % n], o.poly) : segRectDist(q[e], q[(e + 1) % n], o.rect)) - (sh.r || 0));
         d = xDepth(d, sh.x, o.x);
         const tgt = opts.fit ? opts.fit : res;
         if (d < tgt[k].min) { tgt[k].min = d; tgt[k].part = sh.name; tgt[k].angle = deg; }
@@ -2582,7 +2602,7 @@ function clearances(P, G, withAdded) {
     }
     if (opts.fit) return;
     for (const c of springCaps(G, th)) {
-      for (const o of ob) if (xOverlap(c.x, o.x)) noteS(o.name, xDepth(segRectDist(c.a, c.b, o.rect) - c.r, c.x, o.x), c.name, deg);
+      for (const o of ob) if (xOverlap(c.x, o.x)) noteS(o.name, xDepth((o.poly ? segPolyDist(c.a, c.b, o.poly) : segRectDist(c.a, c.b, o.rect)) - c.r, c.x, o.x), c.name, deg);
       for (const { sh, q } of world) if (!sh.open && !sh.mattress && xOverlap(c.x, sh.x) && !/^lower (ball-stud plate|stud nut)$/.test(sh.name)) noteS(sh.name, xDepth(segPolyDist(c.a, c.b, q) - c.r, c.x, sh.x), c.name, deg);
     }
   };
@@ -2757,6 +2777,7 @@ function checks(model) {
   const wallR = C.list.find(r => r.name === 'back wall');
   if (wallR && wallR.min < 0) w('bad', 'Bed reaches the back wall', `The ${wallR.part} swings ${f0(-wallR.min)} mm past the wall line.`, 'swing');
   if (G.kickStep) w('info', `Kick board in two heights: ${f0(G.kickH)} under the towers, ${f0(G.kickC)} under the bed`, `The towers' kick is ${f0(G.kickH)} and their drawers start a reveal above it, at ${f0(G.zPl)}${G.drawerDrop < 0 ? `, so the tower above the drawers is ${f0(-G.drawerDrop)} shorter (hanging space ${f0(G.hangClear)})` : ''}. Under the bed it stays ${f0(G.kickC)}: the face panel's bottom edge sweeps down to ${f0(C.minZ)} mm off the floor as the bed turns, and its face starts at ${f0(G.zFace0)}. The step falls in the reveal between the bed face and the tower doors, ${f0(G.kickXm)} either side of centre.`, 'swing');
+  if (G.kickBevelClr != null) w(G.kickBevelClr < 3 ? 'warn' : 'info', `Kick board bevelled: ${f0(G.kickC)} at the face, ${f0(G.kickCb)} at the back`, `As the bed starts to turn, the bottom corner of the face panel moves back and down, dipping to ${f0(G.kickDip)} over the kick's back face. A square kick would have to stop ${f0(Math.floor(G.kickMax))} high there, ${f0(G.zFace0 - Math.floor(G.kickMax))} under the face. Bevelling its top edge down toward the back, about ${f0(Math.atan2(G.kickC - G.kickCb, G.yF - G.yFb) * 180 / Math.PI)} degrees, follows that corner, so the front edge comes up to ${f0(G.kickC)}${Math.abs(G.zFace0 - G.kickC - P.gap) < 0.5 ? `, the same ${f0(P.gap)} mm reveal as everywhere else` : ''}${!G.kickStep && Math.abs(G.zPl - G.zFace0) < 0.5 ? ', and the drawers start level with the bed face' : ''}. The corner passes ${r1(G.kickBevelClr)} clear of it at the closest.`, 'swing');
   if (G.kickC && G.drawerDrop > 0 && !G.kickStep) w('info', `Kick board right across, ${f0(G.kickC)} high`, `The bottom edge of the face panel sweeps down to ${f0(C.minZ)} mm above the floor as the bed turns, so the kick board that runs right across is ${f0(G.kickC)} high. The drawers start ${f0(G.drawerDrop)} lower, at ${f0(G.zPl)}, on lower plinths, and the hanging space gains the ${f0(G.drawerDrop)}: ${f0(G.hangClear)} clear.`, 'swing');
   {
     const half = [G.kickC ? ['kick board', G.kickPl] : null, P.gapAbove > 0 ? ['header filler', G.headPl] : null].filter(Boolean);
@@ -3485,7 +3506,7 @@ function assembly(model, sheets) {
   let st = step({ title: 'Measure and mark out', h: 1.5, parts: () => false,
     text: `Check the width, height and depth at three heights against the ${f0(P.W)} x ${f0(P.H)} x ${f0(P.D)} drawn. Find the studs on the back and side walls with a detector (usually ${STUDS} or 600 apart) and mark their centres, and any cables or pipes. Find the floor's high point: the plinths and bed-cabinet sides are levelled from it.` });
   st = step({ title: 'Cut the parts', h: Math.round((1 + 0.45 * usedSheets) * 2) / 2, parts: () => false,
-    text: `${usedSheets} sheets from the cutting plans with a track saw: rip the long parts first and label each part with its mark as it comes off. The kick board and header are full-length rips, ${[G.kickC ? ['kick board', G.kickPl] : null, P.gapAbove > 0 ? ['header', G.headPl] : null].filter(Boolean).map(([n, pl]) => `the ${n} ${pl.split ? `two halves of ${f0(pl.L)}` : `one piece ${f0(pl.L)}`}`).join(', ')}; cut them before anything else from their sheet.` });
+    text: `${usedSheets} sheets from the cutting plans with a track saw: rip the long parts first and label each part with its mark as it comes off. The kick board and header are full-length rips, ${[G.kickC ? ['kick board', G.kickPl] : null, P.gapAbove > 0 ? ['header', G.headPl] : null].filter(Boolean).map(([n, pl]) => `the ${n} ${pl.split ? `two halves of ${f0(pl.L)}` : `one piece ${f0(pl.L)}`}`).join(', ')}; cut them before anything else from their sheet.${G.kickCb < G.kickC - 0.5 ? ` Bevel the kick board's top edge from ${f0(G.kickC)} at the face to ${f0(G.kickCb)} at the back, about ${f0(Math.atan2(G.kickC - G.kickCb, G.yF - G.yFb) * 180 / Math.PI)} degrees: a track saw or table saw tilted, or plane down to a line.` : ''}` });
   st = step({ title: 'Edge band, sand, pre-finish', h: Math.round((2 + band * 0.08) * 2) / 2, overnight: true, parts: () => false,
     text: `${band.toFixed(0)} m of banding on the edges the cut list marks. Sand to 180 and put two coats on the insides of the towers, the drawer boxes and the backs of the fronts while they lie flat. Leave it overnight.` });
   st = step({ title: 'Drill everything on the flat', h: 3, parts: () => false,
@@ -7790,7 +7811,7 @@ const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'skinZ0', 'wallS
   'ledgeClear', 'headAngle', 'headH', 'headGap', 'headLip', 'headClear', 'headDoorOpen', 'headGPO', 'headZone', 'upstand', 'steelH', 'steelT', 'twinSpacing', 'lockPinX', 'wallRail', 'kerf', 'trim'];
 const OPT_FIELDS = ['Wback', 'packBL', 'packBR', 'skinZ1', 'kickTower'];  // blank: worked out from the others
 const SEL_FIELDS = ['kickCentre', 'doorHinge', 'lockType', 'headHinge'];
-const CHK_FIELDS = ['topShelf', 'cableHoles', 'headStore', 'supportOffset', 'faceReveal', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain', 'wallStudFronts'];
+const CHK_FIELDS = ['topShelf', 'cableHoles', 'headStore', 'supportOffset', 'faceReveal', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain', 'wallStudFronts', 'kickBevel'];
 
 const readLS = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } };
 const writeLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage off: settings just aren't remembered */ } };
