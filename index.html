@@ -8705,6 +8705,13 @@ if (!readLS(LS_KEY + ':nibsGone')) {
   params.wallStudL = 0; params.wallStudR = 0;
   writeLS(LS_KEY + ':nibsGone', 1);
 }
+// the tower tops and the adjustable shelves went back to 18 (the shelves level with the box's floor): settings saved
+// while they were briefly 12 by default follow, once
+if (!readLS(LS_KEY + ':towers18')) {
+  if (Number(params.Ttop) === 12) params.Ttop = 18;
+  if (Number(params.Tshelf) === 12) params.Tshelf = 18;
+  writeLS(LS_KEY + ':towers18', 1);
+}
 // the sheets' factory edges are good: saved settings still trimming 5 off each edge follow, once
 if (!readLS(LS_KEY + ':trim05')) {
   if (Number(params.trim) === 5) params.trim = 0.5;
