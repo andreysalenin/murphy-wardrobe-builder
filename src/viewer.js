@@ -225,7 +225,8 @@ class MurphyScene {
     this.house = new THREE.Group(); this.house.visible = false;
     if (!this.houseMats) {
       const m = (col, rough, glow) => new THREE.MeshStandardMaterial({ color: srgb(col), roughness: rough, metalness: 0, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2, emissive: srgb(glow || 0) });
-      this.houseMats = { wall: m(0xe9e5dd, 0.95), ceiling: m(0xf3f1ec, 0.95, 0x8f8c86), door: m(0xfbfaf6, 0.6),
+      this.houseMats = { wall: m(0xe9e5dd, 0.95), reveal: m(0xe2ddd3, 0.95), ceiling: m(0xf3f1ec, 0.95, 0x8f8c86), door: m(0xfbfaf6, 0.6),
+        glass: new THREE.MeshStandardMaterial({ color: srgb(0xb9d3e2), roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.4, depthWrite: false, side: THREE.FrontSide }),
         swing: new THREE.LineDashedMaterial({ color: 0x8a8378, dashSize: 40, gapSize: 30, transparent: true, opacity: 0.8 }), cornice: new THREE.MeshStandardMaterial({ color: srgb(0xf7f5ef), roughness: 0.7, side: THREE.DoubleSide }),
         carpet: new THREE.MeshStandardMaterial({ color: srgb(0x8d9299), roughness: 1, side: THREE.DoubleSide }), line: new THREE.LineBasicMaterial({ color: 0x8a8378, transparent: true, opacity: 0.55 }) };
     }

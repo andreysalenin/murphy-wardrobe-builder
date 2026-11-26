@@ -145,10 +145,18 @@ run({ skinT: 18, skinZ1: 3000, gapAbove: 61, H: 2400 }, 'skins up to the head');
   if (m.G.skinZ[1] !== m.G.zHead) probs.push('head: skins run to the ceiling should stop under the head');
   if (C.build({ cornice: 0 }).parts.some(p => p.mark === 'WK')) probs.push('cornice: size 0 should mean none');
   m = C.build({});
-  if (Math.abs(m.room.x[0] - m.G.walls.R[1]) > 0.01 || Math.abs(m.room.x[1] - m.room.x[0] - 3116) > 0.01 || m.room.quads.length !== 12 || m.room.coves.length !== 4 || !m.room.door) probs.push(`room: expected the right wall flush with the right jamb, 12 walls, ceilings and the door, 4 cornice runs (got ${m.room.x}, ${m.room.quads.length}, ${m.room.coves.length})`);
+  {
+    const R = m.room, H0 = C.DEFAULTS.H, side = (x, kind) => R.quads.filter(q => q.kind === kind && q.pts.every(p => Math.abs(p[0] - x) < 0.01 && p[1] >= R.y[0] - 0.01));   // the room's, not the cavity's
+    const area = (qs) => qs.reduce((a, q) => { const ys = q.pts.map(p => p[1]), zs = q.pts.map(p => p[2]); return a + (Math.max(...ys) - Math.min(...ys)) * (Math.max(...zs) - Math.min(...zs)); }, 0);
+    if (Math.abs(R.x[0] - m.G.walls.R[1]) > 0.01 || Math.abs(R.x[1] - R.x[0] - 3116) > 0.01 || R.coves.length !== 4) probs.push(`room: expected the right wall flush with the right jamb and 4 cornice runs (got ${R.x}, ${R.coves.length})`);
+    if (Math.abs(area(side(R.x[0], 'wall')) - (3168 * H0 - 1800 * 1000)) > 1) probs.push(`room: the right wall should be whole but for the 1800 x 1000 window (got ${area(side(R.x[0], 'wall'))})`);
+    const gl = R.quads.filter(q => q.kind === 'glass'), gy = gl.length ? gl[0].pts.map(p => p[1]) : [], gz = gl.length ? gl[0].pts.map(p => p[2]) : [];
+    if (gl.length !== 1 || Math.min(...gy) !== 600 + 675 || Math.max(...gy) !== 600 + 675 + 1800 || Math.min(...gz) !== 1200 || Math.max(...gz) !== 2200 || !(gl[0].pts[0][0] < R.x[0])) probs.push('room: the window should be 675 from the wardrobe wall, 1800 x 1000 with its sill at 1200, set back in the right wall');
+    if (Math.abs(area(side(R.x[1], 'wall')) - (3168 * H0 - 820 * 2040)) > 1 || R.quads.filter(q => q.kind === 'door').length !== 1) probs.push('room: the left wall should be whole but for the 820 door');
+  }
   if (!has(m, 'warn', /room door opens across the left tower/)) probs.push('room: the door opening across the left tower is not flagged');
-  m = C.build({ roomRight: 100, doorW: 0 });
-  if (Math.abs(m.room.x[0] - (m.G.walls.R[1] - 100)) > 0.01 || m.room.quads.length !== 10 || m.room.coves.length !== 5 || m.room.door) probs.push(`room: 100 to the right wall, no door: expected 10 walls and ceilings, 5 cornice runs (got ${m.room.x}, ${m.room.quads.length}, ${m.room.coves.length})`);
+  m = C.build({ roomRight: 100, doorW: 0, winWall: 'none' });
+  if (Math.abs(m.room.x[0] - (m.G.walls.R[1] - 100)) > 0.01 || m.room.quads.length !== 10 || m.room.coves.length !== 5 || m.room.door || m.room.window) probs.push(`room: 100 to the right wall, no door or window: expected 10 walls and ceilings, 5 cornice runs (got ${m.room.x}, ${m.room.quads.length}, ${m.room.coves.length})`);
   m = C.build({});
   if (Math.abs(m.G.coveZ(5) - (C.DEFAULTS.H - 55)) > 0.01) probs.push('cornice: the 10 lip should keep it 55 down out to 10 from the wall');
   if (Math.abs(m.G.coveZ(55 - 45 * Math.SQRT1_2) - (C.DEFAULTS.H - 55 + 45 * Math.SQRT1_2)) > 0.01) probs.push('cornice: a 45 radius cove between the lips expected');

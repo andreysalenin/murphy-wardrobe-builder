@@ -71,6 +71,9 @@ const DEFAULTS = {
   roomH: null,        // room ceiling (null: the cavity's)
   doorW: 820,         // the room's door, in its left wall: 0 = none. It hinges at the end nearer the wardrobe and opens
   doorAt: 50,         // into the room, back toward the wardrobe wall; doorAt: wardrobe wall's face to the hinge side
+  winWall: 'right',   // the window: in the room's 'right' or 'left' wall (as you face the wardrobe), or 'none'
+  winAt: 675,         // from the wardrobe wall's face to its near side
+  winW: 1800, winH: 1000, winSill: 1200,
   faceBelowFrame: 10, // face panel runs this far past the frame's head end (kit: about 1/4 in); puts the pivot at the kit's 11-3/4 in
   // side towers
   drawers: [180, 180, 180, 180], // botdrawersize x 4 (bottom first)
@@ -315,6 +318,8 @@ function normParams(p) {
   for (const k of ['corniceBack', 'corniceSides', 'corniceHeadIn', 'corniceHeadOut']) P[k] = P[k] !== false;
   num('roomW', 1500, 12000); num('roomD', 1000, 12000); num('roomRight', -3000, 12000); opt('roomH', 2000, 4000); delete P.roomLeft;
   num('doorW', 0, 1500); num('doorAt', 0, 6000);
+  if (!['right', 'left', 'none'].includes(P.winWall)) P.winWall = 'right';
+  num('winAt', 0, 12000); num('winW', 0, 6000); num('winH', 0, 3000); num('winSill', 0, 3000);
   P.topShelf = !!P.topShelf; P.headStore = P.headStore !== false; P.cableHoles = P.cableHoles !== false; P.supportOffset = !!P.supportOffset; P.faceReveal = !!P.faceReveal; P.packer = !!P.packer; P.ledge = !!P.ledge; P.grain = !!P.grain; P.headboard = !!P.headboard; P.edgeSteel = !!P.edgeSteel; P.lockTab = !!P.lockTab;
   if (p && p.lockPins === false && !p.lockType) P.lockType = 'none';
   if (!['twin', 'pins', 'bolts', 'none'].includes(P.lockType)) P.lockType = 'twin';
@@ -565,19 +570,38 @@ function roomModel(P, G) {
   // the door in the left wall: hinged at the end nearer the wardrobe, opening into the room back toward it
   const dw = P.doorW, dh = Math.min(2040, rh - 100), d0 = D + P.doorAt, d1 = Math.min(y1, d0 + dw), door = dw > 0 && d1 > d0 + 100;
   const q = (kind, pts, n) => quads.push({ kind, pts, n });
+  // a side wall at x, y from a to b, facing n (+1: toward +x), with openings { y0, y1, z0, z1, depth, fill } cut out
+  // of it: the wall in strips round them, each opening's reveals, and what fills it set back by its depth
+  const sideWall = (x, a, b, n, holes) => {
+    const N = [n, 0, 0], at = (y, z, back) => [x - n * (back || 0), y, z];
+    holes = holes.map(h => Object.assign({}, h, { y0: Math.max(a, h.y0), y1: Math.min(b, h.y1), z0: Math.max(0, h.z0), z1: Math.min(rh, h.z1) })).filter(h => h.y1 > h.y0 + 1 && h.z1 > h.z0 + 1);
+    const ys = [...new Set([a, b, ...holes.flatMap(h => [h.y0, h.y1])])].sort((p, r) => p - r);
+    for (let i = 0; i + 1 < ys.length; i++) {
+      const s0 = ys[i], s1 = ys[i + 1];
+      if (s1 - s0 < 0.5) continue;
+      const cut = holes.filter(h => h.y0 < s1 - 0.1 && h.y1 > s0 + 0.1).map(h => [h.z0, h.z1]).sort((p, r) => p[0] - r[0]);
+      let z = 0;
+      for (const [z0, z1] of [...cut, [rh, rh]]) { if (z0 > z + 0.5) q('wall', [at(s0, z), at(s1, z), at(s1, z0), at(s0, z0)], N); z = Math.max(z, z1); }
+    }
+    for (const h of holes) {
+      const d = h.depth, A = (y, z) => at(y, z, 0), B = (y, z) => at(y, z, d);
+      if (h.z0 > 0.5) q('reveal', [A(h.y0, h.z0), A(h.y1, h.z0), B(h.y1, h.z0), B(h.y0, h.z0)], [0, 0, 1]);
+      q('reveal', [A(h.y0, h.z1), A(h.y1, h.z1), B(h.y1, h.z1), B(h.y0, h.z1)], [0, 0, -1]);
+      q('reveal', [A(h.y0, h.z0), A(h.y0, h.z1), B(h.y0, h.z1), B(h.y0, h.z0)], [0, 1, 0]);
+      q('reveal', [A(h.y1, h.z0), A(h.y1, h.z1), B(h.y1, h.z1), B(h.y1, h.z0)], [0, -1, 0]);
+      q(h.fill, [B(h.y0, h.z0), B(h.y1, h.z0), B(h.y1, h.z1), B(h.y0, h.z1)], N);
+    }
+  };
+  // the window, in the right or left wall
+  const win = P.winWall !== 'none' && P.winW > 0 && P.winH > 0 ? { wall: P.winWall, y0: D + P.winAt, y1: Math.min(y1, D + P.winAt + P.winW), z0: P.winSill, z1: Math.min(rh - 20, P.winSill + P.winH), depth: 60, fill: 'glass' } : null;
+  const holesOf = (S) => [...(S === 'left' && door ? [{ y0: d0, y1: d1, z0: 0, z1: dh, depth: 20, fill: 'door' }] : []), ...(win && win.wall === S ? [win] : [])];
   // the wardrobe wall, room side, either side of the opening (above it is the head, drawn as a part)
   if (xr - xR > 1) q('wall', [[xR, D, 0], [xr, D, 0], [xr, D, rh], [xR, D, rh]], [0, 1, 0]);
   if (xL - xl > 1) q('wall', [[xl, D, 0], [xL, D, 0], [xL, D, rh], [xl, D, rh]], [0, 1, 0]);
   if (!G.bulk && rh > P.H + 1) q('wall', [[xr, D, P.H], [xl, D, P.H], [xl, D, rh], [xr, D, rh]], [0, 1, 0]);
   q('wall', [[xR, y1, 0], [xL, y1, 0], [xL, y1, rh], [xR, y1, rh]], [0, -1, 0]);
-  q('wall', [[xR, D, 0], [xR, y1, 0], [xR, y1, rh], [xR, D, rh]], [1, 0, 0]);
-  if (!door) q('wall', [[xL, D, 0], [xL, y1, 0], [xL, y1, rh], [xL, D, rh]], [-1, 0, 0]);
-  else {
-    if (d0 > D + 1) q('wall', [[xL, D, 0], [xL, d0, 0], [xL, d0, rh], [xL, D, rh]], [-1, 0, 0]);
-    if (y1 > d1 + 1) q('wall', [[xL, d1, 0], [xL, y1, 0], [xL, y1, rh], [xL, d1, rh]], [-1, 0, 0]);
-    q('wall', [[xL, d0, dh], [xL, d1, dh], [xL, d1, rh], [xL, d0, rh]], [-1, 0, 0]);
-    q('door', [[xL - 20, d0, 0], [xL - 20, d1, 0], [xL - 20, d1, dh], [xL - 20, d0, dh]], [-1, 0, 0]);
-  }
+  sideWall(xR, D, y1, 1, holesOf('right'));
+  sideWall(xL, D, y1, -1, holesOf('left'));
   q('ceiling', [[xR, D, rh], [xL, D, rh], [xL, y1, rh], [xR, y1, rh]], [0, 0, -1]);
   // the cavity: back wall, side walls (straight lines back to front), its ceiling back to the head
   const b0 = [wallAt(G, 'R', 0), wallAt(G, 'L', 0)], yc = G.bulk ? G.bulk.y0 : D;
@@ -595,6 +619,7 @@ function roomModel(P, G) {
   const swing = [];
   if (door) for (let i = 0; i <= 24; i++) { const a = (Math.PI / 2) * i / 24; swing.push([xL - (d1 - d0) * Math.sin(a), d0 + (d1 - d0) * Math.cos(a), P.carpetT + 1]); }
   return { quads, coves, rh, x: [xR, xL], y: [D, y1], opening: [xr, xl], door: door ? { x: xL, y: [d0, d1], h: dh, swing } : null,
+    window: win ? { wall: win.wall, x: win.wall === 'left' ? xL : xR, y: [win.y0, win.y1], z: [win.z0, win.z1] } : null,
     carpet: P.carpetT > 0 ? box(xR, xL, D + P.frontSetback, y1, 0, P.carpetT) : null };
 }
 
