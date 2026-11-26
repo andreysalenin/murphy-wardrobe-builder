@@ -86,7 +86,7 @@ const DEFAULTS = {
   deskGap: 5,         // desks and the ALEX off the walls
   deskClear: 5,       // the desks' undersides over the ALEX's top
   deskH: null,        // top surface height (null: just clear the ALEX)
-  alexColor: '#5fa8a6', // the ALEX's colour (turquoise)
+  alexColor: '#6c9a9b', // the ALEX's colour: IKEA's grey-turquoise (an estimate; IKEA publishes no colour codes)
   faceBelowFrame: 10, // face panel runs this far past the frame's head end (kit: about 1/4 in); puts the pivot at the kit's 11-3/4 in
   // side towers
   drawers: [180, 180, 180, 180], // botdrawersize x 4 (bottom first)
@@ -114,7 +114,7 @@ const DEFAULTS = {
   Tledge: 18,
   // parts that can come out of 12 (birch AA like the 18): the kick boards, the adjustable shelves and the header filler
   Tkick: 12,          // kick boards: the plinth fronts come forward to meet them, packers on the bed-cabinet sides
-  Tshelf: 12,         // adjustable shelves in the top compartments (378 span: no sag to speak of)
+  Tshelf: 18,         // adjustable shelves in the top compartments: 18, level with the shelf over the bed
   Theader: 12,        // header filler along the ceiling
   Ttop: 18,           // the towers' tops, 18 like the top over the bed (which stays at T: the flaps' hinge plates screw
                       // under it, and their overlay needs its 18 mm edge)
@@ -636,7 +636,7 @@ function furnitureItems(P, G, R) {
     if (need < 0.05) break;
     h = Math.ceil(h + need); built = deskAt(h); m = meet(built.parts);
   }
-  const alexItems = placeItem(alex, xc + A.W / 2, Yb, z0, { name: 'ALEX', color: (p) => /body|front|carcass|top|side|drawer/i.test(p.mat) && !/inside|grip|shadow|plinth/i.test(p.mat) ? P.alexColor : null });
+  const alexItems = placeItem(alex, xc + A.W / 2, Yb, z0, { name: 'ALEX' });   // the model colours itself from opt.color
   const info = { h, hMin, hMax, L, D: D0.D, between, over: (A.W - between) / 2, alexTop: alexBox[5] - z0, clear: isFinite(m.low) ? m.low - alexBox[5] : null, blocked: [...new Set(m.blocked)], fits: between >= 0,
     deskFront: Yb - D0.D, alex: A };
   return { items: [...built.parts, ...alexItems], info };
@@ -905,14 +905,21 @@ function derived(P) {
   G.zS1b = G.topFronts - g; G.zS1t = G.zS1b + T;              // shelf over the drawers (topofdrawersy)
   G.hangClear = P.hangClear + G.drawerDrop;
   G.zS2b = G.zS1t + G.hangClear; G.zS2t = G.zS2b + T;         // shelf over the hanging space
-  // the adjustable shelf in the top compartment, where it starts: halfway up, unless that puts it on the screws that
-  // hold the box over the bed from inside the towers (at the shelf over the bed), then just clear of them
+  // the adjustable shelf in the top compartment, where it starts: level with the shelf over the bed, its top in line
+  // with the box's floor and its front edge with the box's, so with the doors open one line runs right across. It goes
+  // in last, on its pins, over the screw heads that hold the box from inside the towers. Without room for that
+  // (the box's floor near the top compartment's own floor or top), halfway up, clear of those screws.
   {
-    const Ts = P.Tshelf, mid = (G.zS2t + G.zTopT) / 2, a = mid - Ts / 2 - 20, b = mid + Ts / 2 + 20, s0 = G.zBm0 - 10, s1 = G.zBm1 + 10;
-    G.zAdj = mid;
-    if (b > s0 && a < s1) {
-      const up = s1 + 20 + Ts / 2, dn = s0 - 20 - Ts / 2;
-      G.zAdj = up <= G.zTopT - 80 ? up : dn >= G.zS2t + 80 ? dn : mid;
+    const Ts = P.Tshelf, lvl = G.zBm1 - Ts / 2;
+    G.shelfLevel = lvl - Ts / 2 >= G.zS2t + 80 && lvl + Ts / 2 <= G.zTopT - 80;
+    if (G.shelfLevel) G.zAdj = lvl;
+    else {
+      const mid = (G.zS2t + G.zTopT) / 2, a = mid - Ts / 2 - 20, b = mid + Ts / 2 + 20, s0 = G.zBm0 - 10, s1 = G.zBm1 + 10;
+      G.zAdj = mid;
+      if (b > s0 && a < s1) {
+        const up = s1 + 20 + Ts / 2, dn = s0 - 20 - Ts / 2;
+        G.zAdj = up <= G.zTopT - 80 ? up : dn >= G.zS2t + 80 ? dn : mid;
+      }
     }
   }
   G.midDoor = [G.topFronts + g, G.zS2t - 2 * g];
@@ -1121,8 +1128,9 @@ function build(params, opts) {
     if (P.topShelf) {
       const zc = G.zAdj;
       const [ax0, ax1] = sx(s, G.xT2 + 1, G.xOi - 1);
-      put({ mark: 'T5', name: nm('Adjustable shelf, top compartment'), grp, kind: 'carcass', T: P.Tshelf, L: G.towerIn - 2, W: G.cDs - 20, band: G.towerIn - 2,
-        solids: [box(ax0, ax1, G.yB1, G.yCs - 20, zc - P.Tshelf / 2, zc + P.Tshelf / 2)] });
+      const sb = G.shelfLevel ? 0 : 20;            // level with the box: full depth, its edge in line with the box's
+      put({ mark: 'T5', name: nm('Adjustable shelf, top compartment'), grp, kind: 'carcass', T: P.Tshelf, L: G.towerIn - 2, W: G.cDs - sb, band: G.towerIn - 2,
+        solids: [box(ax0, ax1, G.yB1, G.yCs - sb, zc - P.Tshelf / 2, zc + P.Tshelf / 2)] });
     }
     const [bx0, bx1] = sx(s, G.xJ, G.xOo);
     const bIn = G.backInset;
@@ -2173,7 +2181,7 @@ function checks(model) {
       else {
         if (fi.h > fi.hMax + 0.5) w('bad', 'The desks cannot rise that high', `Clearing the ALEX needs the tops at ${f0(fi.h)}; the Emmerson goes to ${f0(fi.hMax)}.`, 'room');
         if (P.deskH != null && fi.clear != null && fi.clear < 0) w('bad', 'The desks sit on the ALEX', `At ${f0(fi.h)} the desks come ${r1(-fi.clear)} down into the ALEX's top: raise them to ${f0(fi.h - fi.clear + P.deskClear)}.`, 'room');
-        w('info', `Desks at ${f0(fi.h)}, just over the ALEX`, `Two ${f0(fi.L)} Emmerson desks in the far corners, ${f0(P.deskGap)} off the walls, with their tops ${f0(fi.h)} off the floor${P.deskH == null ? ` (the lowest that clears the ALEX by ${f0(P.deskClear)}; the desk goes down to ${f0(fi.hMin)})` : ''}. The tops are ${f0(fi.between)} apart, so the ${f0(fi.alex.W)} wide, ${f0(fi.alexTop)} tall ALEX between them runs ${r1(fi.over)} under each${fi.clear != null ? `, ${r1(fi.clear)} under the lowest part over it` : ''}. With the bed down, its foot is ${f0(toBed)} from the desks' front edges.`, 'room');
+        w('info', `Desks at ${f0(fi.h)}, just over the ALEX`, `Two ${f0(fi.L)} Emmerson desks in the far corners, ${f0(P.deskGap)} off the walls, with their tops ${f0(fi.h)} off the floor${P.deskH == null ? ` (the lowest that clears the ALEX by ${f0(P.deskClear)}; the desk goes down to ${f0(fi.hMin)})` : ''}. The tops are ${f0(fi.between)} apart, so the ${f0(fi.alex.W)} wide, ${f0(fi.alexTop)} tall ALEX between them runs ${r1(fi.over)} under each${fi.clear != null ? `, ${r1(fi.clear)} under their tops` : ''}. With the bed down, its foot is ${f0(toBed)} from the desks' front edges.`, 'room');
         if (toBed < 600) w('warn', 'Tight between the bed and the desks', `With the bed down its foot is only ${f0(toBed)} from the desks' front edges.`, 'room');
       }
     }
@@ -2910,7 +2918,7 @@ function assembly(model, sheets) {
   st = step({ title: 'Assemble the tower carcasses', h: 3, parts: (p) => ['T1', 'T2', 'T3', 'T4', 'T6'].includes(p.mark),
     text: `Each tower on its back: glue, dowel and screw the two fixed shelves between the sides (through the sides) and the top and bottom over them (through the top and bottom into the sides). Sink the heads on the inner side flush: it goes against the bed-cabinet side. Square it up and glue and screw the back on, every 150.` });
   addJ(st, 'carcass');
-  st = step({ title: 'Fit out the towers', h: 1.5, parts: (p) => p.mark === 'HR' || (p.mark === 'RN' && p.pick) || (p.mark === 'HG' && isPlate(p)) || p.mark === 'T5',
+  st = step({ title: 'Fit out the towers', h: 1.5, parts: (p) => p.mark === 'HR' || (p.mark === 'RN' && p.pick) || (p.mark === 'HG' && isPlate(p)) || (p.mark === 'T5' && !G.shelfLevel),
     text: `While they lie on their backs: the runners' cabinet members flush with the front edge on their centre lines, the hinge plates (${G.hingeDoor.H} mm, ${G.hingeDoor.code}), the hanging-rail brackets${P.topShelf ? ' and the shelf pins' : ''}.` });
   add(st, 'h15', nDr * 2 * useR + doorHinges * 2 + nTow * 2 * 3); if (P.topShelf) add(st, 'pin', nTow * 4);
   st = step({ title: 'Stand the towers in place', h: 1.5, people: 2, parts: () => false, hl: (p) => /^(T[1-6]|P[12])$/.test(p.mark),
@@ -2959,7 +2967,7 @@ function assembly(model, sheets) {
     text: `${G.hasHeader ? `Glue and clamp the battens to the back of the header at its bottom edge, ${G.bulk ? 'fit the header up under the head of the opening (plane its top edge to the head\'s sanded underside)' : 'scribe the header to the ceiling'}, then screw up through the tops into the battens from inside the top compartments and through the flaps. ` : ''}Kick board: no fixings in its face. High-grab adhesive (a hybrid polymer such as CT1) on the plinth fronts and the bed-cabinet sides' front edges, ${r1(P.frontGap)} mm packers behind it to keep the line with the doors${G.kickC && G.yKb > G.yFb + 0.5 ? ` (the ${f0(G.Tk)} kick stands ${r1(G.yKb - G.yC)} off the bed-cabinet sides' front edges: glue a ${r1(G.yKb - G.yFb)} offcut on each edge first; the plinth fronts already come forward to meet it)` : ''}, and tape it up to the doors while it cures.` });
   addJ(st, 'kickHeader');
   st = step({ title: 'Handles, adjust, final checks', h: 1.5, parts: () => true, bed: 0,
-    text: `Handles on the drawers, doors and the bed face. Check the reveals, the runners' stops, the flap stays and the twin pin, re-tighten every wall screw, and swing the bed down once more, slowly, with the mattress on.` });
+    text: `${P.topShelf && G.shelfLevel ? 'The adjustable shelves onto their pins, level with the shelf over the bed (they cover the heads of the screws that hold the box). ' : ''}Handles on the drawers, doors and the bed face. Check the reveals, the runners' stops, the flap stays and the twin pin, re-tighten every wall screw, and swing the bed down once more, slowly, with the mattress on.` });
   { const fr = parts.filter(p => p.mark === 'D3' || p.mark === 'D1' || p.mark === 'D2'), n12 = fr.filter(p => p.T < 16).length;
     add(st, 'm4', 2 * (fr.length - n12 + 2)); add(st, 'm4s', 2 * n12); }
 

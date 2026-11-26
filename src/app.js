@@ -4,7 +4,7 @@
 const C = window.MurphyCore, V = window.MurphyViewer;
 const LS_KEY = 'murphy-wardrobe-builder.v3', LS_VIEW = 'murphy-wardrobe-builder.view.v1', LS_THEME = 'murphy-wardrobe-builder.theme';
 const $ = (id) => document.getElementById(id);
-const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'skinZ0', 'carpetT', 'carpetSink', 'headDrop', 'headD', 'cornice', 'corniceLip', 'roomW', 'roomD', 'roomRight', 'doorW', 'doorAt', 'winAt', 'winW', 'winH', 'winSill', 'wallT', 'winReveal', 'winOpen', 'deskLen', 'deskGap', 'deskClear', 'wallStudL', 'wallStudR', 'wallStudY0', 'wallStudY1', 'wallStudClad', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
+const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'skinZ0', 'carpetT', 'carpetSink', 'headDrop', 'headD', 'cornice', 'corniceLip', 'roomW', 'roomD', 'roomRight', 'doorW', 'doorAt', 'winAt', 'winW', 'winH', 'winSill', 'wallT', 'winReveal', 'winOpen', 'deskGap', 'deskClear', 'wallStudL', 'wallStudR', 'wallStudY0', 'wallStudY1', 'wallStudClad', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
   'hangClear', 'railDrop', 'runnerClear', 'runnerLen', 'boxLess', 'gap', 'gapAbove', 'frontGap', 'TfDrawer', 'TfSide', 'TfTop', 'headWell', 'T', 'Tb', 'Tback', 'Tsup', 'Tladder', 'Tplinth', 'Tpacker', 'Tledge', 'Thead', 'Tkick', 'Theader', 'Tshelf', 'Ttop',
   'pivotFromRail', 'pivotAboveHead', 'cabPivotZ', 'pinGap', 'springLowAlong', 'springLowOut', 'springUpFront', 'springUpZ', 'stopFront', 'stopBelowTop',
   'springD', 'springRodD', 'springEndD', 'springBodyL', 'studS', 'plateT', 'nutStack', 'stopD', 'stopH', 'legD',
@@ -12,7 +12,7 @@ const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'skinZ0', 'carpe
   'ledgeClear', 'headAngle', 'headH', 'headGap', 'headLip', 'headClear', 'headDoorOpen', 'headGPO', 'headZone', 'upstand', 'steelH', 'steelT', 'twinSpacing', 'lockPinX', 'wallRail', 'kerf', 'trim'];
 const OPT_FIELDS = ['Wback', 'packBL', 'packBR', 'skinZ1', 'kickTower', 'roomH', 'deskH'];
 const COL_FIELDS = ['alexColor'];  // colours, #rrggbb  // blank: worked out from the others
-const SEL_FIELDS = ['kickCentre', 'doorHinge', 'lockType', 'headHinge', 'winWall', 'winVent'];
+const SEL_FIELDS = ['kickCentre', 'doorHinge', 'lockType', 'headHinge', 'winWall', 'winVent', 'deskLen'];
 const CHK_FIELDS = ['topShelf', 'cableHoles', 'headStore', 'supportOffset', 'faceReveal', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain', 'wallStudFronts', 'kickBevel', 'carpetLift', 'corniceBack', 'corniceSides', 'corniceHeadIn', 'corniceHeadOut', 'furniture'];
 
 const readLS = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } };
@@ -201,7 +201,7 @@ function renderCavity() {
   document.querySelectorAll('[data-furn]').forEach(el => { el.hidden = !loaded; });
   if ($('deskH')) $('deskH').placeholder = fi ? r1(fi.h) : '';
   if ($('furn-note')) $('furn-note').innerHTML = !fi ? (P.furniture ? 'The desk and ALEX models are not loaded.' : '')
-    : `Desk tops at <b>${r1(fi.h)}</b>, ${fi.clear != null ? `${r1(fi.clear)} over the ALEX's ${r1(fi.alexTop)} top` : `the ALEX ${r1(fi.alexTop)} tall`}; the tops are ${r1(fi.between)} apart, so it runs ${r1(fi.over)} under each. Bed down: <b>${r1(fi.deskFront - model.G.clear.open.reach)}</b> from its foot to the desks.`;
+    : `Desk tops at <b>${r1(fi.h)}</b>, ${fi.clear != null ? `${r1(fi.clear)} over the ALEX's ${r1(fi.alexTop)} top` : `the ALEX ${r1(fi.alexTop)} tall`}; the tops are ${r1(fi.between)} apart, so it runs ${r1(fi.over)} under each. Bed down: <b>${Math.round(fi.deskFront - model.G.clear.open.reach)}</b> from its foot to the desks.`;
   if ($('head-note')) {
     const pr = (l) => l.length > 1 ? l.slice(0, -1).join(', ') + ' and ' + l[l.length - 1] : l[0] || '';
     const k = G.coves.map(c => c.key), named = [k.includes('back') ? 'back wall' : '', k.includes('sideL') ? 'side walls' : '', k.includes('headIn') && k.includes('headOut') ? 'both faces of the head' : k.includes('headIn') ? 'the head, inside' : k.includes('headOut') ? 'the head, room side' : ''].filter(Boolean);
