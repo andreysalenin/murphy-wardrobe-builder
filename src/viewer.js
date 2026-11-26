@@ -12,7 +12,7 @@ const KIND_STYLE = {
   mattress: { color: 0xeeeeea, rough: 0.95, edges: false }, metal: { color: 0x2f3236, rough: 0.45, metal: 0.4 },
   chrome: { color: 0xc9ccd0, rough: 0.38, metal: 0.35 }, zinc: { color: 0xc4ccd6, rough: 0.32, metal: 0.25 },
   block: { color: 0x8c6239, rough: 0.7 }, rubber: { color: 0x1c1c1e, rough: 0.9, edges: false }, strap: { color: 0x3d4c70, rough: 0.9, edges: false },
-  plastic: { color: 0xf3f2ee, rough: 0.45 }, indicator: { color: 0xe8541a, rough: 0.45, edges: false }, stud: { color: 0xc9a476, rough: 0.9 }, clad: { color: 0xf4f4f2, rough: 0.5 }, carpet: { color: 0x8d9299, rough: 1, edges: false, opacity: 0.55 }, bronze: { color: 0xb88f57, rough: 0.4, metal: 0.4 },
+  plastic: { color: 0xf3f2ee, rough: 0.45 }, indicator: { color: 0xe8541a, rough: 0.45, edges: false }, stud: { color: 0xc9a476, rough: 0.9 }, clad: { color: 0xf4f4f2, rough: 0.5 }, carpet: { color: 0x8d9299, rough: 1, edges: false, opacity: 0.55 }, cornice: { color: 0xf7f5ef, rough: 0.7 }, plaster: { color: 0xe6e1d7, rough: 0.9 }, bronze: { color: 0xb88f57, rough: 0.4, metal: 0.4 },
 };
 const T_COL = { 6: 0x7b5cc4, 12: 0x138a7e, 18: 0xc47a12 };
 
@@ -126,6 +126,7 @@ class MurphyScene {
   }
   clear() {
     for (const r of this.recs) { if (!r.dyn) r.mesh.geometry.dispose(); if (r.edges) r.edges.geometry.dispose(); }
+    if (this.house) this.house.traverse(o => { if (o.geometry) o.geometry.dispose(); });
     this.root.clear();
     this.recs = [];
   }
@@ -186,7 +187,7 @@ class MurphyScene {
     this.room = new THREE.Group();
     const P = model.P;
     const fl = new THREE.Mesh(new THREE.PlaneGeometry(P.W + 1600, 3200), new THREE.MeshStandardMaterial({ color: srgb(0xb9b2a6), roughness: 1, transparent: true, opacity: 0.35, depthWrite: false }));
-    fl.position.set(0, 1300, -0.5); fl.userData.noFit = true; this.room.add(fl);
+    fl.position.set(0, 1300, -0.5); fl.userData.noFit = true; this.room.add(fl); this.cavFloor = fl;
     // the walls as found: each side wall a straight line from its back corner to its front one, carried to the mouth
     const wx = (S, y) => C.wallAt(G, S, y), V3 = (x, y, z) => new THREE.Vector3(x, y, z);
     const corners = [[wx('R', 0), wx('L', 0)], [wx('R', P.D), wx('L', P.D)]];
@@ -200,6 +201,7 @@ class MurphyScene {
     const rl = new THREE.LineSegments(lines, new THREE.LineBasicMaterial({ color: 0x8a8378, transparent: true, opacity: 0.6 }));
     rl.userData.noFit = true; this.room.add(rl);
     this.root.add(this.room);
+    this.makeHouse(model.room);
     // swing arcs at the section plane
     this.arcs = new THREE.Group();
     const xs = G.xFi - 120;
@@ -216,6 +218,45 @@ class MurphyScene {
     this.root.add(this.arcs);
     this.clip.constant = xs;
     this.apply();
+  }
+  // the whole room (Room beside the view): walls and ceilings facing in, so from outside the near ones drop away and
+  // the far ones stay as a backdrop; the room's carpet and the cornices round it
+  makeHouse(R) {
+    this.house = new THREE.Group(); this.house.visible = false;
+    if (!this.houseMats) {
+      const m = (col, rough, glow) => new THREE.MeshStandardMaterial({ color: srgb(col), roughness: rough, metalness: 0, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2, emissive: srgb(glow || 0) });
+      this.houseMats = { wall: m(0xe9e5dd, 0.95), ceiling: m(0xf3f1ec, 0.95, 0x8f8c86), door: m(0xfbfaf6, 0.6),
+        swing: new THREE.LineDashedMaterial({ color: 0x8a8378, dashSize: 40, gapSize: 30, transparent: true, opacity: 0.8 }), cornice: new THREE.MeshStandardMaterial({ color: srgb(0xf7f5ef), roughness: 0.7, side: THREE.DoubleSide }),
+        carpet: new THREE.MeshStandardMaterial({ color: srgb(0x8d9299), roughness: 1, side: THREE.DoubleSide }), line: new THREE.LineBasicMaterial({ color: 0x8a8378, transparent: true, opacity: 0.55 }) };
+    }
+    const M = this.houseMats;
+    if (R) {
+      for (const q of R.quads) {
+        const v = q.pts.map(p => new THREE.Vector3(p[0], p[1], p[2])), n = new THREE.Vector3(q.n[0], q.n[1], q.n[2]);
+        const flip = v[1].clone().sub(v[0]).cross(v[2].clone().sub(v[0])).dot(n) < 0, ord = flip ? [0, 2, 1, 0, 3, 2] : [0, 1, 2, 0, 2, 3];
+        const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(ord.flatMap(i => [v[i].x, v[i].y, v[i].z])), 3)); g.computeVertexNormals();
+        this.house.add(new THREE.Mesh(g, M[q.kind] || M.wall));
+        const e = new THREE.BufferGeometry().setFromPoints([v[0], v[1], v[1], v[2], v[2], v[3], v[3], v[0]]);
+        this.house.add(new THREE.LineSegments(e, M.line));
+      }
+      // a cornice shows only while its wall does (the wall faces the camera): no cornices floating at the near edges
+      this.houseCull = [];
+      for (const pr of R.coves) {
+        const g = prismGeometry(pr), mesh = new THREE.Mesh(g, M.cornice), ed = new THREE.LineSegments(new THREE.EdgesGeometry(g, 28), this.edgeMat);
+        this.house.add(mesh, ed);
+        this.houseCull.push({ objs: [mesh, ed], p: new THREE.Vector3(pr.o[0], pr.o[1], pr.o[2]), n: new THREE.Vector3(pr.u[0], pr.u[1], pr.u[2]) });
+      }
+      if (R.carpet) this.house.add(new THREE.Mesh(prismGeometry(R.carpet), M.carpet));
+      if (R.door) {   // its swing on the floor, and the leaf opened right back
+        const d = R.door, h = new THREE.Vector3(d.x, d.y[0], d.swing[0][2]), pts = d.swing.map(p => new THREE.Vector3(p[0], p[1], p[2]));
+        const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints([h, ...pts, h]), M.swing); ln.computeLineDistances(); this.house.add(ln);
+      }
+    }
+    this.root.add(this.house);
+  }
+  cullHouse(cam) {
+    if (!this.house || !this.house.visible) return;
+    for (const f of this.houseCull || []) { const v = cam.clone().sub(f.p).dot(f.n) > 0; for (const o of f.objs) o.visible = v; }
   }
   // pillows and the doona: on the made bed (in the open bed's frame, turned with the bed) and standing in the headboard
   // compartments; each pair fades from one place to the other as its compartment's door opens
@@ -308,6 +349,7 @@ class MurphyScene {
       if (!o.mattress && p.mattress) vis = false;
       if (!o.hw && p.hw && !p.mattress && !p.ctx) vis = false;
       if (p.ctx && o.room === false) vis = false;
+      if (p.mark === 'WC' && o.wholeRoom) vis = false;          // the room's own carpet takes over
       if (o.only && !o.only(p)) vis = false;
       r.grp.visible = vis;
       let m;
@@ -322,6 +364,12 @@ class MurphyScene {
     }
     this.arcs.visible = !!o.section;
     this.room.visible = o.room !== false;
+    if (this.house) {
+      this.house.visible = !!o.wholeRoom && o.room !== false;
+      if (this.cavFloor) this.cavFloor.visible = !this.house.visible;
+      const cl = !!o.section;
+      for (const m of Object.values(this.houseMats)) if (!!(m.clippingPlanes && m.clippingPlanes.length) !== cl) { m.clippingPlanes = cl ? [this.clip] : null; m.needsUpdate = true; }
+    }
     void G;
   }
   edgeMatClip() {
@@ -332,6 +380,7 @@ class MurphyScene {
     const b = new THREE.Box3();
     this.root.updateMatrixWorld(true);
     for (const r of this.recs) if (this.isVisible(r.grp)) for (const mesh of (r.meshes || [r.mesh])) b.expandByObject(mesh);
+    if (this.house && this.isVisible(this.house)) b.expandByObject(this.house);
     return b;
   }
   isVisible(obj) { while (obj) { if (!obj.visible) return false; obj = obj.parent; } return true; }
@@ -408,6 +457,7 @@ class Viewer {
   }
   toggle(id) { this.animateOpen([id], (this.openTarget.get(id) || 0) > 0.5 ? 0 : 1); }
   setAllOpen(on) { this.animateOpen(this.ms.elements, on ? 1 : 0); }
+  fitRoom() { this.fit(); this.dirty = true; }
   openCount() { return this.ms.elements.filter(id => (this.openTarget.get(id) || 0) > 0.5).length; }
   _openChanged() { if (this.onOpenChange) this.onOpenChange(this.openCount(), this.ms.elements.length); }
   _stepOpen(now) {
@@ -492,6 +542,7 @@ class Viewer {
     const dist = this.camera === this.ortho ? 40000 : s.r;
     this.camera.position.set(this.target.x + dist * sp * Math.cos(s.theta), this.target.y + dist * sp * Math.sin(s.theta), this.target.z + dist * Math.cos(s.phi));
     this.camera.lookAt(this.target);
+    this.ms.cullHouse(this.camera.position);
     this.ms.key.position.copy(this.camera.position).add(new THREE.Vector3(-1500, 600, 3000));
     this.renderer.render(this.ms.scene, this.camera);
     if (this.onOrient) {

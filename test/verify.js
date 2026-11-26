@@ -58,7 +58,7 @@ run({ skinT: 12, gapAbove: 134 }, 'skins 12 + 18');
 run({ kickTower: 100 }, 'kick 100 under the towers');
 run({ kickTower: 100, skinT: 12, skinZ0: 100 }, 'tower kick under the skins');
 run({ skinT: 18, skinZ0: 64, gapAbove: 89, doorHinge: 'inner', packFL: 0, packFR: 3, packBL: -4 }, 'skins 18 + 18 on the kick');
-run({ skinT: 18, skinZ1: 3000, gapAbove: 54, H: 2400 }, 'skins to the ceiling');
+run({ skinT: 18, skinZ1: 3000, gapAbove: 61, H: 2400 }, 'skins up to the head');
 
 // ---------- the sections sheet (sheet 4 and the page's Section view): it draws, and its clear sizes are the model's
 {
@@ -128,14 +128,37 @@ run({ skinT: 18, skinZ1: 3000, gapAbove: 54, H: 2400 }, 'skins to the ceiling');
   if (!has(C.build({ skinT: 12, packFL: 0, packFR: 0, packBL: -7 }), 'bad', /Too much to plane off a tower skin/)) probs.push('skins: planing over half the skin not flagged');
   // kick board and header: halves when a sheet is too short, one piece when it is not
   const kh = (q) => C.build(q).parts.filter(p => /^K[13]$/.test(p.mark)).map(p => p.name).sort().join(', ');
-  if (kh({}) !== 'Header filler (L half), Header filler (R half), Kick board (L half), Kick board (R half)') probs.push('planks: default should be halves, got ' + kh({}));
-  if (kh({ W: 2400 }) !== 'Header filler, one piece, Kick board, one piece') probs.push('planks: a 2400 cavity should be one piece each, got ' + kh({ W: 2400 }));
+  if (kh({ headDrop: 0 }) !== 'Header filler (L half), Header filler (R half), Kick board (L half), Kick board (R half)') probs.push('planks: no head, should be halves, got ' + kh({ headDrop: 0 }));
+  if (kh({ W: 2400, headDrop: 0 }) !== 'Header filler, one piece, Kick board, one piece') probs.push('planks: a 2400 cavity should be one piece each, got ' + kh({ W: 2400, headDrop: 0 }));
+  if (kh({}) !== 'Kick board (L half), Kick board (R half)') probs.push('planks: under the head there is no header filler by default, got ' + kh({}));
+  // the head of the opening and the cornices
+  m = C.build({});
+  if (!m.G.bulk || m.G.zHead !== C.DEFAULTS.H - 55 || m.G.zTop !== m.G.zHead - 6) probs.push(`head: expected the carcass top 6 under the head at ${C.DEFAULTS.H - 55}, got ${m.G.zTop} / ${m.G.zHead}`);
+  if (m.parts.filter(p => p.mark === 'WK').length !== 5 || m.parts.filter(p => p.mark === 'WH').length !== 1) probs.push('head: five cornice runs and the head expected');
+  if (m.checks.some(c => /head|cornice/i.test(c.title) && c.level !== 'info')) probs.push('head: the default should clear the head and the cornices');
+  if (!has(C.build({ gapAbove: 54 }), 'bad', /Runs into the head of the opening/)) probs.push('head: a carcass top into the head is not flagged');
+  if (!has(C.build({ gapAbove: 58 }), 'warn', /Tight under the head/)) probs.push('head: 3 under the head is not flagged tight');
+  if (!has(C.build({ headDrop: 0, gapAbove: 40 }), 'bad', /Runs into the cornice on the left wall/)) probs.push('cornice: header filler into the side cornices not flagged');
+  if (C.build({ headDrop: 0, gapAbove: 40, corniceSides: false, corniceBack: false }).checks.some(c => c.level === 'bad')) probs.push('cornice: with the head and the cornices in the cavity gone, nothing should clash');
+  if (!has(C.build({ headDrop: 0, gapAbove: 10 }), 'bad', /Runs into the cornice on the back wall/)) probs.push('cornice: a carcass top into the back-wall cornice not flagged');
+  m = C.build({ skinT: 12, skinZ1: 2564 });
+  if (m.G.skinZ[1] !== m.G.zHead) probs.push('head: skins run to the ceiling should stop under the head');
+  if (C.build({ cornice: 0 }).parts.some(p => p.mark === 'WK')) probs.push('cornice: size 0 should mean none');
+  m = C.build({});
+  if (Math.abs(m.room.x[0] - m.G.walls.R[1]) > 0.01 || Math.abs(m.room.x[1] - m.room.x[0] - 3116) > 0.01 || m.room.quads.length !== 12 || m.room.coves.length !== 4 || !m.room.door) probs.push(`room: expected the right wall flush with the right jamb, 12 walls, ceilings and the door, 4 cornice runs (got ${m.room.x}, ${m.room.quads.length}, ${m.room.coves.length})`);
+  if (!has(m, 'warn', /room door opens across the left tower/)) probs.push('room: the door opening across the left tower is not flagged');
+  m = C.build({ roomRight: 100, doorW: 0 });
+  if (Math.abs(m.room.x[0] - (m.G.walls.R[1] - 100)) > 0.01 || m.room.quads.length !== 10 || m.room.coves.length !== 5 || m.room.door) probs.push(`room: 100 to the right wall, no door: expected 10 walls and ceilings, 5 cornice runs (got ${m.room.x}, ${m.room.quads.length}, ${m.room.coves.length})`);
+  m = C.build({});
+  if (Math.abs(m.G.coveZ(5) - (C.DEFAULTS.H - 55)) > 0.01) probs.push('cornice: the 10 lip should keep it 55 down out to 10 from the wall');
+  if (Math.abs(m.G.coveZ(55 - 45 * Math.SQRT1_2) - (C.DEFAULTS.H - 55 + 45 * Math.SQRT1_2)) > 0.01) probs.push('cornice: a 45 radius cove between the lips expected');
   // the bevelled kick: up to a reveal under the bed face, clear of the face panel's swing; square at that height it is hit
   m = C.build({});
   if (m.G.kickC !== m.G.gapBelow - C.DEFAULTS.gap || !(m.G.kickCb < m.G.kickC) || m.G.zPl !== m.G.zFace0) probs.push(`bevelled kick: expected ${m.G.gapBelow - C.DEFAULTS.gap} at the face with the drawers level with the bed face (got ${m.G.kickC} / ${m.G.kickCb}, drawers ${m.G.zPl})`);
   { const r = m.G.clear.list.find(q => q.name === 'kick board under the bed'); if (!r || r.min < 5) probs.push(`bevelled kick: the bed passes ${r && r.min} from it`); }
-  if (!has(C.build({ kickCentre: 'full', kickBevel: false }), 'bad', /Bed hits the kick board/)) probs.push('square kick at full height: the bed hitting it is not flagged');
-  if (C.build({ kickBevel: false, carpetT: 0 }).G.kickC !== 45) probs.push('square kick: auto should still be 45');
+  if (!has(C.build({ kickCentre: 'full', kickBevel: false, Tkick: 18 }), 'bad', /Bed hits the kick board/)) probs.push('square kick at full height: the bed hitting it is not flagged');
+  if (C.build({ kickBevel: false, carpetT: 0, Tkick: 18 }).G.kickC !== 45) probs.push('square 18 kick: auto should still be 45');
+  if (C.build({ kickBevel: false, carpetT: 0 }).G.kickC !== 47) probs.push('square 12 kick: auto should be 47 (its back face is 6 further from the pivot)');
   // carpet: the feet land on it, the bed and the fronts' bottom line lift by what it adds, and the kit's legs fit again
   { const a = C.build({ carpetT: 0 }).G, b = C.build({ carpetT: 15, carpetSink: 5 }).G, c = C.build({ carpetT: 15, carpetSink: 5, carpetLift: false });
     if (b.lift !== 10 || b.zFace0 !== a.zFace0 + 10 || b.kickC !== a.kickC + 10 || b.zPl !== a.zPl + 10 || Math.abs(b.deckDelta) > 0.5) probs.push(`carpet: expected everything 10 up with the legs fitting (lift ${b.lift}, face ${b.zFace0}, kick ${b.kickC}, legs ${b.deckDelta})`);
@@ -281,7 +304,7 @@ if (jp) process.exitCode = 1;
   // [hardware mark, other mark]: cups in doors, pins through block, shelf and foot rail, latches drilled in, the pivot bar
   // in its pocket and bush, the bush through the rail, the upper stud's nut in its hole, balls in the spring sockets,
   // the legs and their rail, the rail closing onto the stop domes
-  const ALLOW = new Set(['HG D1', 'HG D2', 'HG HG', 'FH D4', 'FH FH', 'LP LP', 'LP B2', 'LP F4', 'PL B2', 'PL SF', 'PV B1', 'PV F2', 'PV PV', 'PV B8', 'BS B1', 'BS B8', 'BS GS', 'GS BS', 'LG LG', 'ST F2', 'SF PL', 'SB SB', 'SR SB', 'SB SR', 'PP PP', 'LG WC', 'WC LG']);  // LG, WC: the leg feet sink into the carpet by design; SB, SR: the safety bolt's parts are concentric; PP: the switches sit in pockets in the plate (bores are not seen by the box test)
+  const ALLOW = new Set(['HG D1', 'HG D2', 'HG HG', 'FH D4', 'FH FH', 'LP LP', 'LP B2', 'LP F4', 'PL B2', 'PL SF', 'PV B1', 'PV F2', 'PV PV', 'PV B8', 'BS B1', 'BS B8', 'BS GS', 'GS BS', 'LG LG', 'ST F2', 'SF PL', 'SB SB', 'SR SB', 'SB SR', 'PP PP', 'LG WC', 'WC LG']);  // LG, WC: the leg feet sink into the carpet by design (parts of the room among themselves are not checked); SB, SR: the safety bolt's parts are concentric; PP: the switches sit in pockets in the plate (bores are not seen by the box test)
   let bad = 0;
   const sets = [['default', {}], ['pads', { gapHydr: 30, packer: true, Tpacker: 18 }], ['options', { lockType: 'bolts', supportOffset: true, faceReveal: true }], ['front hinges', { headHinge: 'front' }], ['fronts 18/12/18', { TfDrawer: 18, TfSide: 12, TfTop: 18 }], ['fronts 12/18/12', { TfDrawer: 12, TfSide: 18, TfTop: 12, edgeSteel: true, doorHinge: 'inner' }], ['fronts all 12', { TfDrawer: 12, TfSide: 12, TfTop: 12 }], ['well 150', { headWell: 150 }], ['no well', { headWell: 0 }], ['well 50 front', { headWell: 50, headHinge: 'front' }], ['studs', { wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43 }], ['planed', { packFL: 0, packFR: 0, packBL: -2 }]].concat(process.env.OVERLAP_PROBE ? [['probe', JSON.parse(process.env.OVERLAP_PROBE)]] : []);
   for (const [label, params] of sets) for (const ang of [0, 45, 90]) {
@@ -289,7 +312,7 @@ if (jp) process.exitCode = 1;
     for (const p of m.parts) if (!p.mattress) p.solids.forEach((sl) => all.push({ p, s: sl, box: C.prismBox(sl), polys: sl.loops.map(l => C.loopPolyline(l, 16)) }));
     const hw = all.filter(q => q.p.hw), found = new Map();
     for (const A of hw) for (const B of all) {
-      if (A.p === B.p || (ALLOW.has(A.p.mark + ' ' + B.p.mark) && !(/^Lower ball-stud/.test(A.p.name) && /^B[18] /.test(B.p.mark + ' ')))) continue;
+      if (A.p === B.p || (A.p.ctx && B.p.ctx) || (ALLOW.has(A.p.mark + ' ' + B.p.mark) && !(/^Lower ball-stud/.test(A.p.name) && /^B[18] /.test(B.p.mark + ' ')))) continue;
       const a = A.box, b = B.box; if (Math.min(a[3], b[3]) - Math.max(a[0], b[0]) < -0.2 || Math.min(a[4], b[4]) - Math.max(a[1], b[1]) < -0.2 || Math.min(a[5], b[5]) - Math.max(a[2], b[2]) < -0.2) continue;
       let dmax = 0; for (const pt of sample(A)) { const d = depthIn(B, pt); if (d !== null && d > dmax) dmax = d; }
       if (dmax > 0.1) { const k = `${A.p.mark} ${A.p.name}  x  ${B.p.mark} ${B.p.name}`; if (!found.has(k) || found.get(k) < dmax) found.set(k, dmax); }

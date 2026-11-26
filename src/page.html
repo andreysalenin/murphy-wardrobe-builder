@@ -348,6 +348,25 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="field" data-when="carpetT"><div><label for="carpetSink">Leg feet sink in</label><small>How far the bed's weight presses them into it.</small></div><div class="num"><input id="carpetSink" type="number" min="0" max="60" step="1" inputmode="numeric"><span>mm</span></div></div>
           <label class="check" data-when="carpetT"><input type="checkbox" id="carpetLift"> <span>Lift the bed for the carpet, and the fronts' bottom line and kick board with it, so the bed lands level</span></label>
           <div class="hint" id="carpet-note" data-when="carpetT"></div>
+          <div class="sub-hd"><span>Head of the opening and cornices</span></div>
+          <div class="hint">What is left of the old bulkhead at the ceiling: the 90x42 across the mouth and the plasterboard on it, cut just under its cornices. The carcass slides in under it.</div>
+          <div class="field"><div><label for="headDrop">Head comes down</label><small>Ceiling to its underside: 55 cut under the cornices, 42 for the bare joist. 0: none.</small></div><div class="num"><input id="headDrop" type="number" min="0" max="300" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="headDrop"><div><label for="headD">Head, front to back</label><small>At the mouth: the 90 of 510 + 90.</small></div><div class="num"><input id="headD" type="number" min="0" max="300" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="cornice">Cornice size</label><small>This far down the wall and out on the ceiling. 0: none.</small></div><div class="num"><input id="cornice" type="number" min="0" max="150" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="cornice"><div><label for="corniceLip">Cornice lips</label><small>The square edge at the wall and at the ceiling; the cove between is the rest (10 + 45 for a 55). 0: a plain cove.</small></div><div class="num"><input id="corniceLip" type="number" min="0" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <label class="check" data-when="cornice"><input type="checkbox" id="corniceBack"> <span>Cornice on the back wall</span></label>
+          <label class="check" data-when="cornice"><input type="checkbox" id="corniceSides"> <span>Cornice on the side walls</span></label>
+          <label class="check" data-when="cornice headDrop"><input type="checkbox" id="corniceHeadIn"> <span>Cornice along the head, inside</span></label>
+          <label class="check" data-when="cornice headDrop"><input type="checkbox" id="corniceHeadOut"> <span>Cornice along the head, room side</span></label>
+          <div class="hint" id="head-note"></div>
+          <div class="sub-hd"><span>The room</span></div>
+          <div class="hint">For the 3D view: tick Room beside the view to see it, walls, ceiling and cornices round it.</div>
+          <div class="field"><div><label for="roomW">Room along the wardrobe wall</label><small>Wall to wall.</small></div><div class="num"><input id="roomW" type="number" min="1500" max="12000" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="roomD">Room away from it</label><small>From the wardrobe wall's face.</small></div><div class="num"><input id="roomD" type="number" min="1000" max="12000" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="roomRight">Right jamb to the room's right wall</label><small>As you face the wardrobe. 0: flush, the wall runs on into the cavity.</small></div><div class="num"><input id="roomRight" type="number" min="-3000" max="12000" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="roomH">Room ceiling</label><small>Blank: the same as the cavity's.</small></div><div class="num"><input id="roomH" type="number" min="2000" max="4000" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="doorW">Door in the room's left wall</label><small>Its width. It hinges at the wardrobe end and opens back toward the wardrobe wall. 0: none.</small></div><div class="num"><input id="doorW" type="number" min="0" max="1500" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="doorW"><div><label for="doorAt">Door's hinge side</label><small>From the wardrobe wall's face.</small></div><div class="num"><input id="doorAt" type="number" min="0" max="6000" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="sub-hd"><span>Studs in the side walls</span></div>
           <div class="hint">A stud standing proud of each side wall near the front, floor to ceiling. 0: none.</div>
           <div class="field"><label for="wallStudL">Stands out, left</label><div class="num"><input id="wallStudL" type="number" min="0" max="150" step="0.5" inputmode="decimal"><span>mm</span></div></div>
@@ -393,7 +412,7 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
         <summary>Fronts <i class="chev"></i></summary>
         <div class="grp-body">
           <div class="field"><div><label for="gap">Reveal between fronts</label><small>Your "gapdraw".</small></div><div class="num"><input id="gap" type="number" min="1" max="12" step="0.5" inputmode="decimal"><span>mm</span></div></div>
-          <div class="field"><div><label for="gapAbove">Header filler height</label><small>Scribed to the ceiling.</small></div><div class="num"><input id="gapAbove" type="number" min="0" max="300" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="gapAbove">Ceiling to the carcass top</label><small>The header filler fills it, scribed to the ceiling, or up under the head of the opening; less than 10 under the head is a shadow line.</small></div><div class="num"><input id="gapAbove" type="number" min="0" max="300" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><label for="frontGap">Fronts off the carcass</label><div class="num"><input id="frontGap" type="number" min="0" max="5" step="0.5" inputmode="decimal"><span>mm</span></div></div>
         </div>
       </details>
@@ -409,6 +428,10 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="field"><label for="Tpacker">Pads under the kit plates</label><div class="num"><input id="Tpacker" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><label for="Tledge">Headboard ledge</label><div class="num"><input id="Tledge" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><label for="Thead">Backrest, ribs, bedside shelf</label><div class="num"><input id="Thead" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="Tkick">Kick boards</label><small>The plinth fronts come forward to meet a thinner kick; it stands on packers at the bed-cabinet sides.</small></div><div class="num"><input id="Tkick" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><label for="Theader">Header filler</label><div class="num"><input id="Theader" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="Tshelf">Adjustable shelves</label><small>In the top compartments, 378 across: 12 does not sag.</small></div><div class="num"><input id="Tshelf" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="Ttop">Tower tops</label><small>The top over the bed stays at the carcass thickness: the flaps' hinges screw under it and lap its edge.</small></div><div class="num"><input id="Ttop" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
         </div>
       </details>
       <details class="grp" data-tab="kit">
@@ -491,6 +514,7 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
             <label><input type="checkbox" id="v-bedding"> Pillows + doona</label>
             <label><input type="checkbox" id="v-hw" checked> Hardware</label>
             <label><input type="checkbox" id="v-sheet"> By thickness</label>
+            <label><input type="checkbox" id="v-room"> Room</label>
           </div>
         </div>
         <div class="secview" id="secview">

@@ -4,15 +4,15 @@
 const C = window.MurphyCore, V = window.MurphyViewer;
 const LS_KEY = 'murphy-wardrobe-builder.v3', LS_VIEW = 'murphy-wardrobe-builder.view.v1', LS_THEME = 'murphy-wardrobe-builder.theme';
 const $ = (id) => document.getElementById(id);
-const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'skinZ0', 'carpetT', 'carpetSink', 'wallStudL', 'wallStudR', 'wallStudY0', 'wallStudY1', 'wallStudClad', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
-  'hangClear', 'railDrop', 'runnerClear', 'runnerLen', 'boxLess', 'gap', 'gapAbove', 'frontGap', 'TfDrawer', 'TfSide', 'TfTop', 'headWell', 'T', 'Tb', 'Tback', 'Tsup', 'Tladder', 'Tplinth', 'Tpacker', 'Tledge', 'Thead',
+const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'skinZ0', 'carpetT', 'carpetSink', 'headDrop', 'headD', 'cornice', 'corniceLip', 'roomW', 'roomD', 'roomRight', 'doorW', 'doorAt', 'wallStudL', 'wallStudR', 'wallStudY0', 'wallStudY1', 'wallStudClad', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
+  'hangClear', 'railDrop', 'runnerClear', 'runnerLen', 'boxLess', 'gap', 'gapAbove', 'frontGap', 'TfDrawer', 'TfSide', 'TfTop', 'headWell', 'T', 'Tb', 'Tback', 'Tsup', 'Tladder', 'Tplinth', 'Tpacker', 'Tledge', 'Thead', 'Tkick', 'Theader', 'Tshelf', 'Ttop',
   'pivotFromRail', 'pivotAboveHead', 'cabPivotZ', 'pinGap', 'springLowAlong', 'springLowOut', 'springUpFront', 'springUpZ', 'stopFront', 'stopBelowTop',
   'springD', 'springRodD', 'springEndD', 'springBodyL', 'studS', 'plateT', 'nutStack', 'stopD', 'stopH', 'legD',
   'railD', 'headRailD', 'footRailD', 'railR', 'legFromFoot', 'legFromTop', 'struts', 'ladderW',
   'ledgeClear', 'headAngle', 'headH', 'headGap', 'headLip', 'headClear', 'headDoorOpen', 'headGPO', 'headZone', 'upstand', 'steelH', 'steelT', 'twinSpacing', 'lockPinX', 'wallRail', 'kerf', 'trim'];
-const OPT_FIELDS = ['Wback', 'packBL', 'packBR', 'skinZ1', 'kickTower'];  // blank: worked out from the others
+const OPT_FIELDS = ['Wback', 'packBL', 'packBR', 'skinZ1', 'kickTower', 'roomH'];  // blank: worked out from the others
 const SEL_FIELDS = ['kickCentre', 'doorHinge', 'lockType', 'headHinge'];
-const CHK_FIELDS = ['topShelf', 'cableHoles', 'headStore', 'supportOffset', 'faceReveal', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain', 'wallStudFronts', 'kickBevel', 'carpetLift'];
+const CHK_FIELDS = ['topShelf', 'cableHoles', 'headStore', 'supportOffset', 'faceReveal', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain', 'wallStudFronts', 'kickBevel', 'carpetLift', 'corniceBack', 'corniceSides', 'corniceHeadIn', 'corniceHeadOut'];
 
 const readLS = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } };
 const writeLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage off: settings just aren't remembered */ } };
@@ -23,6 +23,21 @@ if (!readLS(LS_KEY + ':cavity2522')) {
   if (Number(params.W) === 2458) params.W = 2522;
   if (Number(params.H) === 2554) params.H = 2564;
   writeLS(LS_KEY + ':cavity2522', 1);
+}
+// the head of the opening is modelled now, 55 down from the ceiling: saved settings on the old 54 header follow, once
+if (!readLS(LS_KEY + ':head61')) {
+  if (Number(params.gapAbove) === 54) params.gapAbove = 61;
+  writeLS(LS_KEY + ':head61', 1);
+}
+// the nibs (studs proud of the side walls at the mouth) are coming out: saved settings that still have them follow, once
+if (!readLS(LS_KEY + ':nibsGone')) {
+  params.wallStudL = 0; params.wallStudR = 0;
+  writeLS(LS_KEY + ':nibsGone', 1);
+}
+// you have eight sheets of 18: saved settings still on the old default of nine follow, once
+if (!readLS(LS_KEY + ':eight18')) {
+  if (Array.isArray(params.sheets)) for (const q of params.sheets) if (Number(q.T) === 18 && Number(q.n) === 9 && Number(q.L) === 2440) q.n = 8;
+  writeLS(LS_KEY + ':eight18', 1);
 }
 // the side gap became packing at four corners: a saved gap becomes the front packing both sides, once
 { const saved = readLS(LS_KEY); if (saved && saved.sideClear != null && saved.packFL == null) { params.packFL = params.packFR = Number(saved.sideClear); } delete params.sideClear; }
@@ -173,6 +188,14 @@ function renderCavity() {
   if ($('packBR')) $('packBR').placeholder = r1(pk.Wb - 2 * G.cwo - pk.BL);
   if ($('skinZ1')) $('skinZ1').placeholder = r1(G.zTop);
   if ($('kickTower')) $('kickTower').placeholder = r1(G.kickC || G.gapBelow - P.gap);
+  if ($('roomH')) $('roomH').placeholder = r1(P.H);
+  if ($('head-note')) {
+    const pr = (l) => l.length > 1 ? l.slice(0, -1).join(', ') + ' and ' + l[l.length - 1] : l[0] || '';
+    const k = G.coves.map(c => c.key), named = [k.includes('back') ? 'back wall' : '', k.includes('sideL') ? 'side walls' : '', k.includes('headIn') && k.includes('headOut') ? 'both faces of the head' : k.includes('headIn') ? 'the head, inside' : k.includes('headOut') ? 'the head, room side' : ''].filter(Boolean);
+    $('head-note').innerHTML = (G.bulk ? `Head's underside <b>${r1(G.zHead)}</b> off the floor; carcass top <b>${r1(G.zTop)}</b>, ` + (G.zTop > G.zHead ? `<b>${r1(G.zTop - G.zHead)} into it</b>. ` : G.hasHeader ? `a ${r1(G.headerH)} header filler under the head. ` : `a ${r1(G.zHead - G.zTop)} shadow line under it. `) : `No head: the header filler runs to the ceiling, ${r1(G.headerH)} tall. `)
+      + (named.length ? `Cornices on the ${pr(named)}, their bottom edge ${r1(P.H - P.cornice)} up${P.corniceLip > 0 ? `, ${r1(P.corniceLip)} lips and a ${r1(P.cornice - P.corniceLip)} cove` : ''}.` : 'No cornices in the cavity.')
+      + ` Room: the left jamb is <b>${r1(model.room.x[1] - model.room.opening[1])}</b> from its left wall.`;
+  }
   if ($('carpet-note')) $('carpet-note').innerHTML = !P.carpetT ? '' : `Feet land <b>${r1(G.legFloor)}</b> up. ` + (G.lift
     ? `Bed and fronts lifted ${r1(G.lift)}: the face and drawers start at <b>${r1(G.zFace0)}</b>, and the kick board shows <b>${r1(G.kickC - P.carpetT)}</b> above the carpet.`
     : `Not lifted: the bed stops ${r1(-G.deckDelta)} short of level at its foot end, and the kick board shows ${r1(G.kickC - P.carpetT)} above the carpet.`);
@@ -333,7 +356,7 @@ function setView(v) {
   if (secOn) renderSection(); else if (viewer) viewer.view(v);
 }
 function viewState() {
-  return { fronts: viewOpts.fronts, mattress: viewOpts.mattress, bedding: !!viewOpts.bedding, hw: viewOpts.hw, section: viewOpts.section, bySheet: viewOpts.bySheet, bed: bedAngle };
+  return { fronts: viewOpts.fronts, mattress: viewOpts.mattress, bedding: !!viewOpts.bedding, hw: viewOpts.hw, section: viewOpts.section, bySheet: viewOpts.bySheet, wholeRoom: !!viewOpts.room, bed: bedAngle };
 }
 function updateBedNote() {
   if (!model) return;
@@ -462,14 +485,15 @@ function bind() {
   document.querySelectorAll('.tools [data-view]').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
   bindSection();
   const vopts = () => {
-    viewOpts = { fronts: $('v-fronts').checked, mattress: $('v-mattress').checked, bedding: $('v-bedding').checked, hw: $('v-hw').checked, section: $('v-section').checked, bySheet: $('v-sheet').checked };
+    viewOpts = { fronts: $('v-fronts').checked, mattress: $('v-mattress').checked, bedding: $('v-bedding').checked, hw: $('v-hw').checked, section: $('v-section').checked, bySheet: $('v-sheet').checked, room: $('v-room').checked };
     writeLS(LS_VIEW, viewOpts);
     document.querySelector('.viewer').classList.toggle('by-sheet', viewOpts.bySheet);
     if (viewer) viewer.set(viewState());
   };
   $('v-fronts').checked = viewOpts.fronts !== false; $('v-mattress').checked = viewOpts.mattress !== false; $('v-bedding').checked = !!viewOpts.bedding; $('v-hw').checked = viewOpts.hw !== false;
-  $('v-section').checked = !!viewOpts.section; $('v-sheet').checked = !!viewOpts.bySheet;
+  $('v-section').checked = !!viewOpts.section; $('v-sheet').checked = !!viewOpts.bySheet; $('v-room').checked = !!viewOpts.room;
   ['v-fronts', 'v-mattress', 'v-bedding', 'v-hw', 'v-sheet'].forEach(id => $(id).addEventListener('change', vopts));
+  $('v-room').addEventListener('change', () => { vopts(); if (viewer) viewer.fitRoom($('v-room').checked); });
   $('v-section').addEventListener('change', () => {
     vopts();
     if ($('v-section').checked) setView('side');

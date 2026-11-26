@@ -10,7 +10,7 @@ const ACC = [176, 98, 10], BAD = [176, 40, 31], CABLE = [36, 104, 170];
 const FILL = {
   carcass: [244, 236, 221], front: [252, 249, 243], frame: [235, 220, 196], deck: [240, 228, 207], drawer: [248, 241, 228], back: [236, 228, 214],
   plinth: [230, 220, 203], packer: [222, 199, 166], ledge: [244, 236, 221], mattress: [238, 240, 242], metal: [74, 78, 84], chrome: [190, 194, 199], zinc: [178, 184, 192],
-  block: [181, 136, 92], rubber: [40, 40, 42], strap: [70, 86, 124], plastic: [244, 244, 240], indicator: [232, 84, 26], stud: [205, 170, 125], carpet: [200, 203, 208], clad: [246, 246, 244], bronze: [196, 156, 104],
+  block: [181, 136, 92], rubber: [40, 40, 42], strap: [70, 86, 124], plastic: [244, 244, 240], indicator: [232, 84, 26], stud: [205, 170, 125], carpet: [200, 203, 208], clad: [246, 246, 244], cornice: [250, 249, 245], plaster: [236, 233, 226], bronze: [196, 156, 104],
 };
 const CUT = [214, 190, 152], CUT_FRONT = [226, 206, 172];
 const T_RGB = { 6: [123, 92, 196], 12: [19, 138, 126], 18: [196, 122, 18] };
@@ -273,6 +273,7 @@ function View(s, view, scale, paperXY, refUV) {
     s.dim(a, b, at, orient, text, o);
   };
   // draw parts, painter's order. o.cut = depth of a section plane (parts nearer than it are removed)
+  const d0 = pr.depth([0, 0, 0]), dv = [pr.depth([1, 0, 0]) - d0, pr.depth([0, 1, 0]) - d0, pr.depth([0, 0, 1]) - d0];
   v.parts = (parts, o) => {
     o = o || {};
     const items = [];
@@ -284,7 +285,9 @@ function View(s, view, scale, paperXY, refUV) {
         const uv = cs.map(c => { const d = pr.depth(c); if (d < dmin) dmin = d; if (d > dmax) dmax = d; return pr.uv(c); });
         if (o.cut !== undefined && dmin > o.cut + 0.01) continue;
         const cut = o.cut !== undefined && dmax > o.cut + 0.01;
-        let poly = hull(uv);
+        // a cornice seen end on: its own section, the cove's curve and all (the hull would fill the cove in)
+        const endOn = p.kind === 'cornice' && Math.abs(sol.n[0] * dv[0] + sol.n[1] * dv[1] + sol.n[2] * dv[2]) > 0.999 * Math.hypot(sol.n[0], sol.n[1], sol.n[2]) * Math.hypot(dv[0], dv[1], dv[2]);
+        let poly = endOn ? C.loopPolyline(sol.loops[0], 6).map(q => pr.uv(C.to3(sol, q, 0))) : hull(uv);
         if (o.window) { poly = clipPoly(poly, o.window); if (poly.length < 3) continue; }
         items.push({ p, poly, dmax: cut ? Infinity : dmax, cut });
       }
@@ -466,7 +469,7 @@ function pageElevations(doc, M, S, I, info) {
   s.viewLabel(ox2 + P.W / 2 / sc, 280, 'CARCASS ELEVATION', 'fronts off, bed frame closed');
   for (const x of [G.walls.L[1], G.walls.R[1]]) s.line([v2.P([x, 0, 0])[0], v2.P([x, 0, P.H])[0]], [v2.P([x, 0, 0])[1], v2.P([x, 0, P.H])[1]], { lw: 0.5 });
   const xr2 = v2.P([-P.W / 2, 0, 0])[0] + 3;
-  v2.levels(xr2, [0, G.zPl, G.zPl + P.T, G.zS1b, G.zS1t, G.zRail, G.zS2b, G.zS2t, G.zTopB, G.zTop, P.H]);
+  v2.levels(xr2, [0, G.zPl, G.zPl + P.T, G.zS1b, G.zS1t, G.zRail, G.zS2b, G.zS2t, G.zTopT, G.zTop, P.H]);
   const xl2 = v2.P([P.W / 2, 0, 0])[0] - 3;
   v2.levels(xl2, [G.zF0, G.pivot[1], G.zF1, G.zBm0, G.zBm1], { side: -1 });
   s.text(xl2 - 3, v2.P([0, 0, G.pivot[1]])[1] + 2.4, 'pivot', { size: 5.2, color: ACC, ha: 'right' });
@@ -640,7 +643,7 @@ function pageSections(doc, M, M90, M45, S, info) {
   [[0, G.yB0], [G.yB0, G.yB1], [G.yB1, G.yCs], [G.yCs, G.yFbOf.side], [G.yFbOf.side, G.yF]].forEach(([a, b], i) => v2.dimAt([0, a, P.H], [0, b, P.H], ztt, 'h', null, { size: 5, side: i === 0 ? 'start' : i >= 3 ? 'end' : undefined }));
   const f1 = G.fronts[0];
   v2.dimAt([0, G.yCd - G.runner, f1.z0], [0, G.yCd, f1.z0], v2.P([0, 0, f1.z0])[1] - 3, 'h', `${G.runner} runners`, { size: 5 });
-  v2.levels(v2.P([0, P.D, 0])[0] + 4, [G.zPl + P.T, G.zS1b, G.zS1t, G.zRail, G.zS2b, G.zS2t, G.zTopB], { size: 5.4 });
+  v2.levels(v2.P([0, P.D, 0])[0] + 4, [G.zPl + P.T, G.zS1b, G.zS1t, G.zRail, G.zS2b, G.zS2t, G.zTopT], { size: 5.4 });
   s.text(v2.P([0, (G.yB1 + G.yCs) / 2, G.zRail])[0], v2.P([0, 0, G.zRail])[1] - 4, 'rail', { size: 5, ha: 'center', color: GREY });
 
   // clearance table
@@ -2500,7 +2503,7 @@ function openingsData(M) {
   D.zones = [
     { key: 'drawers', name: 'DRAWERS', z0: tb ? tb[5] : G.zPl + T, z1: G.zS1b },
     { key: 'hang', name: 'HANGING', z0: G.zS1t, z1: G.zS2b },
-    { key: 'top', name: 'TOP CUPBOARD', z0: G.zS2t, z1: G.zTopB },
+    { key: 'top', name: 'TOP CUPBOARD', z0: G.zS2t, z1: G.zTopT },
   ].filter(z => z.z1 - z.z0 > 1);
   D.towerD = G.yCtow - G.yB1;
   D.bayD = G.yCt - G.yB1;
@@ -2636,7 +2639,7 @@ function drawOpenings(s, M) {
   vA.dimAt([G.cw, 0, 0], [G.cw, 0, G.zTop], xl - 13, 'v', f0(G.zTop), dimO);
   vA.dimAt([G.cw, 0, G.zTop], [G.cw, 0, P.H], xl - 13, 'v', f0(P.H - G.zTop), Object.assign({ side: 'end' }, small));
   // levels on the right
-  const lv = [0, D.zones.length ? D.zones[0].z0 : G.zPl, G.zS1b, G.zS1t, G.zS2b, G.zS2t, G.zBm0, G.zBm1, G.zTopB, G.zTop, P.H].filter((z, i, a) => a.indexOf(z) === i);
+  const lv = [0, D.zones.length ? D.zones[0].z0 : G.zPl, G.zS1b, G.zS1t, G.zS2b, G.zS2t, G.zBm0, G.zBm1, G.zTopT, G.zTopB, G.zTop, P.H].filter((z, i, a) => a.indexOf(z) === i);
   vA.levels(XR + 5, lv, { size: 5 });
   // the bay: the bed opening and the boxes over the bed
   const xb = -(G.xB - 26);
