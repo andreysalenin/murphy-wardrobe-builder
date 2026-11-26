@@ -4,7 +4,7 @@
 const C = window.MurphyCore, V = window.MurphyViewer;
 const LS_KEY = 'murphy-wardrobe-builder.v3', LS_VIEW = 'murphy-wardrobe-builder.view.v1', LS_THEME = 'murphy-wardrobe-builder.theme';
 const $ = (id) => document.getElementById(id);
-const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'skinZ0', 'carpetT', 'carpetSink', 'headDrop', 'headD', 'cornice', 'corniceLip', 'roomW', 'roomD', 'roomRight', 'doorW', 'doorAt', 'winAt', 'winW', 'winH', 'winSill', 'wallT', 'winReveal', 'winOpen', 'deskGap', 'deskClear', 'wallStudL', 'wallStudR', 'wallStudY0', 'wallStudY1', 'wallStudClad', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
+const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'skinZ0', 'carpetT', 'carpetSink', 'headDrop', 'headD', 'headLining', 'headStep', 'soffitT', 'cornice', 'corniceLip', 'roomW', 'roomD', 'roomRight', 'doorW', 'doorAt', 'winAt', 'winW', 'winH', 'winSill', 'wallT', 'winReveal', 'winOpen', 'deskGap', 'deskClear', 'wallStudL', 'wallStudR', 'wallStudY0', 'wallStudY1', 'wallStudClad', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
   'hangClear', 'railDrop', 'runnerClear', 'runnerLen', 'boxLess', 'gap', 'gapAbove', 'frontGap', 'TfDrawer', 'TfSide', 'TfTop', 'headWell', 'T', 'Tb', 'Tback', 'Tsup', 'Tladder', 'Tplinth', 'Tpacker', 'Tledge', 'TledgePanel', 'Thead', 'Tkick', 'Theader', 'Tshelf', 'Ttop',
   'pivotFromRail', 'pivotAboveHead', 'cabPivotZ', 'pinGap', 'springLowAlong', 'springLowOut', 'springUpFront', 'springUpZ', 'stopFront', 'stopBelowTop',
   'springD', 'springRodD', 'springEndD', 'springBodyL', 'studS', 'plateT', 'nutStack', 'stopD', 'stopH', 'legD',
@@ -213,6 +213,7 @@ function renderCavity() {
     const pr = (l) => l.length > 1 ? l.slice(0, -1).join(', ') + ' and ' + l[l.length - 1] : l[0] || '';
     const k = G.coves.map(c => c.key), named = [k.includes('back') ? 'back wall' : '', k.includes('sideL') ? 'side walls' : '', k.includes('headIn') && k.includes('headOut') ? 'both faces of the head' : k.includes('headIn') ? 'the head, inside' : k.includes('headOut') ? 'the head, room side' : ''].filter(Boolean);
     $('head-note').innerHTML = (G.bulk ? `Head's underside <b>${r1(G.zHead)}</b> off the floor; carcass top <b>${r1(G.zTop)}</b>, ` + (G.zTop > G.zHead ? `<b>${r1(G.zTop - G.zHead)} into it</b>. ` : G.hasHeader ? `a ${r1(G.headerH)} header filler under the head. ` : `a ${r1(G.zHead - G.zTop)} shadow line under it. `) : `No head: the header filler runs to the ceiling, ${r1(G.headerH)} tall. `)
+      + (G.soffit ? `Soffit: ${r1(P.soffitT)} mm, ${r1(G.soffit.w)} wide${G.soffit.split ? ', two halves' : ''}, ${r1(G.soffit.gap)} short of the plasterboard's edges. ` : '')
       + (named.length ? `Cornices on the ${pr(named)}, their bottom edge ${r1(P.H - P.cornice)} up${P.corniceLip > 0 ? `, ${r1(P.corniceLip)} lips and a ${r1(P.cornice - P.corniceLip)} cove` : ''}.` : 'No cornices in the cavity.')
       + ` Room: the left jamb is <b>${r1(model.room.x[1] - model.room.opening[1])}</b> from its left wall.`;
   }

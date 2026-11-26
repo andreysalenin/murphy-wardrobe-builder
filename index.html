@@ -362,6 +362,9 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="hint">What is left of the old bulkhead at the ceiling: the 90x42 across the mouth and the plasterboard on it, cut just under its cornices. The carcass slides in under it.</div>
           <div class="field"><div><label for="headDrop">Head comes down</label><small>Ceiling to its underside: 55 cut under the cornices, 42 for the bare joist. 0: none.</small></div><div class="num"><input id="headDrop" type="number" min="0" max="300" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field" data-when="headDrop"><div><label for="headD">Head, front to back</label><small>At the mouth: the 90 of 510 + 90.</small></div><div class="num"><input id="headD" type="number" min="0" max="300" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="headDrop"><div><label for="headLining">Plasterboard on its faces</label><small>Each side, down to the line with the cornices.</small></div><div class="num"><input id="headLining" type="number" min="0" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="headDrop"><div><label for="headStep">90x42 short of that line</label><small>Its underside, up from the plasterboard's cut edges.</small></div><div class="num"><input id="headStep" type="number" min="0" max="60" step="0.5" inputmode="decimal"><span>mm</span></div></div>
+          <div class="field" data-when="headDrop headStep"><div><label for="soffitT">Soffit under it</label><small>Plywood glued up between the linings so the shadow line shows one underside. 0: none.</small></div><div class="num"><input id="soffitT" type="number" min="0" max="30" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><div><label for="cornice">Cornice size</label><small>This far down the wall and out on the ceiling. 0: none.</small></div><div class="num"><input id="cornice" type="number" min="0" max="150" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field" data-when="cornice"><div><label for="corniceLip">Cornice lips</label><small>The square edge at the wall and at the ceiling; the cove between is the rest (10 + 45 for a 55). 0: a plain cove.</small></div><div class="num"><input id="corniceLip" type="number" min="0" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
           <label class="check" data-when="cornice"><input type="checkbox" id="corniceBack"> <span>Cornice on the back wall</span></label>
@@ -1465,6 +1468,9 @@ const DEFAULTS = {
   headD: 90,          // front to back, at the mouth (the 90 of 510 + 90)
   headDrop: 55,       // how far it comes down below the ceiling: to its cornices' bottom edge, the 42 of the joist
                       // without them; 0 = none, cut back to the ceiling
+  headLining: 10,     // the plasterboard on each face of the head, down to that line with the cornices
+  headStep: 7,        // the 90x42's underside, up from that line: a recess between the two linings
+  soffitT: 6,         // plywood under the 90x42 to close that recess (0: none); it stops headStep - soffitT short
   // cove cornices, 55 down the wall and 55 out on the ceiling: a 10 lip square off the wall, a 45 radius cove, and a 10
   // lip square off the ceiling; each run can be taken off
   cornice: 55,
@@ -1736,7 +1742,8 @@ function normParams(p) {
   opt('kickTower', 15, 250);
   num('carpetT', 0, 60); num('carpetSink', 0, 60); if (P.carpetSink > P.carpetT) P.carpetSink = P.carpetT; P.carpetLift = P.carpetLift !== false;
   P.kickBevel = P.kickBevel !== false;
-  num('headD', 0, 300); num('headDrop', 0, 300); if (P.headD < 1) P.headDrop = 0; num('cornice', 0, 150); num('corniceLip', 0, 40); P.corniceLip = Math.min(P.corniceLip, Math.max(0, P.cornice - 5));
+  num('headD', 0, 300); num('headDrop', 0, 300); if (P.headD < 1) P.headDrop = 0;
+  num('headLining', 0, 40); if (2 * P.headLining > P.headD - 10) P.headLining = Math.max(0, (P.headD - 10) / 2); num('headStep', 0, 60); num('soffitT', 0, 30); if (P.soffitT > P.headStep) P.soffitT = P.headStep; num('cornice', 0, 150); num('corniceLip', 0, 40); P.corniceLip = Math.min(P.corniceLip, Math.max(0, P.cornice - 5));
   for (const k of ['corniceBack', 'corniceSides', 'corniceHeadIn', 'corniceHeadOut']) P[k] = P[k] !== false;
   num('roomW', 1500, 12000); num('roomD', 1000, 12000); num('roomRight', -3000, 12000); opt('roomH', 2000, 4000); delete P.roomLeft;
   num('doorW', 0, 1500); num('doorAt', 0, 6000);
@@ -3102,8 +3109,20 @@ function build(params, opts) {
   // the head of the opening and the cornices in the cavity: part of the room like the studs, drawn and checked against
   if (G.bulk) {
     const b = G.bulk, xr = Math.min(wallAt(G, 'R', b.y0), wallAt(G, 'R', b.y1)), xl = Math.max(wallAt(G, 'L', b.y0), wallAt(G, 'L', b.y1));
+    // the plasterboard on its two faces down to the line, the 90x42 between them headStep short of it
+    const lin = P.headLining, zj = b.z0 + P.headStep;
     put({ mark: 'WH', name: `Head of the opening, ${Math.round(P.headD)} deep, down ${Math.round(P.headDrop)} from the ceiling (the 90x42 and its plasterboard)`, grp: 'room', kind: 'plaster', hw: true, ctx: true,
-      solids: [box(xr, xl, b.y0, b.y1, b.z0, P.H)] });
+      solids: lin > 0 && P.headStep > 0 ? [box(xr, xl, b.y0, b.y0 + lin, b.z0, P.H), box(xr, xl, b.y1 - lin, b.y1, b.z0, P.H), box(xr, xl, b.y0 + lin, b.y1 - lin, zj, P.H)] : [box(xr, xl, b.y0, b.y1, b.z0, P.H)] });
+    // a plywood soffit under the 90x42, between the linings, closes the recess (what shows through the shadow line):
+    // glued and pinned up, in two halves butted on the centre line when one sheet is too short
+    if (lin > 0 && P.headStep > 0 && P.soffitT > 0) {
+      const w = b.y1 - b.y0 - 2 * lin, span = xl - xr - 2, mx = G.plankMaxOf(P.soffitT), split = mx > 0 && span > mx, L = split ? span / 2 : span;
+      G.soffit = { w, span, split, z: zj - P.soffitT, gap: P.headStep - P.soffitT };
+      const pc = (a, c, nm) => put({ mark: 'K4', name: nm, cutName: 'Head soffit, under the 90x42', grp: 'fronts-C', kind: 'back', T: P.soffitT, L: Math.round(L), W: Math.round(w), grain: false, soffit: true,
+        solids: [box(a, c, b.y0 + lin, b.y1 - lin, zj - P.soffitT, zj)] });
+      if (split) { pc(xr + 1, xr + 1 + L, 'Head soffit (R half), under the 90x42'); pc(xl - 1 - L, xl - 1, 'Head soffit (L half), under the 90x42'); }
+      else pc(xr + 1, xl - 1, 'Head soffit, under the 90x42');
+    }
   }
   for (const cv of G.coves) {
     const c = P.cornice, sec = coveSection(c, P.H, 16, P.corniceLip);
@@ -3567,7 +3586,7 @@ function checks(model) {
   {
     const hit = new Map(), base = (n) => n.replace(/ \((L|R)( half)?\)$/, '').replace(/ (\d+)$/, '');
     for (const p of model.parts) {
-      if (p.ctx || p.bed || p.mattress || p.dyn || !p.solids || !p.solids.length) continue;
+      if (p.ctx || p.soffit || p.bed || p.mattress || p.dyn || !p.solids || !p.solids.length) continue;
       for (const pr of p.solids) for (const h of roomHits(P, G, prismBox(pr))) {
         const r = hit.get(h.key) || { name: h.name, over: -Infinity, parts: new Set(), clr: Infinity, near: '' };
         if (h.over > 0.3) { r.parts.add(base(p.name)); r.over = Math.max(r.over, h.over); }
@@ -3588,7 +3607,7 @@ function checks(model) {
       const named = { back: 'back wall', sideL: 'left wall', sideR: 'right wall', headIn: 'head inside' }, has = (k) => G.coves.some(cv => cv.key === k);
       const kept = [has('back') ? 'the back wall' : '', has('sideL') ? 'both side walls' : '', has('headIn') && has('headOut') ? 'both faces of the head' : has('headIn') ? 'the head, inside' : has('headOut') ? 'the head, room side' : ''].filter(Boolean);
       const cl = [...hit].filter(([k, r]) => k !== 'head' && !r.parts.size && r.clr < 200);
-      const txt = (G.bulk ? `The head of the opening (the 90x42 and the plasterboard left on it) comes ${f0(P.headDrop)} down from the ${f0(P.H)} ceiling, ${f0(P.headD)} deep at the mouth${under ? `; the carcass top at ${f0(G.zTop)} slides in ${r1(slide)} under it` : ''}${G.hasHeader ? `, and the ${f0(G.headerH)} header filler fills ${under ? 'that' : 'the gap'}.` : under ? ', a shadow line under its cornice (too little for a header filler).' : '.'} ` : '')
+      const txt = (G.bulk ? `The head of the opening (the 90x42 and the plasterboard left on it) comes ${f0(P.headDrop)} down from the ${f0(P.H)} ceiling, ${f0(P.headD)} deep at the mouth${P.headStep > 0 && P.headLining > 0 ? (G.soffit ? `; its 90x42 stops ${r1(P.headStep)} short of the plasterboard's edges, and a ${f0(P.soffitT)} mm plywood soffit closes that to ${r1(G.soffit.gap)}` : `; its 90x42 stops ${r1(P.headStep)} short of the plasterboard's edges, a recess that shows through the line under it`) : ''}${under ? `; the carcass top at ${f0(G.zTop)} slides in ${r1(slide)} under it` : ''}${G.hasHeader ? `, and the ${f0(G.headerH)} header filler fills ${under ? 'that' : 'the gap'}.` : under ? ', a shadow line under its cornice (too little for a header filler).' : '.'} ` : '')
         + (kept.length ? `${f0(P.cornice)} cove cornices on ${kept.length > 1 ? kept.slice(0, -1).join(', ') + ' and ' + kept[kept.length - 1] : kept[0]}, ${P.corniceLip > 0 ? `their ${f0(P.corniceLip)} lip ${f0(P.H - P.cornice)} off the floor, out to ${f0(P.corniceLip)} from the wall, and the cove rising from there (${f0(G.coveZ(P.corniceLip + 10))} at ${f0(P.corniceLip + 10)} out)` : `their bottom edge ${f0(P.H - P.cornice)} off the floor at the wall itself, the cove rising away from it (${f0(G.coveZ(10))} at 10 out)`}${cl.length ? `. The carcass stays ${cl.map(([k, r]) => `${r1(r.clr)} clear of the one on the ${named[k]} (${r.near.replace(/^./, c => c.toLowerCase())})`).join(', ')}` : ''}.` : 'No cornices in the cavity.');
       w('info', G.bulk ? `Head of the opening at ${f0(G.zHead)}` : 'Cornices in the cavity', txt, 'layout');
     }
@@ -4346,6 +4365,8 @@ function assembly(model, sheets) {
   st = step({ title: 'Fit out the towers', h: 1.5, parts: (p) => p.mark === 'HR' || (p.mark === 'RN' && p.pick) || (p.mark === 'HG' && isPlate(p)) || (p.mark === 'T5' && !G.shelfLevel),
     text: `While they lie on their backs: the runners' cabinet members flush with the front edge on their centre lines, the hinge plates (${G.hingeDoor.H} mm, ${G.hingeDoor.code}), the hanging-rail brackets${P.topShelf ? ' and the shelf pins' : ''}.` });
   add(st, 'h15', nDr * 2 * useR + doorHinges * 2 + nTow * 2 * 3); if (P.topShelf) add(st, 'pin', nTow * 4);
+  if (G.soffit) step({ title: 'Soffit under the head', h: 0.5, parts: (p) => p.mark === 'K4',
+    text: `Before the towers go in, while you can reach it: sand the plasterboard's cut edges level with the cornices, then glue the ${f0(P.soffitT)} mm soffit${G.soffit.split ? ' (two halves, butted on the centre line in line with the flaps\' joint)' : ''} up under the 90x42 between them, ${f0(G.soffit.w)} wide, cut to fit, and pin it every 200 with 20 mm brads. It sits ${r1(G.soffit.gap)} up from the plasterboard's edges, so the shadow line over the carcass shows one clean underside. Fill and paint it with the ceiling, or paint it matt black for a darker line.` });
   st = step({ title: 'Stand the towers in place', h: 1.5, people: 2, parts: () => false, hl: (p) => /^(T[1-6]|P[12])$/.test(p.mark),
     text: `Stand each tower up on the floor (its diagonal is ${f0(Math.hypot(G.zTop - G.zPl, G.cDtow + P.Tback))}), lift it onto its plinth and screw down through the bottom into the plinth from inside. Plumb it, ${G.skin ? 'slide it against its skin' : 'pack the outer side off the wall'} and screw through ${G.skin ? 'the side, the skin' : 'the side'} and the packers into the side-wall studs.` });
   addJ(st, 'towerPlinth'); add(st, 'w75', nTow * 3);
@@ -8699,7 +8720,7 @@ root.MurphyDrawings = { make, openingsSVG, openingsData, openingRows };
 const C = window.MurphyCore, V = window.MurphyViewer;
 const LS_KEY = 'murphy-wardrobe-builder.v3', LS_VIEW = 'murphy-wardrobe-builder.view.v1', LS_THEME = 'murphy-wardrobe-builder.theme';
 const $ = (id) => document.getElementById(id);
-const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'skinZ0', 'carpetT', 'carpetSink', 'headDrop', 'headD', 'cornice', 'corniceLip', 'roomW', 'roomD', 'roomRight', 'doorW', 'doorAt', 'winAt', 'winW', 'winH', 'winSill', 'wallT', 'winReveal', 'winOpen', 'deskGap', 'deskClear', 'wallStudL', 'wallStudR', 'wallStudY0', 'wallStudY1', 'wallStudClad', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
+const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'skinZ0', 'carpetT', 'carpetSink', 'headDrop', 'headD', 'headLining', 'headStep', 'soffitT', 'cornice', 'corniceLip', 'roomW', 'roomD', 'roomRight', 'doorW', 'doorAt', 'winAt', 'winW', 'winH', 'winSill', 'wallT', 'winReveal', 'winOpen', 'deskGap', 'deskClear', 'wallStudL', 'wallStudR', 'wallStudY0', 'wallStudY1', 'wallStudClad', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
   'hangClear', 'railDrop', 'runnerClear', 'runnerLen', 'boxLess', 'gap', 'gapAbove', 'frontGap', 'TfDrawer', 'TfSide', 'TfTop', 'headWell', 'T', 'Tb', 'Tback', 'Tsup', 'Tladder', 'Tplinth', 'Tpacker', 'Tledge', 'TledgePanel', 'Thead', 'Tkick', 'Theader', 'Tshelf', 'Ttop',
   'pivotFromRail', 'pivotAboveHead', 'cabPivotZ', 'pinGap', 'springLowAlong', 'springLowOut', 'springUpFront', 'springUpZ', 'stopFront', 'stopBelowTop',
   'springD', 'springRodD', 'springEndD', 'springBodyL', 'studS', 'plateT', 'nutStack', 'stopD', 'stopH', 'legD',
@@ -8908,6 +8929,7 @@ function renderCavity() {
     const pr = (l) => l.length > 1 ? l.slice(0, -1).join(', ') + ' and ' + l[l.length - 1] : l[0] || '';
     const k = G.coves.map(c => c.key), named = [k.includes('back') ? 'back wall' : '', k.includes('sideL') ? 'side walls' : '', k.includes('headIn') && k.includes('headOut') ? 'both faces of the head' : k.includes('headIn') ? 'the head, inside' : k.includes('headOut') ? 'the head, room side' : ''].filter(Boolean);
     $('head-note').innerHTML = (G.bulk ? `Head's underside <b>${r1(G.zHead)}</b> off the floor; carcass top <b>${r1(G.zTop)}</b>, ` + (G.zTop > G.zHead ? `<b>${r1(G.zTop - G.zHead)} into it</b>. ` : G.hasHeader ? `a ${r1(G.headerH)} header filler under the head. ` : `a ${r1(G.zHead - G.zTop)} shadow line under it. `) : `No head: the header filler runs to the ceiling, ${r1(G.headerH)} tall. `)
+      + (G.soffit ? `Soffit: ${r1(P.soffitT)} mm, ${r1(G.soffit.w)} wide${G.soffit.split ? ', two halves' : ''}, ${r1(G.soffit.gap)} short of the plasterboard's edges. ` : '')
       + (named.length ? `Cornices on the ${pr(named)}, their bottom edge ${r1(P.H - P.cornice)} up${P.corniceLip > 0 ? `, ${r1(P.corniceLip)} lips and a ${r1(P.cornice - P.corniceLip)} cove` : ''}.` : 'No cornices in the cavity.')
       + ` Room: the left jamb is <b>${r1(model.room.x[1] - model.room.opening[1])}</b> from its left wall.`;
   }
