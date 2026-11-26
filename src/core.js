@@ -111,7 +111,8 @@ const DEFAULTS = {
   Tladder: 12,        // bed deck struts
   Tplinth: 18,
   Tpacker: 18,        // packers under the kit's cabinet plates, only when gapHydr is wider than the kit's 11 mm
-  Tledge: 18,
+  Tledge: 18,         // the headboard ledge's sill and wall cleat (they carry the hinges and the wall screws)
+  TledgePanel: 12,    // its two big panels, the ledge front and the well floor; thinner than 16, ribs under the cleats
   // parts that can come out of 12 (birch AA like the 18): the kick boards, the adjustable shelves and the header filler
   Tkick: 12,          // kick boards: the plinth fronts come forward to meet them, packers on the bed-cabinet sides
   Tshelf: 18,         // adjustable shelves in the top compartments: 18, level with the shelf over the bed
@@ -306,7 +307,7 @@ function normParams(p) {
   num('gapMx', 5, 80); num('gapMy', 0, 40); num('gapHolder', 0, 80); num('gapHydr', 5, 80); num('gapBelow', 0, 200); num('faceBelowFrame', 0, 60);
   num('hangClear', 300, 2000); num('railDrop', 25, 150);
   num('gap', 1, 12); num('gapAbove', 0, 300);
-  for (const k of ['T', 'Tb', 'Tback', 'Tsup', 'Tladder', 'Tplinth', 'Tpacker', 'Tledge', 'Thead', 'Tkick', 'Tshelf', 'Theader', 'Ttop']) num(k, 3, 40);
+  for (const k of ['T', 'Tb', 'Tback', 'Tsup', 'Tladder', 'Tplinth', 'Tpacker', 'Tledge', 'TledgePanel', 'Thead', 'Tkick', 'Tshelf', 'Theader', 'Ttop']) num(k, 3, 40);
   num('runnerClear', 0, 30); num('runnerLen', 0, 900); num('boxLess', 10, 150);
   num('railD', 60, 300); num('headRailD', 18, 300); num('footRailD', 18, 300); num('railR', 0, 140); num('faceOverhang', 0, 40);
   num('ladderW', 20, 120); num('struts', 2, 20); P.struts = Math.round(P.struts);
@@ -1431,23 +1432,35 @@ function build(params, opts) {
     const yF = !P.headboard ? yL : hh ? Math.max(yL, Math.floor((hh.front ? hh.Fb[0] : hh.K[0]) - 0.5)) : Math.max(yL, yHead - P.Thead);
     // the compartments may sink into the hollow ledge: the floor is then cut back to a sill along the ledge front that
     // carries the doors' hinges, and a well floor sits lower on cleats on the wall and inside the ledge front
-    const well = doorsOn && yL - P.Tledge - G.yB1 >= 100 ? P.headWell : 0;
-    G.ledge = { y: yL, top, yFloor: yF, nose, well, wellTop: top - well, ySill: yL - P.Tledge };
+    const Tf = P.TledgePanel, well = doorsOn && yL - Tf - G.yB1 >= 100 ? P.headWell : 0;
+    G.ledge = { y: yL, top, yFloor: yF, nose, well, wellTop: top - well, ySill: yL - Tf, Tf };
     if (yL - G.yB1 >= 60 && top > 150) {
-      const Tg = P.Tledge, y0f = well ? yL - Tg : G.yB1, zw = top - well;
+      const Tg = P.Tledge, y0f = well ? yL - Tf : G.yB1, zw = top - well, Tfl = well ? Tf : Tg;   // Tfl: the floor the cleats carry
       put({ mark: 'H1', name: !P.headboard ? 'Headboard ledge top' : well ? 'Headboard box sill (carries the hinges)' : 'Headboard box floor (ledge top)', grp: bgrp, kind: 'ledge', T: Tg, L: 2 * G.xB, W: yF - y0f, grain: false, band: 2 * G.xB,
         solids: [nose ? yzPrism(-G.xB, G.xB, ccwLoop([[y0f, top - Tg], [yF - nose, top - Tg], [yF, top - Tg + nose], [yF, top], [y0f, top]])) : box(-G.xB, G.xB, y0f, yF, top - Tg, top)] });
-      put({ mark: 'H2', name: 'Headboard ledge front', grp: bgrp, kind: 'ledge', T: Tg, L: 2 * G.xB, W: top - Tg, grain: false,
-        solids: [box(-G.xB, G.xB, yL - Tg, yL, 0, top - Tg)] });
+      put({ mark: 'H2', name: 'Headboard ledge front', grp: bgrp, kind: 'ledge', T: Tf, L: 2 * G.xB, W: top - Tg, grain: false,
+        solids: [box(-G.xB, G.xB, yL - Tf, yL, 0, top - Tg)] });
       put({ mark: 'H3', name: 'Headboard ledge wall cleat', grp: bgrp, kind: 'ledge', T: Tg, L: 2 * G.xB, W: 90, grain: false,
-        solids: [box(-G.xB, G.xB, G.yB1, G.yB1 + Tg, zw - Tg - 90, zw - Tg)] });
+        solids: [box(-G.xB, G.xB, G.yB1, G.yB1 + Tg, zw - Tfl - 90, zw - Tfl)] });
       if (well) {
-        put({ mark: 'H11', name: `Headboard well floor, ${well} below the sill`, grp: bgrp, kind: 'ledge', T: Tg, L: 2 * G.xB, W: yL - Tg - G.yB1, grain: false,
-          solids: [box(-G.xB, G.xB, G.yB1, yL - Tg, zw - Tg, zw)] });
+        put({ mark: 'H11', name: `Headboard well floor, ${well} below the sill`, grp: bgrp, kind: 'ledge', T: Tf, L: 2 * G.xB, W: yL - Tf - G.yB1, grain: false,
+          solids: [box(-G.xB, G.xB, G.yB1, yL - Tf, zw - Tf, zw)] });
         // 12 mm is plenty for a cleat that only carries the well floor's front edge; it sits under the floor, so its
         // thickness takes nothing from the well
         put({ mark: 'H12', name: 'Headboard well cleat, inside the ledge front', grp: bgrp, kind: 'ledge', T: 12, L: 2 * G.xB, W: 90, grain: false,
-          solids: [box(-G.xB, G.xB, yL - Tg - 12, yL - Tg, zw - Tg - 90, zw - Tg)] });
+          solids: [box(-G.xB, G.xB, yL - Tf - 12, yL - Tf, zw - Tf - 90, zw - Tf)] });
+      }
+      // a thin ledge front gets ribs behind it, floor to the cleats, wall to its back face: they keep it straight and
+      // carry the cleats (and the floor on them) down to the floor
+      if (Tf < 16) {
+        const zr = zw - Tfl - 90, n = Math.max(2, Math.round(2 * G.xB / 500)), yr0 = G.yB1, yr1 = yL - Tf;
+        G.ledge.ribs = [];
+        for (let k = 1; k <= n; k++) {
+          const xc = Math.round(-G.xB + 2 * G.xB * k / (n + 1));
+          G.ledge.ribs.push(xc);
+          put({ mark: 'H13', name: `Headboard ledge rib ${k}, behind the front`, grp: bgrp, kind: 'ledge', T: 12, L: Math.round(zr), W: Math.round(yr1 - yr0), grain: false,
+            solids: [box(xc - 6, xc + 6, yr0, yr1, 0, zr)] });
+        }
       }
     } else G.ledge.skipped = true;
   }
@@ -1494,8 +1507,9 @@ function build(params, opts) {
       for (const [S, s] of sides) put({ mark: 'H8', name: `Headboard cleat on the bed-cabinet side (${S})`, slant: true, grp: bgrp, kind: 'ledge', T: Ts, L: r1(zr1 - zr0), W: 30, grain: false,
         solids: [yzPrism(s > 0 ? G.xB - Ts : -G.xB, s > 0 ? G.xB : -G.xB + Ts, polyLoop([[yb(zr0) - 30, zr0], [yb(zr0), zr0], [yb(zr1), zr1], [yb(zr1) - 30, zr1]]))] });
       // 6 mm back on the supports' and the floor's back edges, 6 off the wall
-      put({ mark: 'H9', name: 'Headboard back, 6 mm', grp: bgrp, kind: 'back', T: P.Tback, L: 2 * G.xB, W: r1(zr1 - (zrb - P.Tledge)), grain: false,
-        solids: [box(-G.xB, G.xB, G.yB1 - P.Tback, G.yB1, zrb - P.Tledge, zr1)] });
+      const Tfb = G.ledge && G.ledge.well ? P.TledgePanel : P.Tledge;   // down over the edge of the floor the supports stand on
+      put({ mark: 'H9', name: 'Headboard back, 6 mm', grp: bgrp, kind: 'back', T: P.Tback, L: 2 * G.xB, W: r1(zr1 - (zrb - Tfb)), grain: false,
+        solids: [box(-G.xB, G.xB, G.yB1 - P.Tback, G.yB1, zrb - Tfb, zr1)] });
       if (doors) {
         // mitre line O-I; the panels' top edge runs parallel to it, gp below
         const d = [I[0] - O[0], I[1] - O[1]], dl = Math.hypot(d[0], d[1]), dn = [d[0] / dl, d[1] / dl];
@@ -2707,15 +2721,18 @@ function joinery(model) {
   }
 
   // ---------- headboard ledge and backrest
-  const H1 = mk('H1')[0], H2 = mk('H2')[0], H3 = mk('H3')[0], H4 = mk('H4')[0], H6 = mk('H6')[0], ribs = mk('H5'), H11 = mk('H11')[0], H12 = mk('H12')[0];
+  const H1 = mk('H1')[0], H2 = mk('H2')[0], H3 = mk('H3')[0], H4 = mk('H4')[0], H6 = mk('H6')[0], ribs = mk('H5'), H11 = mk('H11')[0], H12 = mk('H12')[0], H13 = mk('H13');
   if (H1 && H2 && H3) {
-    const ops = [], b1 = bb(H1), Tg = P.Tledge;
+    const ops = [], b1 = bb(H1), Tg = P.Tledge, Tf = P.TledgePanel;
+    if (H13.length) ops.push({ title: 'Ribs behind the ledge front', bench: true, add: H13.map(p => [p, [0, -E, 0]]),
+      fast: H13.map(p => { const q = bb(p); return F('b25', H2, p, [0, -1, 0], Tf, spread(q[2], q[5], 40, 120).map(z => [(q[0] + q[3]) / 2, bb(H2)[1], z])); }),
+      setout: 'glued, the front face down on the bench, square to it; screwed through the front, which the mattress hides' });
     const ribX = ribs.map(p => { const b = bb(p); return (b[0] + b[3]) / 2; }), ribAvoid = ribX.map(x => [x - 22, x + 22]);
     const q2 = bb(H2), onSill = (p, k) => F('s50', H1, p, [0, 0, 1], Tg, spread(b1[1], Math.min(b1[4], bb(p)[4]), 40, 120, [[q2[1] - 6, q2[4] + 6]]).map(y => [ribX[k], y, b1[5]]));
     if (ribs.length && H11) { // a well: the supports stand on the well floor and the sill, the three screwed up as one unit
       const b11 = bb(H11);
       ops.push({ title: 'Supports onto the well floor and the sill, from below', bench: true, add: ribs.map(p => [p, [0, 0, E]]), view: 'below',
-        fast: [...ribs.map((p, k) => F('s50', H11, p, [0, 0, 1], Tg, spread(b11[1], b11[4], 40, 120).map(y => [ribX[k], y, b11[5]]))), ...ribs.map(onSill)],
+        fast: [...ribs.map((p, k) => F('s50', H11, p, [0, 0, 1], Tf, spread(b11[1], b11[4], 40, 120).map(y => [ribX[k], y, b11[5]]))), ...ribs.map(onSill)],
         setout: `upside down on the bench: the well floor ${G.ledge.well} below the sill, the supports square to both` });
     } else if (ribs.length) ops.push({ title: 'Supports onto the ledge top, from below', bench: true, add: ribs.map(p => [p, [0, 0, E]]), view: 'below',
       fast: ribs.map(onSill), setout: 'with the ledge top upside down on the bench' });
@@ -2723,11 +2740,11 @@ function joinery(model) {
     if (H11 && H12) {
       const b12 = bb(H12), b11 = bb(H11), zc = (b12[2] + b12[5]) / 2;
       ops.push({ title: 'Well cleat inside the ledge front', bench: true, add: [[H12, [0, -E, 0]]],
-        fast: [F('s25', H12, H2, [0, 1, 0], 12, spread(-G.xB, G.xB, 50, 200).map(x => [x, b12[4], zc]))], setout: 'level with the wall cleat; 25 mm screws, so they stop short of the ledge front\'s face' });
+        fast: [F(Tf < 16 ? 's20' : 's25', H12, H2, [0, 1, 0], 12, spread(-G.xB, G.xB, 50, 200).map(x => [x, b12[4], zc]))], setout: `level with the wall cleat; ${Tf < 16 ? 20 : 25} mm screws, so they stop short of the ledge front's face` });
       ops.push({ title: 'Well floor onto its cleats, sill onto the ledge front', add: [H1, H11, ...ribs].map(p => [p, [0, 0, E]]),
         fast: [F('s50', H1, H2, [0, 0, -1], Tg, spread(-G.xB, G.xB, 50, 200, ribAvoid).map(x => [x, (b2[1] + b2[4]) / 2, b2[5]])),
-          F('s50', H11, H3, [0, 0, -1], Tg, spread(-G.xB, G.xB, 50, 200, ribAvoid).map(x => [x, (b3[1] + b3[4]) / 2, b3[5]])),
-          F('s50', H11, H12, [0, 0, -1], Tg, spread(-G.xB, G.xB, 50, 200, ribAvoid).map(x => [x, (b12[1] + b12[4]) / 2, b12[5]]))],
+          F('s50', H11, H3, [0, 0, -1], Tf, spread(-G.xB, G.xB, 50, 200, ribAvoid).map(x => [x, (b3[1] + b3[4]) / 2, b3[5]])),
+          F('s50', H11, H12, [0, 0, -1], Tf, spread(-G.xB, G.xB, 50, 200, ribAvoid).map(x => [x, (b12[1] + b12[4]) / 2, b12[5]]))],
         setout: `the wall cleat is screwed into the studs first (${TAGS.w75}, two at each stud), level with the well cleat` });
     } else ops.push({ title: 'Ledge top onto its front and wall cleat', add: [H1, ...ribs].map(p => [p, [0, 0, E]]),
       fast: [F('s50', H1, H2, [0, 0, -1], Tg, spread(-G.xB, G.xB, 50, 200, ribAvoid).map(x => [x, (b2[1] + b2[4]) / 2, b2[5]])),
@@ -2873,7 +2890,7 @@ function assembly(model, sheets) {
     s50: ['Cabinet screw 8g x 50 (4.0 x 50), countersunk, T20, stainless: every edge joint', 'pilot 3 x 35 deep in the edge; 4.5 clearance + countersink in the face (HSS bit in the steel flat)'],
     s30: ['Cabinet screw 8g x 30 (4.0 x 30), countersunk, T20, stainless: face to face', 'pilot 2.5 in the face; 4.5 clearance + countersink'],
     s25: ['Pan-head screw 8g x 25 (4.0 x 25), T20, stainless: drawer fronts', '6 through the box front (room to adjust); pilot 2.5 x 10 in the front'],
-    s20: ['Pan-head screw 8g x 20 (4.0 x 20), T20, stainless: 12 mm drawer fronts', '6 through the box front (room to adjust); pilot 2.5 x 6 in the front, depth stop: it is only 12 thick'],
+    s20: ['Pan-head screw 8g x 20 (4.0 x 20), T20, stainless: into 12 mm parts (12 mm drawer fronts; the well cleat on a 12 mm ledge front)', 'drawer fronts: 6 through the box front (room to adjust); pilot 2.5 x 6, with a depth stop: the part is only 12 thick'],
     b25: ['Countersunk screw 6g x 25 (3.5 x 25), T15 or square, stainless: 6 and 12 mm parts', 'pilot 2; 3.5 clearance + countersink; in the face panel no more than 10 deep'],
     h15: ['Screw 3.5 x 15, stainless, for hardware: countersunk or pan to suit its holes', 'pilot 2 x 8: hinge cups and plates, piano hinges, flap stays, runners\' cabinet members, rail brackets'],
     r10: ['Pan-head screw 3.5 x 10, stainless: runner drawer members, hinge door leaves', 'pilot 2 x 6: the box sides are only 12 thick'],
@@ -2948,8 +2965,8 @@ function assembly(model, sheets) {
     text: `Build the frame to the Create-A-Bed plan: screw the rails together, glue and dowel the face panel onto them (two halves${G.faceRv ? ` with a ${f0(2 * G.faceRv)} mm reveal between` : ''}, nothing through the show face), then glue and screw the deck struts and the vented mattress support on from behind. Fit the frame plates, legs and lower ball studs, hang the frame on the pivots, and fit the gas springs last with the bed down, as the kit says. Swing it slowly and check the clearances on sheets 3 and 7.` });
   addJ(st, 'frame');
   if (has('H1') || has('H4')) {
-    st = step({ title: G.head && G.head.doors ? 'Headboard box and doors' : 'Headboard ledge and backrest', h: G.head && G.head.doors ? 3 : 1.5, parts: (p) => /^H[1-9]$/.test(p.mark) || (['HT', 'PL'].includes(p.mark) && /Headboard/.test(p.name)) || p.mark === 'PP', bed: 70,
-      text: `With the bed down: the ledge's wall cleat into the studs, then its front and top, glued and screwed.${has('H4') ? ` Any power in the space behind the backrest goes in now: an outlet on the wall there is an electrician's job, and the cables through the cable holes are easiest to pull before the backrest closes it. ${G.head && G.head.doors ? `On the bench: the four supports on the floor and the 6 mm back on them; in place, the cleats on the bed-cabinet sides and the bedside shelf on top, glued and screwed; then the doors on their piano hinges, the TIP-ONs, and the services panels on push-fit fittings. Cut the doors' top edges and the shelf's front edge at the same mitre, ${Math.round(G.head.doors.mitre * 10) / 10} deg (tilt the saw ${Math.round((90 - G.head.doors.mitre) * 10) / 10} deg), and fit them with ${G.head.doors.gap} mm gaps.` : 'The backrest on its ribs, leaning back over the swing, then the bedside shelf on top.'}` : ''} The wall cleat takes ${f0(G.yB1)} mm packers at every stud.` });
+    st = step({ title: G.head && G.head.doors ? 'Headboard box and doors' : 'Headboard ledge and backrest', h: G.head && G.head.doors ? 3 : 1.5, parts: (p) => /^H\d+$/.test(p.mark) || (['HT', 'PL'].includes(p.mark) && /Headboard/.test(p.name)) || p.mark === 'PP', bed: 70,
+      text: `${has('H13') ? `On the bench, the ribs glued and screwed behind the ${f0(P.TledgePanel)} mm ledge front, square to it. ` : ''}With the bed down: the ledge's wall cleat into the studs, then its front${has('H13') ? ' (the ribs against the wall, packed where it needs it)' : ''} and top, glued and screwed.${has('H4') ? ` Any power in the space behind the backrest goes in now: an outlet on the wall there is an electrician's job, and the cables through the cable holes are easiest to pull before the backrest closes it. ${G.head && G.head.doors ? `On the bench: the four supports on the floor and the 6 mm back on them; in place, the cleats on the bed-cabinet sides and the bedside shelf on top, glued and screwed; then the doors on their piano hinges, the TIP-ONs, and the services panels on push-fit fittings. Cut the doors' top edges and the shelf's front edge at the same mitre, ${Math.round(G.head.doors.mitre * 10) / 10} deg (tilt the saw ${Math.round((90 - G.head.doors.mitre) * 10) / 10} deg), and fit them with ${G.head.doors.gap} mm gaps.` : 'The backrest on its ribs, leaning back over the swing, then the bedside shelf on top.'}` : ''} The wall cleat takes ${f0(G.yB1)} mm packers at every stud.` });
     addJ(st, 'ledge');
     if (G.head && G.head.doors) add(st, 'h15', G.head.doors.n * 2 + 8 * 2);   // TIP-ONs and the panel fittings (the piano hinges are in the joinery)
     if (has('H1')) add(st, 'w75', 2 * studs(2 * G.xB));
@@ -3002,19 +3019,23 @@ function nest(model, cut) {
     for (const s of P.sheets) if (s.T === Tk) for (let i = 0; i < s.n; i++) stock.push({ L: s.L, W: s.W });
     const run = packBest(list, stock, P.kerf, P.trim);
     // how many would be needed if stock were unlimited (first sheet size, or 2440 x 1220)
-    let need = run.bins.length;
+    let need = run.bins.length, extra = [];
     if (run.unplaced.length) {
       const base = stock[0] || { L: 2440, W: 1220 };
       const inf = []; for (let i = 0; i < 60; i++) inf.push({ L: base.L, W: base.W });
       const r2 = packBest(list, inf, P.kerf, P.trim);
       need = r2.unplaced.length ? NaN : r2.bins.length;
+      // what doesn't fit the sheets you have, laid out on more of the same sheet: the ones to buy (the plans for the
+      // sheets you have stay as they are)
+      const r3 = packBest(run.unplaced, inf, P.kerf, P.trim);
+      extra = r3.bins.map(b => Object.assign(b, { buy: true }));
     }
     const area = list.reduce((a, p) => a + p.L * p.W, 0);
-    result.push({ T: Tk, have: stock.length, used: run.bins.length, need, bins: run.bins, unplaced: run.unplaced, area,
+    result.push({ T: Tk, have: stock.length, used: run.bins.length, need, bins: run.bins, extra, unplaced: run.unplaced, area,
       sheetArea: run.bins.reduce((a, b) => a + b.L * b.W, 0) });
   }
   // sheets in the library that no part uses
-  for (const s of P.sheets) if (!result.find(r => r.T === s.T)) result.push({ T: s.T, have: s.n, used: 0, need: 0, bins: [], unplaced: [], area: 0, sheetArea: 0 });
+  for (const s of P.sheets) if (!result.find(r => r.T === s.T)) result.push({ T: s.T, have: s.n, used: 0, need: 0, bins: [], extra: [], unplaced: [], area: 0, sheetArea: 0 });
   result.sort((a, b) => a.T - b.T);
   return result;
 }

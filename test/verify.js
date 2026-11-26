@@ -46,9 +46,7 @@ function run(params, label) {
       if (ox > -m.P.kerf + 0.01 && oy > -m.P.kerf + 0.01) { ov++; console.log(label, 'OVERLAP/KERF', s.T, A.mark, B.mark, ox.toFixed(2), oy.toFixed(2)); }
     }
   }
-  // the stock is the owner's real eight sheets of 18; with the shelves and tower tops at 18 the default needs a ninth
-  // (reported, and flagged on the page), so a shortfall of one 18 is noted rather than failed
-  for (const q of S.sheets) if (isFinite(q.need) && q.need > q.have) { console.log(label, 'STOCK', `${q.T} mm: ${q.need} sheets needed, ${q.have} on hand`); if (label === 'default' && !(q.T === 18 && q.need - q.have <= 1)) process.exitCode = 1; }
+  for (const q of S.sheets) if (isFinite(q.need) && q.need > q.have) { console.log(label, 'STOCK', `${q.T} mm: ${q.need} sheets needed, ${q.have} on hand`); if (label === 'default') process.exitCode = 1; }
   console.log(`${label}: parts ${m.parts.length}, size mismatches ${bad}, interferences ${hits.length}, pieces ${listed}/${placed}, layout problems ${ov}, sheets ${S.sheets.map(s => s.T + ':' + s.need + '/' + s.have).join(' ')}, checks ${m.checks.map(c => c.level[0]).join('')}`);
   hits.slice(0, 30).forEach(h => console.log('   ', h));
 }
@@ -168,6 +166,11 @@ run({ skinT: 18, skinZ1: 3000, gapAbove: 61, H: 2400 }, 'skins up to the head');
   if (!has(C.build({ deskLen: 1600 }), 'bad', /No room for two desks/)) probs.push('furniture: desks too long for the wall not flagged');
   if (!has(C.build({ deskH: 700 }), 'bad', /desks sit on the ALEX/)) probs.push('furniture: desks set down onto the ALEX not flagged');
   if (C.build({ furniture: false }).room.furn) probs.push('furniture: off should mean none');
+  // the headboard ledge's big panels in 12 with ribs behind the front; in 18 the parts spill onto a ninth 18, laid out to buy
+  m = C.build({});
+  if (m.parts.filter(p => p.mark === 'H13').length !== 3 || m.parts.find(p => p.mark === 'H2').T !== 12 || m.parts.find(p => p.mark === 'H11').T !== 12 || m.parts.find(p => p.mark === 'H1').T !== 18) probs.push('ledge: a 12 front and well floor with three ribs, the sill 18, expected');
+  { const S18 = C.summary(C.build({ TledgePanel: 18 })).sheets.find(q => q.T === 18);
+    if (!S18 || S18.used !== 8 || S18.extra.length !== 1 || !S18.extra[0].buy || S18.extra[0].items.length !== S18.unplaced.length || C.build({ TledgePanel: 18 }).parts.some(p => p.mark === 'H13')) probs.push(`sheets: with an 18 ledge the overflow should be laid out on one sheet to buy (got ${S18 && [S18.used, S18.extra.length]})`); }
   m = C.build({ roomRight: 100, doorW: 0, winWall: 'none' });
   if (Math.abs(m.room.x[0] - (m.G.walls.R[1] - 100)) > 0.01 || m.room.quads.length !== 10 || m.room.coves.length !== 5 || m.room.door || m.room.window) probs.push(`room: 100 to the right wall, no door or window: expected 10 walls and ceilings, 5 cornice runs (got ${m.room.x}, ${m.room.quads.length}, ${m.room.coves.length})`);
   m = C.build({});

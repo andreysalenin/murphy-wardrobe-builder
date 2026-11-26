@@ -190,6 +190,9 @@ table.lib button:hover { color: var(--bad); }
 .sheet .cap { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); padding: 0 2px 4px; font-family: var(--mono); }
 .sheet svg { display: block; width: 100%; height: auto; }
 .sheet svg .board { fill: var(--bg); stroke: var(--muted); stroke-width: 2; }
+.sheet.buy { border: 2px dashed var(--accent); }
+.sheet.buy .cap b { color: var(--accent); font-weight: 700; }
+.sheet.buy svg .board { stroke-dasharray: 10 6; }
 .sheet svg .pc { stroke: var(--ink); stroke-width: 2; }
 .sheet svg text { fill: var(--ink); font-family: var(--mono); }
 .sheet svg .pc.t6 { fill: color-mix(in srgb, var(--t6) 28%, var(--panel)); }
@@ -444,7 +447,8 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="field"><label for="Tladder">Bed deck struts</label><div class="num"><input id="Tladder" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><label for="Tplinth">Plinths</label><div class="num"><input id="Tplinth" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><label for="Tpacker">Pads under the kit plates</label><div class="num"><input id="Tpacker" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <div class="field"><label for="Tledge">Headboard ledge</label><div class="num"><input id="Tledge" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="Tledge">Headboard ledge sill and wall cleat</label><small>They carry the doors' hinges and the screws into the studs.</small></div><div class="num"><input id="Tledge" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field"><div><label for="TledgePanel">Headboard ledge front and well floor</label><small>The two big panels. Under 16, ribs go behind the front, floor to the cleats.</small></div><div class="num"><input id="TledgePanel" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><label for="Thead">Backrest, ribs, bedside shelf</label><div class="num"><input id="Thead" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><div><label for="Tkick">Kick boards</label><small>The plinth fronts come forward to meet a thinner kick; it stands on packers at the bed-cabinet sides.</small></div><div class="num"><input id="Tkick" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field"><label for="Theader">Header filler</label><div class="num"><input id="Theader" type="number" min="3" max="40" step="1" inputmode="numeric"><span>mm</span></div></div>

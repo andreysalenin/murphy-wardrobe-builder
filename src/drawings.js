@@ -1157,7 +1157,7 @@ function pageCutList(doc, M, S, info) {
 function pagesPlans(doc, M, S, info, startNum) {
   const per = 8, sc = 20;
   const all = [];
-  for (const q of S.sheets) q.bins.forEach((b, i) => all.push({ T: q.T, i, b, n: q.bins.length }));
+  for (const q of S.sheets) [...q.bins, ...(q.extra || [])].forEach((b, i, a) => all.push({ T: q.T, i, b, n: a.length }));
   let num = startNum;
   for (let k = 0; k < all.length; k += per) {
     const s = Sheet(doc, num, info.total, `CUTTING PLANS ${Math.floor(k / per) + 1}`, '1:20', info);
@@ -1165,7 +1165,7 @@ function pagesPlans(doc, M, S, info, startNum) {
       const col = j % 3, row = Math.floor(j / 3);
       const W = it.b.L / sc, H = it.b.W / sc;
       const x0 = 16 + col * 132, y0 = 270 - row * 82 - H;
-      s.text(x0, y0 + H + 3, `${it.T} mm   sheet ${it.i + 1} of ${it.n}`, { size: 7, weight: 'bold' });
+      s.text(x0, y0 + H + 3, `${it.T} mm   sheet ${it.i + 1} of ${it.n}${it.b.buy ? '   TO BUY' : ''}`, { size: 7, weight: 'bold', color: it.b.buy ? ACC : undefined });
       s.text(x0 + W, y0 + H + 3, `${it.b.L} x ${it.b.W}`, { size: 6, ha: 'right', color: GREY });
       s.rect(x0, y0, W, H, { fill: FAINT, lw: 0.3 });
       const colr = mix(T_RGB[it.T] || GREY, 0.22);
@@ -2786,7 +2786,7 @@ function SvgDoc() {
   };
 }
 function sheetInfo(model, summary) {
-  const nPlans = Math.ceil(summary.sheets.reduce((a, q) => a + q.bins.length, 0) / 8) || 0;
+  const nPlans = Math.ceil(summary.sheets.reduce((a, q) => a + q.bins.length + (q.extra || []).length, 0) / 8) || 0;
   const halves = detailHalves(model, summary), nDet = Math.ceil(halves.length / 2);
   const info = { project: 'Murphy wardrobe', date: new Date().toISOString().slice(0, 10), total: 12 + nPlans + nDet, plansFrom: 9, plansTo: 8 + nPlans, seqFrom: 9 + nPlans,
     detFrom: 11 + nPlans, nDet, halves, fixAt: 11 + nPlans + nDet, detSheet: {} };

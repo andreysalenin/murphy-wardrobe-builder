@@ -5,7 +5,7 @@ const C = window.MurphyCore, V = window.MurphyViewer;
 const LS_KEY = 'murphy-wardrobe-builder.v3', LS_VIEW = 'murphy-wardrobe-builder.view.v1', LS_THEME = 'murphy-wardrobe-builder.theme';
 const $ = (id) => document.getElementById(id);
 const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'skinZ0', 'carpetT', 'carpetSink', 'headDrop', 'headD', 'cornice', 'corniceLip', 'roomW', 'roomD', 'roomRight', 'doorW', 'doorAt', 'winAt', 'winW', 'winH', 'winSill', 'wallT', 'winReveal', 'winOpen', 'deskGap', 'deskClear', 'wallStudL', 'wallStudR', 'wallStudY0', 'wallStudY1', 'wallStudClad', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
-  'hangClear', 'railDrop', 'runnerClear', 'runnerLen', 'boxLess', 'gap', 'gapAbove', 'frontGap', 'TfDrawer', 'TfSide', 'TfTop', 'headWell', 'T', 'Tb', 'Tback', 'Tsup', 'Tladder', 'Tplinth', 'Tpacker', 'Tledge', 'Thead', 'Tkick', 'Theader', 'Tshelf', 'Ttop',
+  'hangClear', 'railDrop', 'runnerClear', 'runnerLen', 'boxLess', 'gap', 'gapAbove', 'frontGap', 'TfDrawer', 'TfSide', 'TfTop', 'headWell', 'T', 'Tb', 'Tback', 'Tsup', 'Tladder', 'Tplinth', 'Tpacker', 'Tledge', 'TledgePanel', 'Thead', 'Tkick', 'Theader', 'Tshelf', 'Ttop',
   'pivotFromRail', 'pivotAboveHead', 'cabPivotZ', 'pinGap', 'springLowAlong', 'springLowOut', 'springUpFront', 'springUpZ', 'stopFront', 'stopBelowTop',
   'springD', 'springRodD', 'springEndD', 'springBodyL', 'studS', 'plateT', 'nutStack', 'stopD', 'stopH', 'legD',
   'railD', 'headRailD', 'footRailD', 'railR', 'legFromFoot', 'legFromTop', 'struts', 'ladderW',
@@ -256,7 +256,7 @@ function renderSummary() {
   ];
   $('figs').innerHTML = figs.map(([k, v]) => `<div class="fig"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
   const short = st.filter(s => s.unplaced.length);
-  const items = short.map(s => ({ level: 'bad', title: `Not enough ${s.T} mm sheets`, text: isFinite(s.need) ? `The parts need ${s.need}; the library has ${s.have}. ${s.unplaced.length} piece${s.unplaced.length > 1 ? 's' : ''} left over (${[...new Set(s.unplaced.map(u => u.mark))].join(', ')}).` : `Some ${s.T} mm parts are bigger than any sheet (${[...new Set(s.unplaced.map(u => u.mark))].join(', ')}).` }))
+  const items = short.map(s => ({ level: 'bad', title: `Not enough ${s.T} mm sheets`, text: isFinite(s.need) ? `The parts need ${s.need}; the library has ${s.have}. ${s.unplaced.length} piece${s.unplaced.length > 1 ? 's' : ''} left over (${[...new Set(s.unplaced.map(u => u.mark))].join(', ')})${(s.extra || []).length ? `, laid out on ${s.extra.length > 1 ? `sheets ${s.used + 1} to ${s.used + s.extra.length}` : `sheet ${s.used + 1}`} in the cutting plans, to buy` : ''}.` : `Some ${s.T} mm parts are bigger than any sheet (${[...new Set(s.unplaced.map(u => u.mark))].join(', ')}).` }))
     .concat(model.checks);
   const order = { bad: 0, warn: 1, info: 2 };
   items.sort((a, b) => order[a.level] - order[b.level]);
@@ -277,7 +277,7 @@ function renderSheets() {
       `<div class="hint">${s.area ? `${(s.area / 1e6).toFixed(2)} m² of parts, ${s.sheetArea ? Math.round(s.area / s.sheetArea * 100) : 0}% of the sheets used` : 'not used'}</div></div>`;
   }).join('');
   const html = [];
-  for (const s of S.sheets) s.bins.forEach((b, i) => {
+  for (const s of S.sheets) [...s.bins, ...(s.extra || [])].forEach((b, i) => {
     const sc = 0.2;
     const W = b.L * sc, H = b.W * sc;
     const items = b.items.map(it => {
@@ -286,7 +286,8 @@ function renderSheets() {
       const lbl = w > 14 && h > 9 ? `<text x="${x + w / 2}" y="${y + h / 2 + fs * 0.35}" text-anchor="middle" font-size="${fs.toFixed(1)}">${esc(it.mark)}</text>` : '';
       return `<rect class="pc ${TCLASS(s.T)}" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}"><title>${esc(it.mark + ' ' + it.name + ', ' + f0(it.L) + ' x ' + f0(it.W))}</title></rect>${lbl}`;
     }).join('');
-    html.push(`<div class="sheet"><div class="cap"><span>${s.T} mm, sheet ${i + 1}</span><span>${b.L} x ${b.W}</span></div><svg viewBox="-2 -2 ${W + 4} ${H + 4}" role="img" aria-label="${s.T} mm sheet ${i + 1} cutting layout"><rect class="board" x="0" y="0" width="${W}" height="${H}"/>${items}</svg></div>`);
+    const free = b.buy ? Math.round((b.L * b.W - b.items.reduce((a, it) => a + it.w * it.h, 0)) / 1e4) / 100 : 0;
+    html.push(`<div class="sheet${b.buy ? ' buy' : ''}"><div class="cap"><span>${s.T} mm, sheet ${i + 1}${b.buy ? ' <b>to buy</b>' : ''}</span><span>${b.buy ? `${free} m² spare` : `${b.L} x ${b.W}`}</span></div><svg viewBox="-2 -2 ${W + 4} ${H + 4}" role="img" aria-label="${s.T} mm sheet ${i + 1} cutting layout"><rect class="board" x="0" y="0" width="${W}" height="${H}"/>${items}</svg></div>`);
   });
   $('sheets').innerHTML = html.join('');
   const totalUsed = S.sheets.reduce((a, s) => a + s.used, 0), totalHave = S.sheets.reduce((a, s) => a + s.have, 0);
