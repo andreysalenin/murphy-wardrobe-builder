@@ -349,7 +349,7 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="sub-hd"><span>Skins on the towers' outer sides</span></div>
           <div class="hint">A second layer of plywood on each tower's outer side, its edge flush with the fronts. It shows as a plywood stripe beside the doors and it is what gets scribed to the wall. 12 makes "12 + 18". 0: none.</div>
           <div class="field"><div><label for="skinT">Skin thickness</label><small>Match a thickness in your sheets.</small></div><div class="num"><input id="skinT" type="number" min="0" max="40" step="0.5" inputmode="decimal"><span>mm</span></div></div>
-          <div class="field" data-when="skinT"><div><label for="skinZ0">Skins start</label><small>0: on the floor, the kick board between them. At the kick board's height or more: it runs under them.</small></div><div class="num"><input id="skinZ0" type="number" min="0" max="800" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-when="skinT"><div><label for="skinZ0">Skins start</label><small>Blank: a reveal above the kick board, level with the drawer fronts; the kick runs under them, wall to wall. 0: on the floor, the kick between them.</small></div><div class="num"><input id="skinZ0" type="number" min="0" max="800" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field" data-when="skinT"><div><label for="skinZ1">Skins stop</label><small>Blank: at the top of the carcass, the header running over them. The ceiling: the header between them.</small></div><div class="num"><input id="skinZ1" type="number" min="200" max="4000" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="hint" id="skin-note" data-when="skinT"></div>
           <div class="sub-hd"><span>Carpet in the room</span></div>
@@ -1439,8 +1439,9 @@ const DEFAULTS = {
   // from inside the tower: its edge shows beside the fronts, flush with them, and it is what gets scribed or planed to
   // the wall. Packing is then from the skin to the wall. 0 = none.
   skinT: 0,
-  skinZ0: 0,          // where the skins start above the floor: 0 = on the floor (the kick runs between them), or at
-                      // the kick's height or more (the kick runs under them)
+  skinZ0: null,       // where the skins start: null = a reveal above the kick board, level with the drawer fronts' bottom
+                      // edge, the kick running under them wall to wall as one band (and a skin then fits a 2440 sheet);
+                      // 0 = on the floor (the kick runs between them); or a height at the kick's or more
   skinZ1: null,       // where they stop: null = the top of the carcass (the header runs over them); the ceiling runs them
                       // up beside the header instead
   backGap: 6,         // carcass back to wall: packers of 6 and 12 stack to fill it behind the wall rails
@@ -1715,7 +1716,7 @@ function normParams(p) {
   if (P.wallStudY1 < P.wallStudY0 + 10) P.wallStudY1 = P.wallStudY0 + 10;
   P.wallStudFronts = P.wallStudFronts !== false;
   num('backGap', 0, 60); num('frontSetback', 0, 100); num('frontGap', 0, 5);
-  num('skinT', 0, 40); if (P.skinT < 3) P.skinT = 0; num('skinZ0', 0, 800); opt('skinZ1', 200, 4000);
+  num('skinT', 0, 40); if (P.skinT < 3) P.skinT = 0; opt('skinZ0', 0, 800); opt('skinZ1', 200, 4000);
   for (const k of ['TfDrawer', 'TfSide', 'TfTop']) P[k] = Number(P[k]) <= 15 ? 12 : 18;
   num('mW', 800, 2000); num('mL', 1800, 2200); num('mT', 120, 400);
   num('gapMx', 5, 80); num('gapMy', 0, 40); num('gapHolder', 0, 80); num('gapHydr', 5, 80); num('gapBelow', 0, 200); num('faceBelowFrame', 0, 60);
@@ -2294,17 +2295,19 @@ function derived(P) {
   G.kickH = P.kickTower != null ? P.kickTower : (G.kickC || kickFull);   // kick height in front of the towers
   G.kickStep = G.kickC > 0 && Math.abs(G.kickH - G.kickC) > 0.5;        // two heights: the bed's, and the towers' own
   G.kickXm = (G.doorX[0] + G.xFo + P.faceOverhang) / 2;                  // where they meet: mid reveal, bed face to doors
+  // the skins, by default, start a reveal above the towers' kick: the same line as the drawer fronts' bottom edge
+  if (G.skin && P.skinZ0 == null) G.skinZ[0] = G.kickH + g;
   // one-piece planks: as long as the fronts span, or as long as the longest sheet gives
   G.plankMaxOf = (Tp) => Math.max(0, ...P.sheets.filter(q => q.T === Tp).map(q => Math.max(q.L, q.W) - 2 * P.trim));
   // each runs a reveal short of the opening's sides: between the skins when they reach past it, else under or over
   // them to the walls. Longer than a sheet gives, it comes in two halves butted on the centre line, in line with the
   // joint between the flaps
   const plank = (under, Tp) => {
-    const mx = G.plankMaxOf(Tp), half = (under ? G.xAw : G.xA) - g, span = 2 * half, max = mx ? Math.floor(mx) : Infinity;
+    const mx = G.plankMaxOf(Tp), half = under ? G.xAw : G.xA - g, span = 2 * half, max = mx ? Math.floor(mx) : Infinity;   // under or over the skins: scribed to the walls
     const split = span > max, L = split ? Math.min(half, max) : span;
     return { span, split, L, n: split ? 2 : 1, under, end: half - (split ? L : L / 2), T: Tp, max: mx };
   };
-  G.kickPl = plank(G.skin > 0 && P.skinZ0 > 0.5, G.Tk);
+  G.kickPl = plank(G.skin > 0 && G.skinZ[0] > 0.5, G.Tk);
   if (G.kickStep) { // under the bed face only; the towers' kicks run on from there
     const mx = G.plankMaxOf(G.Tk), max = mx ? Math.floor(mx) : Infinity, span = 2 * G.kickXm, split = span > max;
     G.kickPl = { span, split, L: split ? Math.min(G.kickXm, max) : span, n: split ? 2 : 1, under: false, end: 0, bedOnly: true, T: G.Tk, max: mx };
@@ -2620,7 +2623,7 @@ function build(params, opts) {
     if (!G.kickC) put({ mark: 'K1', name: nm('Kick board'), grp: 'fronts-' + S, kind: 'front', T: G.Tk, L: G.doorW, W: G.kickH, grain: false, band: G.doorW,
       solids: [box(dx0, dx1, G.yKb, G.yF, 0, G.kickH)] });
     else if (G.kickStep) { // the towers' own height, from the bed's kick out to the skin or the wall
-      const xe = (G.skin && P.skinZ0 > 0.5 ? G.xAw : G.xA) - g, [k0, k1] = sx(s, G.kickXm, xe);
+      const xe = G.skin && G.skinZ[0] > 0.5 ? G.xAw : G.xA - g, [k0, k1] = sx(s, G.kickXm, xe);   // under the skins: to the wall
       put({ mark: 'K1', name: nm('Kick board under the tower'), cutName: 'Kick board, tower', grp: 'fronts-' + S, kind: 'front', T: G.Tk, L: xe - G.kickXm, W: G.kickH, grain: false, band: xe - G.kickXm,
         solids: [box(k0, k1, G.yKb, G.yF, 0, G.kickH)] });
     }
@@ -3572,7 +3575,7 @@ function checks(model) {
       else if (len > maxS + 0.5) {
         const ex = len - maxS, atTop = G.skinZ[1] <= G.zTop + 0.5, ways = [];
         if (atTop) ways.push(`bring the carcass top down ${f0(ex)} (ceiling to the carcass top ${f0(P.gapAbove + ex)} instead of ${f0(P.gapAbove)}), so its top cupboards come down too and the skins stop under the header`);
-        if (atTop && G.kickH && G.skinZ[0] < G.kickH - 0.5 && ex > G.kickH) ways.push(`start them on the kick board, ${f0(G.kickH)} up (it then runs under them), and bring the carcass top down ${f0(ex - G.kickH + G.skinZ[0])}`);
+        if (atTop && G.kickH && G.skinZ[0] < G.kickH - 0.5) ways.push(ex > G.kickH + P.gap ? `start them a reveal above the kick board, ${f0(G.kickH + P.gap)} up (leave Skins start blank: it then runs under them, wall to wall), and bring the carcass top down ${f0(ex - G.kickH - P.gap + G.skinZ[0])}` : `start them a reveal above the kick board, ${f0(G.kickH + P.gap)} up, level with the drawer fronts (leave Skins start blank): the kick then runs under them, wall to wall, and they come out of one sheet`);
         if (!atTop) ways.push(`start them ${f0(ex)} higher or stop them ${f0(ex)} lower`);
         ways.push('get sheets at least ' + f0(len + 2 * P.trim) + ' long');
         w('bad', 'Skins longer than your sheets', `Each skin is ${f0(len)} tall, from ${f0(G.skinZ[0])} to ${f0(G.skinZ[1])}, with its grain upright; your ${r1(G.skin)} mm sheets give ${f0(maxS)}, ${f0(ex)} short. To fit: ${ways.join('; or ')}.`, 'stock');
@@ -8720,13 +8723,13 @@ root.MurphyDrawings = { make, openingsSVG, openingsData, openingRows };
 const C = window.MurphyCore, V = window.MurphyViewer;
 const LS_KEY = 'murphy-wardrobe-builder.v3', LS_VIEW = 'murphy-wardrobe-builder.view.v1', LS_THEME = 'murphy-wardrobe-builder.theme';
 const $ = (id) => document.getElementById(id);
-const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'skinZ0', 'carpetT', 'carpetSink', 'headDrop', 'headD', 'headLining', 'headStep', 'soffitT', 'cornice', 'corniceLip', 'roomW', 'roomD', 'roomRight', 'doorW', 'doorAt', 'winAt', 'winW', 'winH', 'winSill', 'wallT', 'winReveal', 'winOpen', 'deskGap', 'deskClear', 'wallStudL', 'wallStudR', 'wallStudY0', 'wallStudY1', 'wallStudClad', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
+const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'carpetT', 'carpetSink', 'headDrop', 'headD', 'headLining', 'headStep', 'soffitT', 'cornice', 'corniceLip', 'roomW', 'roomD', 'roomRight', 'doorW', 'doorAt', 'winAt', 'winW', 'winH', 'winSill', 'wallT', 'winReveal', 'winOpen', 'deskGap', 'deskClear', 'wallStudL', 'wallStudR', 'wallStudY0', 'wallStudY1', 'wallStudClad', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
   'hangClear', 'railDrop', 'runnerClear', 'runnerLen', 'boxLess', 'gap', 'gapAbove', 'frontGap', 'TfDrawer', 'TfSide', 'TfTop', 'headWell', 'T', 'Tb', 'Tback', 'Tsup', 'Tladder', 'Tplinth', 'Tpacker', 'Tledge', 'TledgePanel', 'Thead', 'Tkick', 'Theader', 'Tshelf', 'Ttop',
   'pivotFromRail', 'pivotAboveHead', 'cabPivotZ', 'pinGap', 'springLowAlong', 'springLowOut', 'springUpFront', 'springUpZ', 'stopFront', 'stopBelowTop',
   'springD', 'springRodD', 'springEndD', 'springBodyL', 'studS', 'plateT', 'nutStack', 'stopD', 'stopH', 'legD',
   'railD', 'headRailD', 'footRailD', 'railR', 'legFromFoot', 'legFromTop', 'struts', 'ladderW',
   'ledgeClear', 'headAngle', 'headH', 'headGap', 'headLip', 'headClear', 'headDoorOpen', 'headGPO', 'headZone', 'upstand', 'steelH', 'steelT', 'twinSpacing', 'lockPinX', 'wallRail', 'kerf', 'trim'];
-const OPT_FIELDS = ['Wback', 'packBL', 'packBR', 'skinZ1', 'kickTower', 'roomH', 'deskH'];
+const OPT_FIELDS = ['Wback', 'packBL', 'packBR', 'skinZ0', 'skinZ1', 'kickTower', 'roomH', 'deskH'];
 const COL_FIELDS = ['alexColor'];  // colours, #rrggbb  // blank: worked out from the others
 const SEL_FIELDS = ['kickCentre', 'doorHinge', 'lockType', 'headHinge', 'winWall', 'winVent', 'deskLen'];
 const CHK_FIELDS = ['topShelf', 'cableHoles', 'headStore', 'supportOffset', 'faceReveal', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain', 'wallStudFronts', 'kickBevel', 'carpetLift', 'corniceBack', 'corniceSides', 'corniceHeadIn', 'corniceHeadOut', 'furniture'];
@@ -8757,6 +8760,12 @@ if (!readLS(LS_KEY + ':towers18')) {
   if (Number(params.Ttop) === 12) params.Ttop = 18;
   if (Number(params.Tshelf) === 12) params.Tshelf = 18;
   writeLS(LS_KEY + ':towers18', 1);
+}
+// skins now start a reveal above the kick board by default (one band of kick right across, a skin out of one sheet):
+// saved settings on the old 0 (on the floor) follow, once
+if (!readLS(LS_KEY + ':skinOnKick')) {
+  if (Number(params.skinZ0) === 0) params.skinZ0 = null;
+  writeLS(LS_KEY + ':skinOnKick', 1);
 }
 // the sheets' factory edges are good: saved settings still trimming 5 off each edge follow, once
 if (!readLS(LS_KEY + ':trim05')) {
@@ -8918,6 +8927,7 @@ function renderCavity() {
   if ($('packBL')) $('packBL').placeholder = r1(P.packFL);
   if ($('packBR')) $('packBR').placeholder = r1(pk.Wb - 2 * G.cwo - pk.BL);
   if ($('skinZ1')) $('skinZ1').placeholder = r1(G.zTop);
+  if ($('skinZ0')) $('skinZ0').placeholder = r1(G.kickH + P.gap);
   if ($('kickTower')) $('kickTower').placeholder = r1(G.kickC || G.gapBelow - P.gap);
   if ($('roomH')) $('roomH').placeholder = r1(P.H);
   const fi = model.room.furn, loaded = C.furnitureLoaded();

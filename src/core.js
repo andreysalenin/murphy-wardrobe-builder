@@ -28,8 +28,9 @@ const DEFAULTS = {
   // from inside the tower: its edge shows beside the fronts, flush with them, and it is what gets scribed or planed to
   // the wall. Packing is then from the skin to the wall. 0 = none.
   skinT: 0,
-  skinZ0: 0,          // where the skins start above the floor: 0 = on the floor (the kick runs between them), or at
-                      // the kick's height or more (the kick runs under them)
+  skinZ0: null,       // where the skins start: null = a reveal above the kick board, level with the drawer fronts' bottom
+                      // edge, the kick running under them wall to wall as one band (and a skin then fits a 2440 sheet);
+                      // 0 = on the floor (the kick runs between them); or a height at the kick's or more
   skinZ1: null,       // where they stop: null = the top of the carcass (the header runs over them); the ceiling runs them
                       // up beside the header instead
   backGap: 6,         // carcass back to wall: packers of 6 and 12 stack to fill it behind the wall rails
@@ -304,7 +305,7 @@ function normParams(p) {
   if (P.wallStudY1 < P.wallStudY0 + 10) P.wallStudY1 = P.wallStudY0 + 10;
   P.wallStudFronts = P.wallStudFronts !== false;
   num('backGap', 0, 60); num('frontSetback', 0, 100); num('frontGap', 0, 5);
-  num('skinT', 0, 40); if (P.skinT < 3) P.skinT = 0; num('skinZ0', 0, 800); opt('skinZ1', 200, 4000);
+  num('skinT', 0, 40); if (P.skinT < 3) P.skinT = 0; opt('skinZ0', 0, 800); opt('skinZ1', 200, 4000);
   for (const k of ['TfDrawer', 'TfSide', 'TfTop']) P[k] = Number(P[k]) <= 15 ? 12 : 18;
   num('mW', 800, 2000); num('mL', 1800, 2200); num('mT', 120, 400);
   num('gapMx', 5, 80); num('gapMy', 0, 40); num('gapHolder', 0, 80); num('gapHydr', 5, 80); num('gapBelow', 0, 200); num('faceBelowFrame', 0, 60);
@@ -883,17 +884,19 @@ function derived(P) {
   G.kickH = P.kickTower != null ? P.kickTower : (G.kickC || kickFull);   // kick height in front of the towers
   G.kickStep = G.kickC > 0 && Math.abs(G.kickH - G.kickC) > 0.5;        // two heights: the bed's, and the towers' own
   G.kickXm = (G.doorX[0] + G.xFo + P.faceOverhang) / 2;                  // where they meet: mid reveal, bed face to doors
+  // the skins, by default, start a reveal above the towers' kick: the same line as the drawer fronts' bottom edge
+  if (G.skin && P.skinZ0 == null) G.skinZ[0] = G.kickH + g;
   // one-piece planks: as long as the fronts span, or as long as the longest sheet gives
   G.plankMaxOf = (Tp) => Math.max(0, ...P.sheets.filter(q => q.T === Tp).map(q => Math.max(q.L, q.W) - 2 * P.trim));
   // each runs a reveal short of the opening's sides: between the skins when they reach past it, else under or over
   // them to the walls. Longer than a sheet gives, it comes in two halves butted on the centre line, in line with the
   // joint between the flaps
   const plank = (under, Tp) => {
-    const mx = G.plankMaxOf(Tp), half = (under ? G.xAw : G.xA) - g, span = 2 * half, max = mx ? Math.floor(mx) : Infinity;
+    const mx = G.plankMaxOf(Tp), half = under ? G.xAw : G.xA - g, span = 2 * half, max = mx ? Math.floor(mx) : Infinity;   // under or over the skins: scribed to the walls
     const split = span > max, L = split ? Math.min(half, max) : span;
     return { span, split, L, n: split ? 2 : 1, under, end: half - (split ? L : L / 2), T: Tp, max: mx };
   };
-  G.kickPl = plank(G.skin > 0 && P.skinZ0 > 0.5, G.Tk);
+  G.kickPl = plank(G.skin > 0 && G.skinZ[0] > 0.5, G.Tk);
   if (G.kickStep) { // under the bed face only; the towers' kicks run on from there
     const mx = G.plankMaxOf(G.Tk), max = mx ? Math.floor(mx) : Infinity, span = 2 * G.kickXm, split = span > max;
     G.kickPl = { span, split, L: split ? Math.min(G.kickXm, max) : span, n: split ? 2 : 1, under: false, end: 0, bedOnly: true, T: G.Tk, max: mx };
@@ -1209,7 +1212,7 @@ function build(params, opts) {
     if (!G.kickC) put({ mark: 'K1', name: nm('Kick board'), grp: 'fronts-' + S, kind: 'front', T: G.Tk, L: G.doorW, W: G.kickH, grain: false, band: G.doorW,
       solids: [box(dx0, dx1, G.yKb, G.yF, 0, G.kickH)] });
     else if (G.kickStep) { // the towers' own height, from the bed's kick out to the skin or the wall
-      const xe = (G.skin && P.skinZ0 > 0.5 ? G.xAw : G.xA) - g, [k0, k1] = sx(s, G.kickXm, xe);
+      const xe = G.skin && G.skinZ[0] > 0.5 ? G.xAw : G.xA - g, [k0, k1] = sx(s, G.kickXm, xe);   // under the skins: to the wall
       put({ mark: 'K1', name: nm('Kick board under the tower'), cutName: 'Kick board, tower', grp: 'fronts-' + S, kind: 'front', T: G.Tk, L: xe - G.kickXm, W: G.kickH, grain: false, band: xe - G.kickXm,
         solids: [box(k0, k1, G.yKb, G.yF, 0, G.kickH)] });
     }
@@ -2161,7 +2164,7 @@ function checks(model) {
       else if (len > maxS + 0.5) {
         const ex = len - maxS, atTop = G.skinZ[1] <= G.zTop + 0.5, ways = [];
         if (atTop) ways.push(`bring the carcass top down ${f0(ex)} (ceiling to the carcass top ${f0(P.gapAbove + ex)} instead of ${f0(P.gapAbove)}), so its top cupboards come down too and the skins stop under the header`);
-        if (atTop && G.kickH && G.skinZ[0] < G.kickH - 0.5 && ex > G.kickH) ways.push(`start them on the kick board, ${f0(G.kickH)} up (it then runs under them), and bring the carcass top down ${f0(ex - G.kickH + G.skinZ[0])}`);
+        if (atTop && G.kickH && G.skinZ[0] < G.kickH - 0.5) ways.push(ex > G.kickH + P.gap ? `start them a reveal above the kick board, ${f0(G.kickH + P.gap)} up (leave Skins start blank: it then runs under them, wall to wall), and bring the carcass top down ${f0(ex - G.kickH - P.gap + G.skinZ[0])}` : `start them a reveal above the kick board, ${f0(G.kickH + P.gap)} up, level with the drawer fronts (leave Skins start blank): the kick then runs under them, wall to wall, and they come out of one sheet`);
         if (!atTop) ways.push(`start them ${f0(ex)} higher or stop them ${f0(ex)} lower`);
         ways.push('get sheets at least ' + f0(len + 2 * P.trim) + ' long');
         w('bad', 'Skins longer than your sheets', `Each skin is ${f0(len)} tall, from ${f0(G.skinZ[0])} to ${f0(G.skinZ[1])}, with its grain upright; your ${r1(G.skin)} mm sheets give ${f0(maxS)}, ${f0(ex)} short. To fit: ${ways.join('; or ')}.`, 'stock');

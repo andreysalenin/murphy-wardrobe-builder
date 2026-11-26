@@ -4,13 +4,13 @@
 const C = window.MurphyCore, V = window.MurphyViewer;
 const LS_KEY = 'murphy-wardrobe-builder.v3', LS_VIEW = 'murphy-wardrobe-builder.view.v1', LS_THEME = 'murphy-wardrobe-builder.theme';
 const $ = (id) => document.getElementById(id);
-const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'skinZ0', 'carpetT', 'carpetSink', 'headDrop', 'headD', 'headLining', 'headStep', 'soffitT', 'cornice', 'corniceLip', 'roomW', 'roomD', 'roomRight', 'doorW', 'doorAt', 'winAt', 'winW', 'winH', 'winSill', 'wallT', 'winReveal', 'winOpen', 'deskGap', 'deskClear', 'wallStudL', 'wallStudR', 'wallStudY0', 'wallStudY1', 'wallStudClad', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
+const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'carpetT', 'carpetSink', 'headDrop', 'headD', 'headLining', 'headStep', 'soffitT', 'cornice', 'corniceLip', 'roomW', 'roomD', 'roomRight', 'doorW', 'doorAt', 'winAt', 'winW', 'winH', 'winSill', 'wallT', 'winReveal', 'winOpen', 'deskGap', 'deskClear', 'wallStudL', 'wallStudR', 'wallStudY0', 'wallStudY1', 'wallStudClad', 'backGap', 'frontSetback', 'mW', 'mL', 'mT', 'gapMx', 'gapMy', 'gapHydr', 'gapHolder', 'gapBelow', 'faceBelowFrame', 'faceOverhang',
   'hangClear', 'railDrop', 'runnerClear', 'runnerLen', 'boxLess', 'gap', 'gapAbove', 'frontGap', 'TfDrawer', 'TfSide', 'TfTop', 'headWell', 'T', 'Tb', 'Tback', 'Tsup', 'Tladder', 'Tplinth', 'Tpacker', 'Tledge', 'TledgePanel', 'Thead', 'Tkick', 'Theader', 'Tshelf', 'Ttop',
   'pivotFromRail', 'pivotAboveHead', 'cabPivotZ', 'pinGap', 'springLowAlong', 'springLowOut', 'springUpFront', 'springUpZ', 'stopFront', 'stopBelowTop',
   'springD', 'springRodD', 'springEndD', 'springBodyL', 'studS', 'plateT', 'nutStack', 'stopD', 'stopH', 'legD',
   'railD', 'headRailD', 'footRailD', 'railR', 'legFromFoot', 'legFromTop', 'struts', 'ladderW',
   'ledgeClear', 'headAngle', 'headH', 'headGap', 'headLip', 'headClear', 'headDoorOpen', 'headGPO', 'headZone', 'upstand', 'steelH', 'steelT', 'twinSpacing', 'lockPinX', 'wallRail', 'kerf', 'trim'];
-const OPT_FIELDS = ['Wback', 'packBL', 'packBR', 'skinZ1', 'kickTower', 'roomH', 'deskH'];
+const OPT_FIELDS = ['Wback', 'packBL', 'packBR', 'skinZ0', 'skinZ1', 'kickTower', 'roomH', 'deskH'];
 const COL_FIELDS = ['alexColor'];  // colours, #rrggbb  // blank: worked out from the others
 const SEL_FIELDS = ['kickCentre', 'doorHinge', 'lockType', 'headHinge', 'winWall', 'winVent', 'deskLen'];
 const CHK_FIELDS = ['topShelf', 'cableHoles', 'headStore', 'supportOffset', 'faceReveal', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain', 'wallStudFronts', 'kickBevel', 'carpetLift', 'corniceBack', 'corniceSides', 'corniceHeadIn', 'corniceHeadOut', 'furniture'];
@@ -41,6 +41,12 @@ if (!readLS(LS_KEY + ':towers18')) {
   if (Number(params.Ttop) === 12) params.Ttop = 18;
   if (Number(params.Tshelf) === 12) params.Tshelf = 18;
   writeLS(LS_KEY + ':towers18', 1);
+}
+// skins now start a reveal above the kick board by default (one band of kick right across, a skin out of one sheet):
+// saved settings on the old 0 (on the floor) follow, once
+if (!readLS(LS_KEY + ':skinOnKick')) {
+  if (Number(params.skinZ0) === 0) params.skinZ0 = null;
+  writeLS(LS_KEY + ':skinOnKick', 1);
 }
 // the sheets' factory edges are good: saved settings still trimming 5 off each edge follow, once
 if (!readLS(LS_KEY + ':trim05')) {
@@ -202,6 +208,7 @@ function renderCavity() {
   if ($('packBL')) $('packBL').placeholder = r1(P.packFL);
   if ($('packBR')) $('packBR').placeholder = r1(pk.Wb - 2 * G.cwo - pk.BL);
   if ($('skinZ1')) $('skinZ1').placeholder = r1(G.zTop);
+  if ($('skinZ0')) $('skinZ0').placeholder = r1(G.kickH + P.gap);
   if ($('kickTower')) $('kickTower').placeholder = r1(G.kickC || G.gapBelow - P.gap);
   if ($('roomH')) $('roomH').placeholder = r1(P.H);
   const fi = model.room.furn, loaded = C.furnitureLoaded();

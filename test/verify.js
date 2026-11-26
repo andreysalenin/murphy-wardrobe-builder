@@ -119,10 +119,16 @@ run({ skinT: 18, skinZ1: 3000, gapAbove: 61, H: 2400 }, 'skins up to the head');
   m = C.build({ skinT: 12, gapAbove: 134 });
   const G = m.G, sk = m.parts.filter(p => p.mark === 'T7');
   if (Math.abs(2 * G.cwo + 10 - W0) > 1e-9 || Math.abs(G.cwo - G.cw - 12) > 1e-9) probs.push('skins: carcass plus skins plus packing is not the width');
-  if (sk.length !== 2 || sk.some(p => Math.abs(p.L - (G.zTop - 0)) > 0.5 || p.T !== 12)) probs.push(`skins: expected two 12 mm skins floor to carcass top (got ${sk.map(p => p.T + ' x ' + p.L)})`);
+  if (sk.length !== 2 || sk.some(p => Math.abs(p.L - (G.zTop - G.kickH - C.DEFAULTS.gap)) > 0.5 || p.T !== 12)) probs.push(`skins: expected two 12 mm skins from a reveal above the kick to the carcass top (got ${sk.map(p => p.T + ' x ' + p.L)})`);
   if (Math.abs(G.xA - G.cw) > 1e-9 || G.doorX[1] > G.cw - C.DEFAULTS.gap + 1e-6) probs.push('skins: the fronts do not stop at the skins');
   if (m.checks.some(c => c.level === 'bad')) probs.push('skins 12 with a 134 header should have no bad checks: ' + m.checks.filter(c => c.level === 'bad').map(c => c.title));
-  if (!has(C.build({ skinT: 12 }), 'bad', /Skins longer than your sheets/)) probs.push('skins: over-long skins not flagged');
+  if (!has(C.build({ skinT: 12, skinZ0: 0 }), 'bad', /Skins longer than your sheets/)) probs.push('skins: over-long skins not flagged');
+  // by default the skins start a reveal over the kick, level with the drawer fronts, and come out of one sheet; the kick
+  // runs under them to the walls as one band
+  m = C.build({ skinT: 12 });
+  { const G = m.G, k = m.parts.filter(p => p.mark === 'K1').map(p => C.prismBox(p.solids[0]));
+    if (G.skinZ[0] !== G.fronts[0].z0 || G.skinZ[1] - G.skinZ[0] > 2440 - 2 * C.DEFAULTS.trim || m.checks.some(c => /Skins longer/.test(c.title))) probs.push(`skins: should start level with the drawer fronts and fit a sheet (got ${G.skinZ})`);
+    if (Math.abs(Math.min(...k.map(b => b[0])) - G.walls.R[1]) > 0.01 || Math.abs(Math.max(...k.map(b => b[3])) - G.walls.L[1]) > 0.01) probs.push('skins: the kick should run under them to the walls'); }
   if (!has(C.build({ skinT: 15 }), 'bad', /No 15 mm sheets/)) probs.push('skins: a thickness with no sheets not flagged');
   if (!has(C.build({ skinT: 18, skinZ0: 20 }), 'bad', /Skins and the kick board overlap/)) probs.push('skins: overlap with the kick not flagged');
   if (!has(C.build({ skinT: 12, packFL: 0, packFR: 0, packBL: -7 }), 'bad', /Too much to plane off a tower skin/)) probs.push('skins: planing over half the skin not flagged');
