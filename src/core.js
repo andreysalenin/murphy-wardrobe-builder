@@ -27,7 +27,7 @@ const DEFAULTS = {
   // a second layer of plywood on each tower's outer side ("12 + 18": a 12 skin on the 18 side), glued and screwed on
   // from inside the tower: its edge shows beside the fronts, flush with them, and it is what gets scribed or planed to
   // the wall. Packing is then from the skin to the wall. 0 = none.
-  skinT: 0,
+  skinT: 12,          // "12 + 18": a 12 skin on each tower's 18 outer side
   skinZ0: null,       // where the skins start: null = a reveal above the kick board, level with the drawer fronts' bottom
                       // edge, the kick running under them wall to wall as one band (and a skin then fits a 2440 sheet);
                       // 0 = on the floor (the kick runs between them); or a height at the kick's or more
@@ -196,7 +196,7 @@ const DEFAULTS = {
   grain: true,          // visible parts keep their grain along the sheet length
   sheets: [
     { T: 6, L: 2440, W: 1220, n: 5 },
-    { T: 12, L: 2440, W: 1220, n: 3 },
+    { T: 12, L: 2440, W: 1220, n: 4 },
     { T: 18, L: 2440, W: 1220, n: 8 },
   ],
 };
@@ -1157,6 +1157,10 @@ function build(params, opts) {
       const [kx0, kx1] = sx(s, G.cw, G.cwo), y0 = G.yB1 - P.Tback;
       put({ mark: 'T7', name: nm('Skin on the outer side'), cutName: `Skin, tower outer side (${G.skin} on ${T})`, grp, kind: 'carcass', T: G.skin, L: G.skinZ[1] - G.skinZ[0], W: G.yF - y0, grain: true, band: 0,
         solids: [box(kx0, kx1, y0, G.yF, G.skinZ[0], G.skinZ[1])] });
+      // with the skin up off the floor, the kick wraps round the plinth: a return of the skin's own plywood under it,
+      // from the back to just behind the kick board, on the plinth's outer end; the skin stands on it
+      if (G.skinZ[0] > 0.5) put({ mark: 'P3', name: nm('Plinth return under the skin'), cutName: 'Plinth return, under the skin', grp, kind: 'plinth', T: G.skin,
+        L: Math.round(G.yPlF - y0), W: Math.round(G.skinZ[0]), grain: false, solids: [box(kx0, kx1, y0, G.yPlF, 0, G.skinZ[0])] });
     }
     // hanging rail (hardware)
     const [rx0, rx1] = sx(s, G.xT2 + 2, G.xOi - 2);
@@ -2535,15 +2539,20 @@ function joinery(model) {
 
   for (const [S, s] of sides) {
     // ---------- plinth ladder
-    const pf = one(`Plinth front (${S})`), pb = one(`Plinth back (${S})`), eo = one(`Plinth end, outer (${S})`), ei = one(`Plinth end, inner (${S})`);
+    const pf = one(`Plinth front (${S})`), pb = one(`Plinth back (${S})`), eo = one(`Plinth end, outer (${S})`), ei = one(`Plinth end, inner (${S})`), rt = one(`Plinth return under the skin (${S})`);
     if (pf && pb && eo && ei) {
       const Tp = P.Tplinth, h = G.zPl, zs = spread(0, h, Math.min(13, h / 4), 60);
       const xo = s * (G.xOo - Tp / 2), xi = s * (G.xJ + Tp / 2);
-      inst('plinth', { show: S === 'R', side: S, bench: true, base: [eo, ei], ops: [{
+      const ops = [{
         title: 'Front and back onto the ends', add: [[pf, [0, E, 0]], [pb, [0, -E, 0]]],
         fast: [F('s50', pf, eo, [0, -1, 0], Tp, zs.map(z => [xo, G.yPlF - Tp, z])), F('s50', pf, ei, [0, -1, 0], Tp, zs.map(z => [xi, G.yPlF - Tp, z])),
           F('s50', pb, eo, [0, 1, 0], Tp, zs.map(z => [xo, G.yB1 + Tp, z])), F('s50', pb, ei, [0, 1, 0], Tp, zs.map(z => [xi, G.yB1 + Tp, z]))],
-        setout: `two a corner, ${zs.map(r05).join(' and ')} up, centred on the ends` }] });
+        setout: `two a corner, ${zs.map(r05).join(' and ')} up, centred on the ends` }];
+      if (rt) { const q = bb(eo), zr = spread(0, Math.min(h, bb(rt)[5]), Math.min(15, h / 4), 60);
+        ops.push({ title: 'Return onto the outer end, for the skin to stand on', add: [[rt, [s * E, 0, 0]]],
+          fast: [F('b25', rt, eo, [-s, 0, 0], G.skin, spread(q[1], q[4], 40, 200).flatMap(y => zr.map(z => [s * G.cw, y, z])))],
+          setout: `glued, its top flush with the plinth's, its front end ${r1(P.frontGap)} behind where the kick board's back face comes; it runs ${Math.round(bb(rt)[4] - bb(rt)[1])} from the back` }); }
+      inst('plinth', { show: S === 'R', side: S, bench: true, base: [eo, ei], ops });
     }
     // ---------- tower carcass
     const T1 = one(`Tower outer side (${S})`), T2 = one(`Tower inner side (${S})`), Tb = one(`Tower bottom (${S})`), Tt = one(`Tower top (${S})`);
@@ -2943,12 +2952,12 @@ function assembly(model, sheets) {
   st = step({ title: 'Drill everything on the flat', h: 3, parts: () => false,
     text: `Runner holes on the tower sides (${holes.join(', ')} from the front edge, on the centre lines on sheet 6); hinge-plate holes 37 back and 32 apart at the hinge heights; ${G.thin.side ? 'the 12 mm doors take thin-front hinges: two 10 mm dowel holes 6 deep, 32 apart, per hinge, at the boss positions on sheet 6' : `35 x 13 cups ${G.hingeDoor.cup} in from the door edges`} and ${G.thin.top ? 'two 10 x 6 dowel holes per hinge in the flaps' : `${G.hingeFlap.cup} below the flaps' top edges`}; shelf-pin holes; the dowel holes with a jig and the screw clearance holes, from the set-out strips in the assembly details; the kit plates on the bed-cabinet sides from sheet 6${P.cableHoles && G.cables ? '; the 20 mm cable holes from the table on sheet 8, each one through all its parts while they are loose, with a backing board so the far face does not splinter' : ''}.` });
 
-  st = step({ title: 'Build the plinths', h: 1, parts: (p) => p.mark === 'P1' || p.mark === 'P2',
-    text: `Glue and screw each ladder (two screws a corner), check the diagonals, then set it off the side wall by its packing (front / back: left ${r1(G.pack.FL)} / ${r1(G.pack.BL)}, right ${r1(G.pack.FR)} / ${r1(G.pack.BR)})${G.skin ? ` plus the ${r1(G.skin)} skin` : ''} and ${f0(P.backGap)} off the back and level it from the floor's high point with packers under its members.` });
+  st = step({ title: 'Build the plinths', h: 1, parts: (p) => p.mark === 'P1' || p.mark === 'P2' || p.mark === 'P3',
+    text: `Glue and screw each ladder (two screws a corner)${has('P3') ? `, and the ${r1(G.skin)} return onto its outer end, the kick board wrapping round for the skin to stand on` : ''}, check the diagonals, then set it off the side wall by its packing (front / back: left ${r1(G.pack.FL)} / ${r1(G.pack.BL)}, right ${r1(G.pack.FR)} / ${r1(G.pack.BR)})${G.skin ? ` plus the ${r1(G.skin)} skin` : ''} and ${f0(P.backGap)} off the back and level it from the floor's high point with packers under its members.` });
   addJ(st, 'plinth');
   if (G.skin) {
     st = step({ title: 'Skins on the side walls', h: 2.5, parts: (p) => p.mark === 'T7',
-      text: `Each skin is ${r1(G.skin)} plywood, ${f0(G.skinZ[1] - G.skinZ[0])} tall from ${f0(G.skinZ[0])} up and ${f0(G.yF - G.yB1 + P.Tback)} deep, its front edge flush with the face of the fronts. Offer it up against its wall, scribe the wall's line onto it with the packing at the corners (front / back: left ${r1(G.pack.FL)} / ${r1(G.pack.BL)}, right ${r1(G.pack.FR)} / ${r1(G.pack.BR)})${[G.pack.FL, G.pack.FR, G.pack.BL, G.pack.BR].some(v => v < 0) ? ', plane it where that is negative,' : ''} and plumb its front edge. Pack it off the wall and screw through it and the packers into the side-wall studs, heads sunk: the tower covers them. Sand its front edge to 240 and finish it with the fronts: it stays plywood.` });
+      text: `Each skin is ${r1(G.skin)} plywood, ${f0(G.skinZ[1] - G.skinZ[0])} tall from ${f0(G.skinZ[0])} up${has('P3') ? ', standing on the plinth\'s return' : ''} and ${f0(G.yF - G.yB1 + P.Tback)} deep, its front edge flush with the face of the fronts. Offer it up against its wall, scribe the wall's line onto it with the packing at the corners (front / back: left ${r1(G.pack.FL)} / ${r1(G.pack.BL)}, right ${r1(G.pack.FR)} / ${r1(G.pack.BR)})${[G.pack.FL, G.pack.FR, G.pack.BL, G.pack.BR].some(v => v < 0) ? ', plane it where that is negative,' : ''} and plumb its front edge. Pack it off the wall and screw through it and the packers into the side-wall studs, heads sunk: the tower covers them. Sand its front edge to 240 and finish it with the fronts: it stays plywood.` });
     add(st, 'w75', nTow * 4);
   }
   st = step({ title: 'Assemble the tower carcasses', h: 3, parts: (p) => ['T1', 'T2', 'T3', 'T4', 'T6'].includes(p.mark),

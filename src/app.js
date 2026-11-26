@@ -42,6 +42,11 @@ if (!readLS(LS_KEY + ':towers18')) {
   if (Number(params.Tshelf) === 12) params.Tshelf = 18;
   writeLS(LS_KEY + ':towers18', 1);
 }
+// 12 mm skins are now the default: saved settings still on the old 0 (none) follow, once
+if (!readLS(LS_KEY + ':skin12')) {
+  if (!Number(params.skinT)) params.skinT = 12;
+  writeLS(LS_KEY + ':skin12', 1);
+}
 // skins now start a reveal above the kick board by default (one band of kick right across, a skin out of one sheet):
 // saved settings on the old 0 (on the floor) follow, once
 if (!readLS(LS_KEY + ':skinOnKick')) {

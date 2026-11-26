@@ -91,7 +91,7 @@ run({ skinT: 18, skinZ1: 3000, gapAbove: 61, H: 2400 }, 'skins up to the head');
   const legacy = C.normParams({ sideClear: 7 });
   if (legacy.packFL !== 7 || legacy.packFR !== 7 || 'sideClear' in legacy) probs.push('an old sideClear does not become the front packing');
   let m = C.build({});
-  if (Math.abs(m.G.cw * 2 + m.P.packFL + m.P.packFR - m.P.W) > 1e-9) probs.push('carcass + front packing is not the front width');
+  if (Math.abs(m.G.cwo * 2 + m.P.packFL + m.P.packFR - m.P.W) > 1e-9) probs.push('carcass + skins + front packing is not the front width');
   if (!has(m, 'info', /^Symmetric about the opening/)) probs.push('default is not reported symmetric');
   m = C.build({ Wback: W0 - 3, packBL: 3 });
   if (Math.abs(m.G.pack.BR - 4) > 1e-9 || Math.abs(m.G.pack.backSum - (W0 - 3)) > 1e-9) probs.push(`back-right blank should take what is left (got ${m.G.pack.BR})`);
@@ -108,12 +108,12 @@ run({ skinT: 18, skinZ1: 3000, gapAbove: 61, H: 2400 }, 'skins up to the head');
   const fix = C.centreOnOpening({ wallStudL: 25, wallStudR: 27, packFL: 40, packFR: 43 });
   m = C.build({ wallStudL: 25, wallStudR: 27, packFL: 40, packFR: 43, ...fix });
   if (Math.abs(m.G.openOff) > 0.05) probs.push('centre on the opening does not centre it');
-  m = C.build({ wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43 });
+  m = C.build({ wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, skinT: 0 });
   if (m.checks.some(c => c.level === 'bad') || !has(m, 'info', /^Symmetric about the opening/) || Math.abs(m.G.xA - (W0 - 84) / 2) > 1e-9) probs.push('41 / 43 packing against 25 / 27 studs should fit, symmetric, 1187 each side');
   if (m.parts.filter(p => p.mark === 'WS').length !== 4) probs.push('expected a stud and its cladding each side');
   const step = C.writeSTEP ? C.writeSTEP(m) : '';
   if (step && /Stud/.test(step)) probs.push('the studs went into the STEP file');
-  m = C.build({ wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, wallStudFronts: false });
+  m = C.build({ wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, wallStudFronts: false, skinT: 0 });
   if (!has(m, 'bad', /door runs into the clad stud/)) probs.push('doors past the clad studs not flagged');
   // skins: the carcass narrows by them, the fronts stop at them, the walls stay where they are
   m = C.build({ skinT: 12, gapAbove: 134 });
@@ -129,6 +129,10 @@ run({ skinT: 18, skinZ1: 3000, gapAbove: 61, H: 2400 }, 'skins up to the head');
   { const G = m.G, k = m.parts.filter(p => p.mark === 'K1').map(p => C.prismBox(p.solids[0]));
     if (G.skinZ[0] !== G.fronts[0].z0 || G.skinZ[1] - G.skinZ[0] > 2440 - 2 * C.DEFAULTS.trim || m.checks.some(c => /Skins longer/.test(c.title))) probs.push(`skins: should start level with the drawer fronts and fit a sheet (got ${G.skinZ})`);
     if (Math.abs(Math.min(...k.map(b => b[0])) - G.walls.R[1]) > 0.01 || Math.abs(Math.max(...k.map(b => b[3])) - G.walls.L[1]) > 0.01) probs.push('skins: the kick should run under them to the walls'); }
+  { const m2 = C.build({}), G = m2.G, rt = m2.parts.filter(p => p.mark === 'P3'), sk = m2.parts.filter(p => p.mark === 'T7');
+    if (m2.P.skinT !== 12 || sk.length !== 2) probs.push('skins: 12 mm skins should be the default');
+    if (rt.length !== 2 || rt.some(p => { const b = C.prismBox(p.solids[0]); return Math.abs(b[5] - G.skinZ[0]) > 0.01 || b[2] !== 0 || Math.abs(Math.abs(b[0] + b[3]) / 2 - (G.cw + G.cwo) / 2) > 0.01 || b[4] > G.yKb; })) probs.push('skins: a return under each skin, floor to its bottom edge, behind the kick, expected');
+    if (C.build({ skinZ0: 0 }).parts.some(p => p.mark === 'P3')) probs.push('skins: no return when the skins stand on the floor'); }
   if (!has(C.build({ skinT: 15 }), 'bad', /No 15 mm sheets/)) probs.push('skins: a thickness with no sheets not flagged');
   if (!has(C.build({ skinT: 18, skinZ0: 20 }), 'bad', /Skins and the kick board overlap/)) probs.push('skins: overlap with the kick not flagged');
   if (!has(C.build({ skinT: 12, packFL: 0, packFR: 0, packBL: -7 }), 'bad', /Too much to plane off a tower skin/)) probs.push('skins: planing over half the skin not flagged');
@@ -145,7 +149,7 @@ run({ skinT: 18, skinZ1: 3000, gapAbove: 61, H: 2400 }, 'skins up to the head');
   if (!has(C.build({ gapAbove: 54 }), 'bad', /Runs into the head of the opening/)) probs.push('head: a carcass top into the head is not flagged');
   if (!has(C.build({ gapAbove: 58 }), 'warn', /Tight under the head/)) probs.push('head: 3 under the head is not flagged tight');
   if (!has(C.build({ headDrop: 0, gapAbove: 40 }), 'bad', /Runs into the cornice on the left wall/)) probs.push('cornice: header filler into the side cornices not flagged');
-  if (C.build({ headDrop: 0, gapAbove: 40, corniceSides: false, corniceBack: false }).checks.some(c => c.level === 'bad')) probs.push('cornice: with the head and the cornices in the cavity gone, nothing should clash');
+  if (C.build({ headDrop: 0, gapAbove: 40, corniceSides: false, corniceBack: false, skinT: 0 }).checks.some(c => c.level === 'bad')) probs.push('cornice: with the head and the cornices in the cavity gone, nothing should clash');
   if (!has(C.build({ headDrop: 0, gapAbove: 10 }), 'bad', /Runs into the cornice on the back wall/)) probs.push('cornice: a carcass top into the back-wall cornice not flagged');
   m = C.build({ skinT: 12, skinZ1: 2564 });
   if (m.G.skinZ[1] !== m.G.zHead) probs.push('head: skins run to the ceiling should stop under the head');
@@ -175,8 +179,8 @@ run({ skinT: 18, skinZ1: 3000, gapAbove: 61, H: 2400 }, 'skins up to the head');
   // the headboard ledge's big panels in 12 with ribs behind the front; in 18 the parts spill onto a ninth 18, laid out to buy
   m = C.build({});
   if (m.parts.filter(p => p.mark === 'H13').length !== 3 || m.parts.find(p => p.mark === 'H2').T !== 12 || m.parts.find(p => p.mark === 'H11').T !== 12 || m.parts.find(p => p.mark === 'H1').T !== 18) probs.push('ledge: a 12 front and well floor with three ribs, the sill 18, expected');
-  { const S18 = C.summary(C.build({ TledgePanel: 18 })).sheets.find(q => q.T === 18);
-    if (!S18 || S18.used !== 8 || S18.extra.length !== 1 || !S18.extra[0].buy || S18.extra[0].items.length !== S18.unplaced.length || C.build({ TledgePanel: 18 }).parts.some(p => p.mark === 'H13')) probs.push(`sheets: with an 18 ledge the overflow should be laid out on one sheet to buy (got ${S18 && [S18.used, S18.extra.length]})`); }
+  { const S18 = C.summary(C.build({ TledgePanel: 18, skinT: 0 })).sheets.find(q => q.T === 18);
+    if (!S18 || S18.used !== 8 || S18.extra.length !== 1 || !S18.extra[0].buy || S18.extra[0].items.length !== S18.unplaced.length || C.build({ TledgePanel: 18, skinT: 0 }).parts.some(p => p.mark === 'H13')) probs.push(`sheets: with an 18 ledge the overflow should be laid out on one sheet to buy (got ${S18 && [S18.used, S18.extra.length]})`); }
   m = C.build({ roomRight: 100, doorW: 0, winWall: 'none' });
   if (Math.abs(m.room.x[0] - (m.G.walls.R[1] - 100)) > 0.01 || m.room.quads.length !== 10 || m.room.coves.length !== 5 || m.room.door || m.room.window) probs.push(`room: 100 to the right wall, no door or window: expected 10 walls and ceilings, 5 cornice runs (got ${m.room.x}, ${m.room.quads.length}, ${m.room.coves.length})`);
   m = C.build({});
