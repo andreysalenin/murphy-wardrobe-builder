@@ -198,7 +198,8 @@ const DEFAULTS = {
   grain: true,          // visible parts keep their grain along the sheet length
   sheets: [
     { T: 6, L: 2440, W: 1220, n: 5 },
-    { T: 12, L: 2440, W: 1220, n: 4 },
+    { T: 12, L: 2440, W: 1220, n: 3 },
+    { T: 12, L: 500, W: 300, n: 6 },  // offcuts on hand: the small parts come out of these before another full sheet
     { T: 18, L: 2440, W: 1220, n: 8 },
   ],
 };
@@ -3086,11 +3087,18 @@ function packBest(list, stock, kerf, trim) {
     (a, b) => b.W - a.W || b.L - a.L,
     (a, b) => (b.L + b.W) - (a.L + a.W),
   ];
+  // better: fewer parts left over, then less plywood opened (so offcuts on hand get used before another full sheet),
+  // then fewer sheets, then the last sheet emptiest
+  const area = (r) => r.bins.reduce((a, b) => a + b.L * b.W, 0);
+  const better = (s1, s2) => { for (let i = 0; i < s1.length; i++) { if (s1[i] < s2[i] - 1e-9) return true; if (s1[i] > s2[i] + 1e-9) return false; } return false; };
+  // with sheets of more than one size, also try opening the smallest first: a small part then starts an offcut
+  const orders = [stock];
+  if (new Set(stock.map(st => st.L * st.W)).size > 1) orders.push(stock.slice().sort((a, b) => a.L * a.W - b.L * b.W));
   let best = null;
-  for (const so of sorts) for (const fit of ['baf', 'bssf', 'blsf']) for (const split of ['sas', 'las', 'minas', 'maxas']) {
-    const r = packGuillotine(list.slice().sort(so), stock, kerf, trim, fit, split);
-    const score = [r.unplaced.length, r.bins.length, r.lastFill];
-    if (!best || score[0] < best.score[0] || (score[0] === best.score[0] && (score[1] < best.score[1] || (score[1] === best.score[1] && score[2] < best.score[2])))) best = Object.assign(r, { score });
+  for (const st of orders) for (const so of sorts) for (const fit of ['baf', 'bssf', 'blsf']) for (const split of ['sas', 'las', 'minas', 'maxas']) {
+    const r = packGuillotine(list.slice().sort(so), st, kerf, trim, fit, split);
+    const score = [r.unplaced.length, area(r), r.bins.length, r.lastFill];
+    if (!best || better(score, best.score)) best = Object.assign(r, { score, stock: st });
   }
   // still parts over: try perturbed orders (seeded, so the same design always nests the same way)
   if (best.unplaced.length) {
@@ -3100,9 +3108,9 @@ function packBest(list, stock, kerf, trim) {
     for (let it = 0; it < 400 && best.unplaced.length; it++) {
       const jit = 0.15 + 0.35 * rnd(), keyed = list.map(p => [p, Math.max(p.L, p.W) * (1 + jit * (rnd() - 0.5)) + (rnd() < 0.5 ? p.L * p.W / 1e4 : 0)]);
       keyed.sort((a, b) => b[1] - a[1]);
-      const r = packGuillotine(keyed.map(k => k[0]), stock, kerf, trim, fits[Math.floor(rnd() * 3)], splits[Math.floor(rnd() * 4)]);
-      const score = [r.unplaced.length, r.bins.length, r.lastFill];
-      if (score[0] < best.score[0] || (score[0] === best.score[0] && (score[1] < best.score[1] || (score[1] === best.score[1] && score[2] < best.score[2])))) best = Object.assign(r, { score });
+      const st = orders[Math.floor(rnd() * orders.length)], r = packGuillotine(keyed.map(k => k[0]), st, kerf, trim, fits[Math.floor(rnd() * 3)], splits[Math.floor(rnd() * 4)]);
+      const score = [r.unplaced.length, area(r), r.bins.length, r.lastFill];
+      if (better(score, best.score)) best = Object.assign(r, { score, stock: st });
     }
   }
   return best;

@@ -58,6 +58,11 @@ if (!readLS(LS_KEY + ':trim05')) {
   if (Number(params.trim) === 5) params.trim = 0.5;
   writeLS(LS_KEY + ':trim05', 1);
 }
+// six 500 x 300 offcuts of 12 on hand: added to saved sheet lists that lack them, once
+if (!readLS(LS_KEY + ':offcuts12')) {
+  if (Array.isArray(params.sheets) && !params.sheets.some(q => Number(q.T) === 12 && Number(q.L) === 500 && Number(q.W) === 300)) params.sheets.push({ T: 12, L: 500, W: 300, n: 6 });
+  writeLS(LS_KEY + ':offcuts12', 1);
+}
 // you have eight sheets of 18: saved settings still on the old default of nine follow, once
 if (!readLS(LS_KEY + ':eight18')) {
   if (Array.isArray(params.sheets)) for (const q of params.sheets) if (Number(q.T) === 18 && Number(q.n) === 9 && Number(q.L) === 2440) q.n = 8;
@@ -280,12 +285,18 @@ function renderSummary() {
 }
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 const TCLASS = (t) => t === 6 ? 't6' : t === 12 ? 't12' : t === 18 ? 't18' : 'tx';
+// sheets used of those on hand, per size when a thickness comes in more than one
+function stockText(s) {
+  const sizes = params.sheets.filter(q => Number(q.T) === s.T);
+  if (sizes.length < 2) return `${s.used} of ${s.have}`;
+  return sizes.map(q => `${s.bins.filter(b => b.L === Number(q.L) && b.W === Number(q.W)).length} of ${q.n} <small>${q.L} x ${q.W}</small>`).join(', ');
+}
 function renderSheets() {
   const S = summary;
   $('stock').innerHTML = S.sheets.map(s => {
     const pct = s.have ? Math.min(100, (s.used / s.have) * 100) : 100;
     const over = s.unplaced.length > 0;
-    return `<div class="s${over ? ' over' : ''}"><div class="h"><b>${s.T} mm</b><span>${s.used}${over && isFinite(s.need) ? ' (+' + (s.need - s.used) + ')' : ''} of ${s.have} sheets</span></div>` +
+    return `<div class="s${over ? ' over' : ''}"><div class="h"><b>${s.T} mm</b><span>${over && isFinite(s.need) ? `${s.used} (+${s.need - s.used}) of ${s.have}` : stockText(s)} sheets</span></div>` +
       `<div class="bar"><i style="width:${pct}%;background:var(--${TCLASS(s.T) === 'tx' ? 'tx' : TCLASS(s.T)})"></i></div>` +
       `<div class="hint">${s.area ? `${(s.area / 1e6).toFixed(2)} m² of parts, ${s.sheetArea ? Math.round(s.area / s.sheetArea * 100) : 0}% of the sheets used` : 'not used'}</div></div>`;
   }).join('');
