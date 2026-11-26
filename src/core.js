@@ -3293,7 +3293,8 @@ function makeZip(files) { // files: [{name, data: Uint8Array}]
 
 const api = { PILLOW, DEFAULTS, COLORS, wallAt, centreOnOpening, SOURCES, HW_ASSUMPTIONS, reviewNotes, assembly, joinery, FAST, TAGS, cyl, box, RUNNER_STD, RUNNER_HW, HINGE_HW, HINGE_FLAP, HINGE_THIN, HINGE_FLAP_THIN, runnerHoles, hingeFit, PLY_DENSITY, normParams, derived, build, cutList, nest, summary, writeSTEP, makeZip, crc32,
   prismBox, prismCorners, prismVolume, loopPolyline, to3, rot2, rotYZ, rotatePrism, legGeom, legPsi, bedProfile, clearances, hingeZs, springEnds, stayEnds, springSolids, staySolids, linkEnds, linkSolids, rectLoopR01,
-  KIT_HW, gapFacts, clearanceSchedule, hingeGapMin, springSegs, staySegs, dynSegs, springCaps };
+  KIT_HW, gapFacts, clearanceSchedule, hingeGapMin, springSegs, staySegs, dynSegs, springCaps,
+  furnitureLoaded: () => !!(furnitureLib().emmerson && furnitureLib().alex) };
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
 else root.MurphyCore = api;
 })(typeof window !== 'undefined' ? window : globalThis);

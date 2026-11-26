@@ -192,7 +192,8 @@ function renderCavity() {
   if ($('skinZ1')) $('skinZ1').placeholder = r1(G.zTop);
   if ($('kickTower')) $('kickTower').placeholder = r1(G.kickC || G.gapBelow - P.gap);
   if ($('roomH')) $('roomH').placeholder = r1(P.H);
-  const fi = model.room.furn;
+  const fi = model.room.furn, loaded = C.furnitureLoaded();
+  document.querySelectorAll('[data-furn]').forEach(el => { el.hidden = !loaded; });
   if ($('deskH')) $('deskH').placeholder = fi ? r1(fi.h) : '';
   if ($('furn-note')) $('furn-note').innerHTML = !fi ? (P.furniture ? 'The desk and ALEX models are not loaded.' : '')
     : `Desk tops at <b>${r1(fi.h)}</b>, ${fi.clear != null ? `${r1(fi.clear)} over the ALEX's ${r1(fi.alexTop)} top` : `the ALEX ${r1(fi.alexTop)} tall`}; the tops are ${r1(fi.between)} apart, so it runs ${r1(fi.over)} under each. Bed down: <b>${r1(fi.deskFront - model.G.clear.open.reach)}</b> from its foot to the desks.`;

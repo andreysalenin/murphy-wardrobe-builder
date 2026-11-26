@@ -80,6 +80,7 @@ details.grp[open] > summary .chev { transform: rotate(45deg); }
 .num input:focus { outline: none; }
 .num:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 select { border: 1px solid var(--line); border-radius: var(--r); background: var(--bg); padding: 6px 8px; font-size: 14px; max-width: 190px; }
+[data-furn][hidden] { display: none !important; }
 input.swatch { width: 64px; height: 34px; padding: 2px; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg); cursor: pointer; }
 select:disabled { opacity: 0.55; cursor: not-allowed; background: color-mix(in srgb, var(--line) 35%, var(--bg)); }
 .stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--bg); }
@@ -382,13 +383,13 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="field" data-when="!winWall=none"><div><label for="winReveal">Sill board width</label><small>Room face to the frame; the black aluminium frame takes the rest of the wall.</small></div><div class="num"><input id="winReveal" type="number" min="0" max="380" step="1" inputmode="numeric"><span>mm</span></div></div>
           <div class="field" data-when="!winWall=none"><div><label for="winVent">Pane that opens</label><small>Two equal panes: one hung at its top, opening out at the bottom; the other fixed.</small></div><select id="winVent"><option value="right">The right one</option><option value="left">The left one</option><option value="none">Neither</option></select></div>
           <div class="field" data-when="!winWall=none !winVent=none"><label for="winOpen">Open by</label><div class="num"><input id="winOpen" type="number" min="0" max="60" step="1" inputmode="numeric"><span>deg</span></div></div>
-          <label class="check"><input type="checkbox" id="furniture"> <span>By the far wall: two Castlery Emmerson desks in its corners, an IKEA ALEX between, the desks just clearing it</span></label>
-          <div class="field" data-when="furniture"><label for="deskLen">Desk length</label><div class="num"><input id="deskLen" type="number" min="800" max="2400" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <div class="field" data-when="furniture"><div><label for="deskGap">Off the walls</label><small>Desks and the ALEX.</small></div><div class="num"><input id="deskGap" type="number" min="0" max="200" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <div class="field" data-when="furniture"><div><label for="deskH">Desk height</label><small>To the top surface. Blank: just clear the ALEX.</small></div><div class="num"><input id="deskH" type="number" min="500" max="1400" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <div class="field" data-when="furniture"><div><label for="deskClear">Clear over the ALEX</label><small>When the height works itself out.</small></div><div class="num"><input id="deskClear" type="number" min="0" max="100" step="1" inputmode="numeric"><span>mm</span></div></div>
-          <div class="field" data-when="furniture"><label for="alexColor">ALEX colour</label><input id="alexColor" type="color" class="swatch"></div>
-          <div class="hint" id="furn-note" data-when="furniture"></div>
+          <label class="check" data-furn><input type="checkbox" id="furniture"> <span>By the far wall: two Castlery Emmerson desks in its corners, an IKEA ALEX between, the desks just clearing it</span></label>
+          <div class="field" data-furn data-when="furniture"><label for="deskLen">Desk length</label><div class="num"><input id="deskLen" type="number" min="800" max="2400" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-furn data-when="furniture"><div><label for="deskGap">Off the walls</label><small>Desks and the ALEX.</small></div><div class="num"><input id="deskGap" type="number" min="0" max="200" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-furn data-when="furniture"><div><label for="deskH">Desk height</label><small>To the top surface. Blank: just clear the ALEX.</small></div><div class="num"><input id="deskH" type="number" min="500" max="1400" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-furn data-when="furniture"><div><label for="deskClear">Clear over the ALEX</label><small>When the height works itself out.</small></div><div class="num"><input id="deskClear" type="number" min="0" max="100" step="1" inputmode="numeric"><span>mm</span></div></div>
+          <div class="field" data-furn data-when="furniture"><label for="alexColor">ALEX colour</label><input id="alexColor" type="color" class="swatch"></div>
+          <div class="hint" id="furn-note" data-furn data-when="furniture"></div>
           <div class="sub-hd"><span>Studs in the side walls</span></div>
           <div class="hint">A stud standing proud of each side wall near the front, floor to ceiling. 0: none.</div>
           <div class="field"><label for="wallStudL">Stands out, left</label><div class="num"><input id="wallStudL" type="number" min="0" max="150" step="0.5" inputmode="decimal"><span>mm</span></div></div>
@@ -4314,7 +4315,8 @@ function makeZip(files) { // files: [{name, data: Uint8Array}]
 
 const api = { PILLOW, DEFAULTS, COLORS, wallAt, centreOnOpening, SOURCES, HW_ASSUMPTIONS, reviewNotes, assembly, joinery, FAST, TAGS, cyl, box, RUNNER_STD, RUNNER_HW, HINGE_HW, HINGE_FLAP, HINGE_THIN, HINGE_FLAP_THIN, runnerHoles, hingeFit, PLY_DENSITY, normParams, derived, build, cutList, nest, summary, writeSTEP, makeZip, crc32,
   prismBox, prismCorners, prismVolume, loopPolyline, to3, rot2, rotYZ, rotatePrism, legGeom, legPsi, bedProfile, clearances, hingeZs, springEnds, stayEnds, springSolids, staySolids, linkEnds, linkSolids, rectLoopR01,
-  KIT_HW, gapFacts, clearanceSchedule, hingeGapMin, springSegs, staySegs, dynSegs, springCaps };
+  KIT_HW, gapFacts, clearanceSchedule, hingeGapMin, springSegs, staySegs, dynSegs, springCaps,
+  furnitureLoaded: () => !!(furnitureLib().emmerson && furnitureLib().alex) };
 if (typeof module !== 'undefined' && module.exports) module.exports = api;
 else root.MurphyCore = api;
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -8470,7 +8472,8 @@ function renderCavity() {
   if ($('skinZ1')) $('skinZ1').placeholder = r1(G.zTop);
   if ($('kickTower')) $('kickTower').placeholder = r1(G.kickC || G.gapBelow - P.gap);
   if ($('roomH')) $('roomH').placeholder = r1(P.H);
-  const fi = model.room.furn;
+  const fi = model.room.furn, loaded = C.furnitureLoaded();
+  document.querySelectorAll('[data-furn]').forEach(el => { el.hidden = !loaded; });
   if ($('deskH')) $('deskH').placeholder = fi ? r1(fi.h) : '';
   if ($('furn-note')) $('furn-note').innerHTML = !fi ? (P.furniture ? 'The desk and ALEX models are not loaded.' : '')
     : `Desk tops at <b>${r1(fi.h)}</b>, ${fi.clear != null ? `${r1(fi.clear)} over the ALEX's ${r1(fi.alexTop)} top` : `the ALEX ${r1(fi.alexTop)} tall`}; the tops are ${r1(fi.between)} apart, so it runs ${r1(fi.over)} under each. Bed down: <b>${r1(fi.deskFront - model.G.clear.open.reach)}</b> from its foot to the desks.`;
