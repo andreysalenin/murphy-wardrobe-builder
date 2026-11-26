@@ -10,7 +10,7 @@ const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'skinZ0', 'wallS
   'springD', 'springRodD', 'springEndD', 'springBodyL', 'studS', 'plateT', 'nutStack', 'stopD', 'stopH', 'legD',
   'railD', 'headRailD', 'footRailD', 'railR', 'legFromFoot', 'legFromTop', 'struts', 'ladderW',
   'ledgeClear', 'headAngle', 'headH', 'headGap', 'headLip', 'headClear', 'headDoorOpen', 'headGPO', 'headZone', 'upstand', 'steelH', 'steelT', 'twinSpacing', 'lockPinX', 'wallRail', 'kerf', 'trim'];
-const OPT_FIELDS = ['Wback', 'packBL', 'packBR', 'skinZ1'];  // blank: worked out from the others
+const OPT_FIELDS = ['Wback', 'packBL', 'packBR', 'skinZ1', 'kickTower'];  // blank: worked out from the others
 const SEL_FIELDS = ['kickCentre', 'doorHinge', 'lockType', 'headHinge'];
 const CHK_FIELDS = ['topShelf', 'cableHoles', 'headStore', 'supportOffset', 'faceReveal', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain', 'wallStudFronts'];
 
@@ -172,6 +172,7 @@ function renderCavity() {
   if ($('packBL')) $('packBL').placeholder = r1(P.packFL);
   if ($('packBR')) $('packBR').placeholder = r1(pk.Wb - 2 * G.cwo - pk.BL);
   if ($('skinZ1')) $('skinZ1').placeholder = r1(G.zTop);
+  if ($('kickTower')) $('kickTower').placeholder = r1(G.kickC || P.gapBelow - P.gap);
   const off = G.openOff, studs = G.wstuds.length && P.wallStudFronts;
   const add = Math.abs(pk.backSum - pk.Wb) > 0.5 ? ` <b>The back adds up to ${r1(pk.backSum)}, not ${r1(pk.Wb)}.</b>` : '';
   if ($('pack-note')) $('pack-note').innerHTML = `Carcass <b>${r1(2 * G.cw)}</b> wide${G.skin ? `, <b>${r1(2 * G.cwo)}</b> over the skins` : ''}. ${G.skin ? 'Opening between the skins' : studs ? 'Opening between the clad studs' : 'Opening'} <b>${r1(G.openL + G.openR)}</b>, ` +

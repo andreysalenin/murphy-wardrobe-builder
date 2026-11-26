@@ -55,6 +55,8 @@ run({ W: 2600, H: 2400, D: 560, drawers: [150, 150, 200, 250, 250], hangClear: 9
 run({ mT: 305, gapHydr: 25, kickCentre: 'full', topShelf: false, ledge: false, packer: false }, 'edge');
 run({ wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, Wback: W0 - 1, packBL: 40 }, 'studs, out of square');
 run({ skinT: 12, gapAbove: 134 }, 'skins 12 + 18');
+run({ kickTower: 100 }, 'kick 100 under the towers');
+run({ kickTower: 100, skinT: 12, skinZ0: 100 }, 'tower kick under the skins');
 run({ skinT: 18, skinZ0: 45, gapAbove: 89, doorHinge: 'inner', packFL: 0, packFR: 3, packBL: -4 }, 'skins 18 + 18 on the kick');
 run({ skinT: 18, skinZ1: 3000, gapAbove: 54, H: 2400 }, 'skins to the ceiling');
 
@@ -64,7 +66,7 @@ run({ skinT: 18, skinZ1: 3000, gapAbove: 54, H: 2400 }, 'skins to the ceiling');
   try { globalThis.jspdf = require('jspdf'); } catch (e) { /* widths fall back to an estimate */ }
   require('../src/drawings.js');
   const Dw = globalThis.MurphyDrawings, probs = [];
-  const sets = [['default', {}], ['studs', { wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, Wback: W0 - 2, packBL: 39 }], ['skins', { skinT: 12, gapAbove: 134 }], ['wide', { W: 2900, H: 2700 }],
+  const sets = [['default', {}], ['studs', { wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, Wback: W0 - 2, packBL: 39 }], ['skins', { skinT: 12, gapAbove: 134 }], ['kick 100', { kickTower: 100 }], ['wide', { W: 2900, H: 2700 }],
     ['no headboard', { headStore: false, doorHinge: 'inner', headWell: 0 }], ['thin, 5 drawers', { TfDrawer: 12, TfSide: 12, TfTop: 12, drawers: [160, 160, 200, 220, 240], topShelf: false }]];
   for (const [label, q] of sets) {
     try {
@@ -128,6 +130,14 @@ run({ skinT: 18, skinZ1: 3000, gapAbove: 54, H: 2400 }, 'skins to the ceiling');
   const kh = (q) => C.build(q).parts.filter(p => /^K[13]$/.test(p.mark)).map(p => p.name).sort().join(', ');
   if (kh({}) !== 'Header filler (L half), Header filler (R half), Kick board (L half), Kick board (R half)') probs.push('planks: default should be halves, got ' + kh({}));
   if (kh({ W: 2400 }) !== 'Header filler, one piece, Kick board, one piece') probs.push('planks: a 2400 cavity should be one piece each, got ' + kh({ W: 2400 }));
+  // the towers' own kick height: the drawers sit a reveal above it, the bed keeps the height its swing allows
+  m = C.build({ kickTower: 100 });
+  { const G = m.G, k = m.parts.filter(p => p.mark === 'K1');
+    if (!G.kickStep || G.zPl !== 100 + C.DEFAULTS.gap || G.fronts[0].z0 !== G.zPl) probs.push(`tower kick: drawers should start at ${100 + C.DEFAULTS.gap} (got ${G.fronts[0].z0})`);
+    if (k.length !== 3 || k.filter(p => p.W === 100).length !== 2 || k.filter(p => p.W === G.kickC).length !== 1) probs.push('tower kick: expected two 100 kicks and one under the bed, got ' + k.map(p => p.name + ' ' + p.W));
+    if (m.checks.some(c => c.level === 'bad')) probs.push('tower kick 100: bad checks ' + m.checks.filter(c => c.level === 'bad').map(c => c.title)); }
+  m = C.build({ kickTower: 100, skinT: 12, skinZ0: 50 });
+  if (!has(m, 'bad', /Skins and the kick board overlap/)) probs.push('tower kick: skins starting inside the towers\' kick not flagged');
   console.log(`cavity: ${probs.length} problems`); probs.forEach(p => console.log('   ' + p));
   if (probs.length) process.exitCode = 1;
 }
@@ -239,6 +249,7 @@ jp += checkJoinery({ headWell: 50, headHinge: 'front' }, 'joinery well 50, front
 jp += checkJoinery({ headStore: false, headAngle: 0 }, 'joinery plain headboard');
 jp += checkJoinery({ wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, Wback: W0 - 1, packBL: 40 }, 'joinery studs');
 jp += checkJoinery({ skinT: 12, gapAbove: 134 }, 'joinery skins 12');
+jp += checkJoinery({ kickTower: 100, skinT: 12, gapAbove: 134 }, 'joinery tower kick 100');
 jp += checkJoinery({ skinT: 18, skinZ0: 45, gapAbove: 89, doorHinge: 'inner' }, 'joinery skins 18 on the kick');
 jp += checkJoinery({ packFL: 0, packFR: 0, packBL: -2 }, 'joinery planed');
 if (jp) process.exitCode = 1;

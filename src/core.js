@@ -58,6 +58,8 @@ const DEFAULTS = {
   gap: 6,             // gapdraw: reveal between fronts
   gapAbove: 54,       // gapabove: header filler height
   kickCentre: 'auto', // kick board under the bed: auto (lowered to clear the swing) | full | none
+  kickTower: null,    // kick under the towers: null = the same as under the bed, one line right across; a height (100,
+                      // say) gives the towers their own, the drawers a reveal above it and the step at the bed face's reveal
   // plywood
   T: 18,              // plythicka: carcass, fronts, bed frame
   Tb: 12,             // plythickb: drawer boxes
@@ -273,6 +275,7 @@ function normParams(p) {
   if (!Array.isArray(P.drawers) || !P.drawers.length) P.drawers = DEFAULTS.drawers.slice();
   P.drawers = P.drawers.slice(0, 10).map(h => { const v = Number(h); return isFinite(v) ? Math.min(600, Math.max(80, v)) : 180; });
   if (!['auto', 'full', 'none'].includes(P.kickCentre)) P.kickCentre = 'auto';
+  opt('kickTower', 15, 250);
   P.topShelf = !!P.topShelf; P.headStore = P.headStore !== false; P.cableHoles = P.cableHoles !== false; P.supportOffset = !!P.supportOffset; P.faceReveal = !!P.faceReveal; P.packer = !!P.packer; P.ledge = !!P.ledge; P.grain = !!P.grain; P.headboard = !!P.headboard; P.edgeSteel = !!P.edgeSteel; P.lockTab = !!P.lockTab;
   if (p && p.lockPins === false && !p.lockType) P.lockType = 'none';
   if (!['twin', 'pins', 'bolts', 'none'].includes(P.lockType)) P.lockType = 'twin';
@@ -581,7 +584,9 @@ function derived(P) {
   G.kickMax = G.pivot[1] - Math.sqrt(Math.max(0, (rMax + 6) * (rMax + 6) - dyK * dyK));
   G.kickC = P.kickCentre === 'none' ? 0 : P.kickCentre === 'auto' ? Math.min(kickFull, Math.floor(G.kickMax)) : kickFull;
   if (G.kickC < 15) G.kickC = 0;
-  G.kickH = G.kickC || kickFull;                 // kick height in front of the towers
+  G.kickH = P.kickTower != null ? P.kickTower : (G.kickC || kickFull);   // kick height in front of the towers
+  G.kickStep = G.kickC > 0 && Math.abs(G.kickH - G.kickC) > 0.5;        // two heights: the bed's, and the towers' own
+  G.kickXm = (G.doorX[0] + G.xFo + P.faceOverhang) / 2;                  // where they meet: mid reveal, bed face to doors
   // one-piece planks: as long as the fronts span, or as long as the longest sheet gives
   G.plankMax = Math.max(0, ...P.sheets.filter(q => q.T === T).map(q => Math.max(q.L, q.W) - 2 * P.trim));
   // each runs a reveal short of the opening's sides: between the skins when they reach past it, else under or over
@@ -593,6 +598,10 @@ function derived(P) {
     return { span, split, L, n: split ? 2 : 1, under, end: half - (split ? L : L / 2) };
   };
   G.kickPl = plank(G.skin > 0 && P.skinZ0 > 0.5);
+  if (G.kickStep) { // under the bed face only; the towers' kicks run on from there
+    const max = G.plankMax ? Math.floor(G.plankMax) : Infinity, span = 2 * G.kickXm, split = span > max;
+    G.kickPl = { span, split, L: split ? Math.min(G.kickXm, max) : span, n: split ? 2 : 1, under: false, end: 0, bedOnly: true };
+  }
   G.headPl = plank(G.skin > 0 && G.skinZ[1] <= G.zTop + 0.5);
   const zD0 = G.kickH + g;                      // first drawer front
   G.drawerDrop = P.gapBelow - zD0;
@@ -882,6 +891,11 @@ function build(params, opts) {
     // kick board and header filler in front of the tower
     if (!G.kickC) put({ mark: 'K1', name: nm('Kick board'), grp: 'fronts-' + S, kind: 'front', T, L: G.doorW, W: G.kickH, grain: false, band: G.doorW,
       solids: [box(dx0, dx1, G.yFb, G.yF, 0, G.kickH)] });
+    else if (G.kickStep) { // the towers' own height, from the bed's kick out to the skin or the wall
+      const xe = (G.skin && P.skinZ0 > 0.5 ? G.xAw : G.xA) - g, [k0, k1] = sx(s, G.kickXm, xe);
+      put({ mark: 'K1', name: nm('Kick board under the tower'), cutName: 'Kick board, tower', grp: 'fronts-' + S, kind: 'front', T, L: xe - G.kickXm, W: G.kickH, grain: false, band: xe - G.kickXm,
+        solids: [box(k0, k1, G.yFb, G.yF, 0, G.kickH)] });
+    }
   }
 
   // ---------------- bed cabinet
@@ -1328,7 +1342,7 @@ function build(params, opts) {
   }
   if (P.cableHoles) cableHoles(P, G, parts);
   // kick board: one plank across the towers and under the bed (none under the bed: a kick board per tower)
-  if (G.kickC) plankParts(G.kickPl, 'K1', 'Kick board', 0, G.kickC);
+  if (G.kickC) plankParts(G.kickPl, 'K1', G.kickStep ? 'Kick board under the bed' : 'Kick board', 0, G.kickC);
   // re-run the checks with the ledge, backrest and kick in place (they are obstacles now)
   G.clear = clearances(P, G, true);
 
@@ -1482,7 +1496,7 @@ function obstacles(P, G, withAdded) {
   // the side rail closes onto the stops: that contact is the point of them, so only other parts are checked
   add('bed stops', around(G.stop, P.stopD, P.stopD), [G.xMount - P.stopH, G.xMount], { skip: ['side rail'] });
   if (withAdded) {
-    if (G.kickC >= 15) add('kick board under the bed', [G.yFb, G.yF, 0, G.kickC], [0, G.kickPl.n === 2 ? G.kickPl.L : G.kickPl.L / 2]);
+    if (G.kickC >= 15) add('kick board under the bed', [G.yFb, G.yF, 0, G.kickC], [0, G.kickStep ? G.kickXm : G.kickPl.n === 2 ? G.kickPl.L : G.kickPl.L / 2]);
     if (G.ledge && !G.ledge.skipped) add('headboard ledge', [G.yB1, G.ledge.y, 0, G.ledge.top], [0, G.xB]);
     if (G.ledge && !G.ledge.skipped && G.ledge.yFloor > G.ledge.y) {
       const L = G.ledge, nb = L.nose || 0, Tg = P.Tledge;
@@ -1769,7 +1783,8 @@ function checks(model) {
   }
   const wallR = C.list.find(r => r.name === 'back wall');
   if (wallR && wallR.min < 0) w('bad', 'Bed reaches the back wall', `The ${wallR.part} swings ${f0(-wallR.min)} mm past the wall line.`, 'swing');
-  if (G.kickC && G.drawerDrop > 0) w('info', `One-piece kick board, ${f0(G.kickC)} high`, `The bottom edge of the face panel sweeps down to ${f0(C.minZ)} mm above the floor as the bed turns, so the kick board that runs right across is ${f0(G.kickC)} high. The drawers start ${f0(G.drawerDrop)} lower, at ${f0(G.zPl)}, on lower plinths, and the hanging space gains the ${f0(G.drawerDrop)}: ${f0(G.hangClear)} clear.`, 'swing');
+  if (G.kickStep) w('info', `Kick board in two heights: ${f0(G.kickH)} under the towers, ${f0(G.kickC)} under the bed`, `The towers' kick is ${f0(G.kickH)} and their drawers start a reveal above it, at ${f0(G.zPl)}${G.drawerDrop < 0 ? `, so the tower above the drawers is ${f0(-G.drawerDrop)} shorter (hanging space ${f0(G.hangClear)})` : ''}. Under the bed it stays ${f0(G.kickC)}: the face panel's bottom edge sweeps down to ${f0(C.minZ)} mm off the floor as the bed turns, and its face starts at ${f0(G.zFace0)}. The step falls in the reveal between the bed face and the tower doors, ${f0(G.kickXm)} either side of centre.`, 'swing');
+  if (G.kickC && G.drawerDrop > 0 && !G.kickStep) w('info', `Kick board right across, ${f0(G.kickC)} high`, `The bottom edge of the face panel sweeps down to ${f0(C.minZ)} mm above the floor as the bed turns, so the kick board that runs right across is ${f0(G.kickC)} high. The drawers start ${f0(G.drawerDrop)} lower, at ${f0(G.zPl)}, on lower plinths, and the hanging space gains the ${f0(G.drawerDrop)}: ${f0(G.hangClear)} clear.`, 'swing');
   {
     const half = [G.kickC ? ['kick board', G.kickPl] : null, P.gapAbove > 0 ? ['header filler', G.headPl] : null].filter(Boolean);
     const sp = half.filter(([, pl]) => pl.split);
@@ -1781,12 +1796,12 @@ function checks(model) {
       else if (len > maxS + 0.5) {
         const ex = len - maxS, atTop = G.skinZ[1] <= G.zTop + 0.5, ways = [];
         if (atTop) ways.push(`make the header filler ${f0(P.gapAbove + ex)} tall instead of ${f0(P.gapAbove)}, so the carcass and its top cupboards come down ${f0(ex)} and the skins stop under it`);
-        if (atTop && G.kickC && G.skinZ[0] < G.kickC - 0.5 && ex > G.kickC) ways.push(`start them on the kick board, ${f0(G.kickC)} up (it then runs under them), and make the header ${f0(P.gapAbove + ex - G.kickC + G.skinZ[0])} tall`);
+        if (atTop && G.kickH && G.skinZ[0] < G.kickH - 0.5 && ex > G.kickH) ways.push(`start them on the kick board, ${f0(G.kickH)} up (it then runs under them), and make the header ${f0(P.gapAbove + ex - G.kickH + G.skinZ[0])} tall`);
         if (!atTop) ways.push(`start them ${f0(ex)} higher or stop them ${f0(ex)} lower`);
         ways.push('get sheets at least ' + f0(len + 2 * P.trim) + ' long');
         w('bad', 'Skins longer than your sheets', `Each skin is ${f0(len)} tall, from ${f0(G.skinZ[0])} to ${f0(G.skinZ[1])}, with its grain upright; your ${r1(G.skin)} mm sheets give ${f0(maxS)}, ${f0(ex)} short. To fit: ${ways.join('; or ')}.`, 'stock');
       }
-      if (G.skinZ[0] > 0.5 && G.kickC && G.skinZ[0] < G.kickC - 0.5) w('bad', 'Skins and the kick board overlap', `The skins start ${f0(G.skinZ[0])} up, inside the ${f0(G.kickC)} kick board: start them on the floor (the kick runs between them) or at ${f0(G.kickC)} or more (it runs under them).`, 'layout');
+      if (G.skinZ[0] > 0.5 && G.kickH && G.skinZ[0] < G.kickH - 0.5) w('bad', 'Skins and the kick board overlap', `The skins start ${f0(G.skinZ[0])} up, inside the ${f0(G.kickH)} kick board in front of the towers: start them on the floor (the kick runs between them) or at ${f0(G.kickH)} or more (it runs under them).`, 'layout');
       if (G.skinZ[1] > G.zTop + 0.5 && G.skinZ[1] < P.H - 0.5) w('bad', 'Skins stop inside the header', `They stop at ${f0(G.skinZ[1])}, between the top of the carcass (${f0(G.zTop)}) and the ceiling (${f0(P.H)}): stop them at the carcass top (the header runs over them) or run them to the ceiling (it runs between them).`, 'layout');
       if (G.skin < 12) w('info', 'Thin skins are glued, not screwed', `A ${r1(G.skin)} mm skin is too thin for a screw from inside the tower to hold without showing: glue it all over and clamp it, or pin it from the wall side where nothing shows.`, 'build');
     }
@@ -1909,7 +1924,7 @@ function reviewNotes(model, S) {
         : `${r1(P.gapHydr)} mm between the bed frame's side rail and the bed-cabinet side${Math.abs(P.gapHydr - P.pinGap) < 1.5 ? ", the kit's 7/16 in: its plastic spacer and male pivot plate fill it, so the cabinet plates screw straight to the side with the screws supplied, and no pads are needed" : "; the kit's spacers fill 7/16 in (11 mm), so the frame can slide on the pivot bars without pads"}.`;
       return `${gap} The gas springs do not run in this gap: both ball studs point in, so each spring runs along its rail's top edge, in line with the rail and behind it when the bed is closed, its ${f0(P.springD)} mm body ${r1(X.springSide)} from the ${P.packer ? 'pads' : 'side'}. What does sit in the gap: the plates, the bed stops and the lower ball stud's nut, which passes the ${X.nutOn} ${r1(X.nut)} mm away${X.nut < 2 ? ' (measure yours, sheet 7)' : ''}.`;
     })()],
-    ['Plinths and kick boards', `Each tower sits on a ${f0(G.zPl)} high ladder plinth so it can be levelled; the bed-cabinet sides go to the floor like the kit's verticals. ${G.kickC ? `The kick board runs right across${G.kickPl.split ? ' in two halves' : ''}${G.kickPl.under ? ', under the skins,' : ''} ${f0(G.kickC)} high because the face panel's bottom edge sweeps down to ${f0(G.clear.minZ)} mm off the floor as the bed turns; the drawers and tower plinths sit ${f0(G.drawerDrop)} lower to match, and the header filler is ${G.headPl.split ? 'in two halves' : 'one piece'} too.` : 'There is no kick board under the bed, so each tower has its own.'}`],
+    ['Plinths and kick boards', `Each tower sits on a ${f0(G.zPl)} high ladder plinth so it can be levelled; the bed-cabinet sides go to the floor like the kit's verticals. ${G.kickStep ? `The kick board is ${f0(G.kickH)} under the towers and ${f0(G.kickC)} under the bed, because the face panel's bottom edge sweeps down to ${f0(G.clear.minZ)} mm off the floor as the bed turns; they meet in the reveal beside the bed face, and the header filler is ${G.headPl.split ? 'in two halves' : 'one piece'}.` : G.kickC ? `The kick board runs right across${G.kickPl.split ? ' in two halves' : ''}${G.kickPl.under ? ', under the skins,' : ''} ${f0(G.kickC)} high because the face panel's bottom edge sweeps down to ${f0(G.clear.minZ)} mm off the floor as the bed turns; the drawers and tower plinths sit ${f0(G.drawerDrop)} lower to match, and the header filler is ${G.headPl.split ? 'in two halves' : 'one piece'} too.` : 'There is no kick board under the bed, so each tower has its own.'}`],
     ['Headboard', G.head && !G.head.skipped ? `The bed's swing bulges furthest back at pivot height (${f0(G.clear.minY)} from the wall)${G.ledge && !G.ledge.skipped ? `, so the ledge stays below mattress height at ${f0(G.ledge.y)}` : ', so nothing stands below mattress height'}. Above the mattress nothing swings back, so a ${f0(P.headH)} backrest steps out to ${P.headGap} mm behind the open mattress and leans back ${P.headAngle} deg. ${G.head.doors ? `It closes a storage unit ${f0(G.head.clear)} to ${f0(G.head.B0[0])} deep from the wall and ${f0(G.head.top - G.head.z0)} tall, on the ledge top run forward as its floor, with a 6 mm back ${f0(G.yB1 - P.Tback)} off the wall: a ${f0(G.head.zone)} services zone at each tower (power points, lamp cables, the hole into the tower), then three ${f0(G.head.compW)} compartments (a pillow, the doona, a pillow)${G.ledge && G.ledge.well ? `, sunk ${G.ledge.well} into the hollow ledge below the sill that carries the hinges (${f0(G.head.top - G.ledge.wellTop)} deep inside, ${f0(G.ledge.ySill - G.yB1)} front to back below the sill)` : ''} on four tapered supports, ${P.T} mm under the joints between doors and ${P.Thead} mm at the ends. The backrest is three ${f0(G.head.doors.W)} x ${f0(G.head.doors.H)} doors and two removable services panels, with ${G.head.doors.reveal} mm reveals centred on the supports, so the panels overlap the middle supports by ${f0((P.T - G.head.doors.reveal) / 2)} and the end ones by ${f0((P.Thead - G.head.doors.reveal) / 2)}. ${G.head.doors.hinge.front ? `Each door stands on the box floor on a stainless piano hinge: one leaf under its bottom edge, the other on the floor, the knuckle along its front bottom edge at mattress height. It tips forward about the pin ${f0(G.head.doors.open)} deg${G.head.doors.open >= 90 + P.headAngle - 0.5 ? ' and lies face down on the open mattress' : ''}; closed, it leans back onto the hinge's flat leaves and stays shut under its own weight.` : `Each door turns on a stainless piano hinge hidden inside the box: one leaf on the back of the door at its foot, the other on the floor, the knuckle in the corner between them, so from the bed you see only the doors' edge over the mattress. It tips forward about the pin ${f0(G.head.doors.open)} deg and rests on the mattress's head edge (or the pillows); closed, it leans back and stays shut under its own weight.`} Press the top and the TIP-ON under the shelf pushes it about ${G.head.doors.pop} mm proud and holds it there: that is the pull. Tip it past upright and it lowers onto the pillows; a strap from the support to the door stops it short if you'd rather. The doors' top edges and the bedside shelf's front edge are both cut at ${(Math.round(G.head.doors.mitre * 10) / 10)} deg, half of 90 plus the lean, and meet in a ${G.head.doors.gap} mm line at the corner. The shelf, ${f0(G.head.capY)} deep at ${f0(G.head.top + P.Thead)}, runs back to the wall. Open the doors with the bed down: closed, the bed is in front of them.` : `A ${f0(G.head.capY)} deep bedside shelf on top at ${f0(G.head.top + P.Thead)} runs to the wall, its front edge ${f0(P.headLip)} past the backrest's top, so its depth follows the lean.`}` : G.ledge && !G.ledge.skipped ? `A ${f0(G.ledge.y - G.yB1)} deep ledge at mattress height fills the gap behind the open mattress.` : 'Turned off: pillows can fall behind the head of the open bed.'],
     ['Shelf above the bed', `It spans ${f0(2 * G.xB)} only ${f0(P.gapHolder)} mm above the closed bed. The centre divider carries it: glued and screwed to the shelf and the top, it turns the shelf into two ${f0(G.xB + P.T / 2)} mm bays held on three sides. ${P.edgeSteel ? `A ${f0(P.steelH)} x ${f0(P.steelT)} steel flat let into the front edge, ${f0(P.steelH - P.T)} mm proud underneath and hidden by the flaps, stiffens the free edge and takes the push latches.` : ''} ${P.upstand > 0 ? `A ${f0(P.upstand)} mm lip runs along the front edge.` : 'The top is flat to the front edge, so boxes slide straight in.'} Worst case, one bay holding 100 kg a square metre: about ${G.shelfSag.toFixed(1)} mm over time.`],
     ['Shelf fixings', 'The divider only works if it cannot rack: glue it with 8 mm dowels and screws along each edge, like the upper sides (no deep housing). Make the shelf, upper sides, divider, top, wall rails and the 6 mm back up as one box on the floor, slide it in onto the bed-cabinet sides, screw it down and through the tower sides, and screw the rails into the studs; the build sequence sheets have the steps and screws.'],
@@ -2424,11 +2439,11 @@ function joinery(model) {
   });
 
   // ---------- kick board and header
-  const K3 = mk('K3')[0], bat = mk('B12'), K1s = mk('K1');
+  const K3s = mk('K3'), K3 = K3s[0], bat = mk('B12'), K1s = mk('K1');
   const ops = [];
   if (K3 && bat.length) {
-    ops.push({ title: 'Battens onto the back of the header', bench: true, add: bat.map(p => [p, [0, -E, 0]]),
-      fast: [], setout: 'glued and clamped, every 200, flush with the header\'s bottom edge; leave it an hour before you handle it' });
+    ops.push({ title: 'Battens onto the back of the header', bench: true, add: bat.map(p => [p, [0, -E, 0]]).concat(K3s.slice(1).map(p => [p, [0, 0, 0]])),
+      fast: [], setout: `glued and clamped, every 200, flush with the header's bottom edge${K3s.length > 1 ? '; butt the two halves on the centre line first: the centre batten bridges the joint' : ''}; leave it an hour before you handle it` });
     const f = [];
     for (const [S, s] of sides) {
       const top = one(`Tower top (${S})`), bt2 = bat.find(p => { const q = bb(p); return Math.sign(q[0] + q[3]) === s && Math.abs(q[0] + q[3]) > 10; });
@@ -2442,7 +2457,7 @@ function joinery(model) {
       const hz = G.flapHw.hinges.flatMap(h => [[h - 38, h + 38], [-h - 38, -h + 38]]).concat([[-24, 24]]);
       f.push(F('s30', B3, cb, [0, 0, 1], T, spread(-G.xB, G.xB, 50, 250, hz).map(x => [x, G.yFb - 15, G.zTop])));
     }
-    ops.push({ title: 'Header onto the tops, scribed to the ceiling', add: [K3, ...bat].map(p => [p, [0, 0, E]]), fast: f, view: 'below', ctx: true, clip: [G.zS2b + 200, P.H + 400],
+    ops.push({ title: 'Header onto the tops, scribed to the ceiling', add: [...K3s, ...bat].map(p => [p, [0, 0, E]]), fast: f, view: 'below', ctx: true, clip: [G.zS2b + 200, P.H + 400],
       setout: 'up through the tops from inside the top compartments and through the flaps' });
   }
   if (K1s.length) ops.push({ title: 'Kick board, bonded', add: K1s.map(p => [p, [0, E, 0]]), fast: [], ctx: true, clip: [-1, 420],
