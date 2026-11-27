@@ -93,7 +93,8 @@ run({ skinT: 18, skinZ1: 3000, gapAbove: 61, H: 2400 }, 'skins up to the head');
   let m = C.build({});
   if (Math.abs(m.G.cwo * 2 + m.P.packFL + m.P.packFR - m.P.W) > 1e-9) probs.push('carcass + skins + front packing is not the front width');
   if (!has(m, 'info', /^Symmetric about the opening/)) probs.push('default is not reported symmetric');
-  m = C.build({ Wback: W0 - 3, packBL: 3 });
+  if ([m.G.pack.FL, m.G.pack.FR, m.G.pack.BL, m.G.pack.BR].some(v => v !== 0)) probs.push('default packing should be 0 on every corner');
+  m = C.build({ Wback: W0 - 3, packBL: 3, packFL: 5, packFR: 5 });
   if (Math.abs(m.G.pack.BR - 4) > 1e-9 || Math.abs(m.G.pack.backSum - (W0 - 3)) > 1e-9) probs.push(`back-right blank should take what is left (got ${m.G.pack.BR})`);
   m = C.build({ Wback: W0 - 3, packBL: 3, packBR: 6 });
   if (!has(m, 'bad', /does not add up/)) probs.push('back that does not add up is not flagged');
@@ -116,7 +117,7 @@ run({ skinT: 18, skinZ1: 3000, gapAbove: 61, H: 2400 }, 'skins up to the head');
   m = C.build({ wallStudL: 25, wallStudR: 27, packFL: 41, packFR: 43, wallStudFronts: false, skinT: 0 });
   if (!has(m, 'bad', /door runs into the clad stud/)) probs.push('doors past the clad studs not flagged');
   // skins: the carcass narrows by them, the fronts stop at them, the walls stay where they are
-  m = C.build({ skinT: 12, gapAbove: 134 });
+  m = C.build({ skinT: 12, gapAbove: 134, packFL: 5, packFR: 5 });
   const G = m.G, sk = m.parts.filter(p => p.mark === 'T7');
   if (Math.abs(2 * G.cwo + 10 - W0) > 1e-9 || Math.abs(G.cwo - G.cw - 12) > 1e-9) probs.push('skins: carcass plus skins plus packing is not the width');
   if (sk.length !== 2 || sk.some(p => Math.abs(p.L - (G.zTop - G.kickH - C.DEFAULTS.gap)) > 0.5 || p.T !== 12)) probs.push(`skins: expected two 12 mm skins from a reveal above the kick to the carcass top (got ${sk.map(p => p.T + ' x ' + p.L)})`);

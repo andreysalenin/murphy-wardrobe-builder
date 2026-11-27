@@ -58,6 +58,11 @@ if (!readLS(LS_KEY + ':trim05')) {
   if (Number(params.trim) === 5) params.trim = 0.5;
   writeLS(LS_KEY + ':trim05', 1);
 }
+// packing now starts at 0 on every corner (set where needed): saved settings on the old 5 / 5 follow, once
+if (!readLS(LS_KEY + ':pack0')) {
+  if (Number(params.packFL) === 5 && Number(params.packFR) === 5) { params.packFL = 0; params.packFR = 0; if (Number(params.packBL) === 5) params.packBL = null; if (Number(params.packBR) === 5) params.packBR = null; }
+  writeLS(LS_KEY + ':pack0', 1);
+}
 // six 500 x 300 offcuts of 12 on hand: added to saved sheet lists that lack them, once
 if (!readLS(LS_KEY + ':offcuts12')) {
   if (Array.isArray(params.sheets) && !params.sheets.some(q => Number(q.T) === 12 && Number(q.L) === 500 && Number(q.W) === 300)) params.sheets.push({ T: 12, L: 500, W: 300, n: 6 });

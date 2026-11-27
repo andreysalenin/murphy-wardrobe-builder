@@ -1426,7 +1426,7 @@ const DEFAULTS = {
   D: 600,             // cavity depth once the top is opened (510 + 90)
   // the carcass stays square; each corner between a tower and its side wall is packed (or, negative, the tower's
   // outer side is planed to the wall). Left and right as seen from the room.
-  packFL: 5, packFR: 5, // at the front
+  packFL: 0, packFR: 0, // at the front: 0 to start with, set to what each corner needs
   packBL: null,       // at the back, left (null: the same as the front left)
   packBR: null,       // at the back, right (null: whatever the back width leaves)
   // timber studs standing proud of the side walls near the front (as found in the master robe), each clad on its
@@ -8802,6 +8802,11 @@ if (!readLS(LS_KEY + ':skinOnKick')) {
 if (!readLS(LS_KEY + ':trim05')) {
   if (Number(params.trim) === 5) params.trim = 0.5;
   writeLS(LS_KEY + ':trim05', 1);
+}
+// packing now starts at 0 on every corner (set where needed): saved settings on the old 5 / 5 follow, once
+if (!readLS(LS_KEY + ':pack0')) {
+  if (Number(params.packFL) === 5 && Number(params.packFR) === 5) { params.packFL = 0; params.packFR = 0; if (Number(params.packBL) === 5) params.packBL = null; if (Number(params.packBR) === 5) params.packBR = null; }
+  writeLS(LS_KEY + ':pack0', 1);
 }
 // six 500 x 300 offcuts of 12 on hand: added to saved sheet lists that lack them, once
 if (!readLS(LS_KEY + ':offcuts12')) {

@@ -15,7 +15,7 @@ const DEFAULTS = {
   D: 600,             // cavity depth once the top is opened (510 + 90)
   // the carcass stays square; each corner between a tower and its side wall is packed (or, negative, the tower's
   // outer side is planed to the wall). Left and right as seen from the room.
-  packFL: 5, packFR: 5, // at the front
+  packFL: 0, packFR: 0, // at the front: 0 to start with, set to what each corner needs
   packBL: null,       // at the back, left (null: the same as the front left)
   packBR: null,       // at the back, right (null: whatever the back width leaves)
   // timber studs standing proud of the side walls near the front (as found in the master robe), each clad on its
