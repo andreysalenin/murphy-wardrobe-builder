@@ -13,7 +13,7 @@ const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'carpetT', 'carp
 const OPT_FIELDS = ['Wback', 'packBL', 'packBR', 'skinZ0', 'skinZ1', 'kickTower', 'roomH', 'deskH'];
 const COL_FIELDS = ['alexColor'];  // colours, #rrggbb  // blank: worked out from the others
 const SEL_FIELDS = ['kickCentre', 'doorHinge', 'lockType', 'headHinge', 'winWall', 'winVent', 'deskLen'];
-const CHK_FIELDS = ['topShelf', 'cableHoles', 'headStore', 'supportOffset', 'faceReveal', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain', 'wallStudFronts', 'kickBevel', 'carpetLift', 'corniceBack', 'corniceSides', 'corniceHeadIn', 'corniceHeadOut', 'furniture'];
+const CHK_FIELDS = ['topShelf', 'cableHoles', 'headStore', 'supportOffset', 'faceReveal', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain', 'wallStudFronts', 'kickBevel', 'carpetLift', 'corniceBack', 'corniceSides', 'corniceHeadIn', 'corniceHeadOut', 'furniture', 'banding'];
 
 const readLS = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } };
 const writeLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage off: settings just aren't remembered */ } };
@@ -320,7 +320,7 @@ function renderSheets() {
   });
   $('sheets').innerHTML = html.join('');
   const totalUsed = S.sheets.reduce((a, s) => a + s.used, 0), totalHave = S.sheets.reduce((a, s) => a + s.have, 0);
-  $('cut-note').textContent = `${totalUsed} of ${totalHave} sheets, ${S.cut.reduce((a, r) => a + r.qty, 0)} pieces, ${S.bandM.toFixed(0)} m of edge banding`;
+  $('cut-note').textContent = `${totalUsed} of ${totalHave} sheets, ${S.cut.reduce((a, r) => a + r.qty, 0)} pieces, ${params.banding ? `${S.bandM.toFixed(0)} m of edge banding` : 'no edge banding'}`;
   $('cut-table').innerHTML = '<thead><tr><th>Mark</th><th>Part</th><th class="n">Qty</th><th class="n">Thick</th><th class="n">Length</th><th class="n">Width</th><th>Grain</th></tr></thead><tbody>' +
     S.cut.map(r => `<tr><td class="m"><span class="chip" style="background:var(--${TCLASS(r.T)})"></span>${esc(r.mark)}</td><td>${esc(r.name)}</td><td class="n">${r.qty}</td><td class="n">${r.T}</td><td class="n">${f0(r.L)}</td><td class="n">${f0(r.W)}</td><td>${r.grain ? 'along length' : ''}</td></tr>`).join('') + '</tbody>';
 }
@@ -501,8 +501,8 @@ async function downloadPdf() {
 }
 function csvText(sm) {
   const q = (s) => /[",\n]/.test(String(s)) ? `"${String(s).replace(/"/g, '""')}"` : String(s);
-  const rows = [['Mark', 'Part', 'Qty', 'Thickness mm', 'Length mm', 'Width mm', 'Grain along length', 'Edge band m']];
-  for (const r of sm.cut) rows.push([r.mark, r.name, r.qty, r.T, f0(r.L), f0(r.W), r.grain ? 'yes' : '', (r.band / 1000).toFixed(2)]);
+  const bd = !!params.banding, rows = [['Mark', 'Part', 'Qty', 'Thickness mm', 'Length mm', 'Width mm', 'Grain along length', ...(bd ? ['Edge band m'] : [])]];
+  for (const r of sm.cut) rows.push([r.mark, r.name, r.qty, r.T, f0(r.L), f0(r.W), r.grain ? 'yes' : '', ...(bd ? [(r.band / 1000).toFixed(2)] : [])]);
   rows.push([]);
   rows.push(['Sheet', 'Thickness mm', 'Size', 'Mark', 'Part', 'x mm', 'y mm', 'Length on sheet', 'Width on sheet', 'Turned']);
   for (const s of sm.sheets) s.bins.forEach((b, i) => { for (const it of b.items) rows.push([`${s.T}-${i + 1}`, s.T, `${b.L}x${b.W}`, it.mark, it.name, f0(it.x), f0(it.y), f0(it.w), f0(it.h), it.rot ? 'yes' : '']); });

@@ -1132,8 +1132,8 @@ function pageCutList(doc, M, S, info) {
   const { P } = M;
   const s = Sheet(doc, 8, info.total, 'CUT LIST', '-', info);
   s.heading(14, 280, 'CUT LIST', `lengths along the grain where it matters; kerf ${P.kerf}, ${P.trim} trimmed off each sheet edge`);
-  const rows = S.cut.map(r => [T_RGB[r.T] || GREY, r.mark, r.name, r.qty, r.T, f0(r.L), f0(r.W), r.grain ? 'yes' : '', r.band ? (r.band / 1000).toFixed(1) : '']);
-  const cols = [['', 6, 'center'], ['MARK', 13, 'left'], ['PART', 70, 'left'], ['QTY', 10, 'right'], ['T', 9, 'right'], ['LENGTH', 16, 'right'], ['WIDTH', 16, 'right'], ['GRAIN', 12, 'center'], ['BAND m', 14, 'right']];
+  const rows = S.cut.map(r => [T_RGB[r.T] || GREY, r.mark, r.name, r.qty, r.T, f0(r.L), f0(r.W), r.grain ? 'yes' : '', ...(P.banding ? [r.band ? (r.band / 1000).toFixed(1) : ''] : [])]);
+  const cols = [['', 6, 'center'], ['MARK', 13, 'left'], ['PART', P.banding ? 70 : 84, 'left'], ['QTY', 10, 'right'], ['T', 9, 'right'], ['LENGTH', 16, 'right'], ['WIDTH', 16, 'right'], ['GRAIN', 12, 'center'], ...(P.banding ? [['BAND m', 14, 'right']] : [])];
   const half = Math.ceil(rows.length / 2);
   const rh = Math.min(4.6, 230 / half);
   s.table(14, 270, cols, rows.slice(0, half), { rowH: rh, size: 5.8, hsize: 5.4, chipCol: 0, boldCol: 1 });
@@ -1144,7 +1144,7 @@ function pageCutList(doc, M, S, info) {
   s.heading(x2, y, 'SHEETS', 'parts nested by thickness onto the sheets you have');
   y = s.table(x2, y - 6, [['THICK', 14, 'right'], ['ON HAND', 18, 'right'], ['NEEDED', 16, 'right'], ['PARTS m²', 18, 'right'], ['USE', 14, 'right']],
     S.sheets.map(q => [q.T, q.have, isFinite(q.need) ? q.need : 'too big', (q.area / 1e6).toFixed(2), q.sheetArea ? Math.round(q.area / q.sheetArea * 100) + '%' : '-']), { rowH: 4.4, size: 5.8 });
-  s.text(x2, y - 5, `Edge banding about ${S.bandM.toFixed(0)} m. Plywood about ${S.massPly.toFixed(0)} kg.`, { size: 6 });
+  s.text(x2, y - 5, `${M.P.banding ? `Edge banding about ${S.bandM.toFixed(0)} m` : 'No edge banding: exposed birch edges'}. Plywood about ${S.massPly.toFixed(0)} kg.`, { size: 6 });
   const hx = 120;
   let hy = 270 - (half + 1) * rh - 10;
   s.heading(hx, hy, 'HARDWARE');
@@ -1368,7 +1368,7 @@ function pageFixings(doc, M, S, info) {
     'Pilots 2, 2.5 and 3; clearance 3.5, 4.5 and 6.5; 5 for shelf pins and handle bolts; 6 through the drawer box fronts; 10 for the push latches; HSS bits for the steel flat.',
     '8 brad-point with a depth stop and a dowel jig (every wooden joint is 8 mm dowels: no Domino or biscuit joiner); 35 Forstner for the hinge cups, 13 deep, on a stand or hinge jig; a countersink; a 32 mm shelf-pin jig.',
     'Driver bits: T15 for every 3.5 mm Torx screw, T20 for every 4.0 mm one, T40 for the stainless bugle batten screws; fresh bits, as stainless heads are softer. Buy all of them in stainless so the heads match where they show.',
-    'Track saw, drill-driver, four 600 and two 1200 clamps, a 1200 level or a laser, a stud finder, an edge-banding iron and trimmer.',
+    `Track saw, drill-driver, four 600 and two 1200 clamps, a 1200 level or a laser, a stud finder${M.P.banding ? ', an edge-banding iron and trimmer' : ', a sanding block for the exposed edges'}.`,
   ], wN, { size: 5.8 });
   const mx = nx + wN + 10;
   s.heading(mx, ny, 'GLUE');
@@ -1398,7 +1398,7 @@ function pageFixings(doc, M, S, info) {
   const cx = 262, cy = py;
   s.heading(cx, cy, 'CONSUMABLES', 'roughly, for this design');
   s.numbered(cx, cy - 9, [
-    `Edge banding: ${Math.ceil(S.bandM * 1.1)} m (the cut list's ${S.bandM.toFixed(0)} m and 10 %), 22 mm wide for 18 mm ply.`,
+    ...(M.P.banding ? [`Edge banding: ${Math.ceil(S.bandM * 1.1)} m (the cut list's ${S.bandM.toFixed(0)} m and 10 %), 22 mm wide for 18 mm ply.`] : []),
     `Finish: about ${area.toFixed(0)} square metres of faces; two coats of a water-based polyurethane at about 12 square metres a litre is ${Math.ceil(area * 2 / 12)} L.`,
     'PVA: 1 L. Construction adhesive: one tube. Epoxy or PU adhesive: a small pack, for the steel flat.',
     'Double-sided tape and 6 mm spacers for setting the fronts; 2 to 5 mm plastic packers for levelling and the side walls.',

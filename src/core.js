@@ -196,6 +196,7 @@ const DEFAULTS = {
   kerf: 3.2,
   trim: 0.5,            // off each sheet edge: the factory edges are good, a sanding pass at most
   grain: true,          // visible parts keep their grain along the sheet length
+  banding: false,       // edge banding on the fronts and visible carcass edges; off: the birch edges stay exposed
   sheets: [
     { T: 6, L: 2440, W: 1220, n: 5 },
     { T: 12, L: 2440, W: 1220, n: 3 },
@@ -346,7 +347,7 @@ function normParams(p) {
   if (!['right', 'left', 'none'].includes(P.winVent)) P.winVent = 'right'; num('winOpen', 0, 60);
   P.furniture = P.furniture !== false; num('deskLen', 800, 2400); num('deskGap', 0, 200); num('deskClear', 0, 100); opt('deskH', 500, 1400);
   if (!/^#[0-9a-fA-F]{6}$/.test(String(P.alexColor))) P.alexColor = DEFAULTS.alexColor;
-  P.topShelf = !!P.topShelf; P.headStore = P.headStore !== false; P.cableHoles = P.cableHoles !== false; P.supportOffset = !!P.supportOffset; P.faceReveal = !!P.faceReveal; P.packer = !!P.packer; P.ledge = !!P.ledge; P.grain = !!P.grain; P.headboard = !!P.headboard; P.edgeSteel = !!P.edgeSteel; P.lockTab = !!P.lockTab;
+  P.banding = !!P.banding; P.topShelf = !!P.topShelf; P.headStore = P.headStore !== false; P.cableHoles = P.cableHoles !== false; P.supportOffset = !!P.supportOffset; P.faceReveal = !!P.faceReveal; P.packer = !!P.packer; P.ledge = !!P.ledge; P.grain = !!P.grain; P.headboard = !!P.headboard; P.edgeSteel = !!P.edgeSteel; P.lockTab = !!P.lockTab;
   if (p && p.lockPins === false && !p.lockType) P.lockType = 'none';
   if (!['twin', 'pins', 'bolts', 'none'].includes(P.lockType)) P.lockType = 'twin';
   if (!['inside', 'front'].includes(P.headHinge)) P.headHinge = 'inside';
@@ -2391,7 +2392,7 @@ function reviewNotes(model, S) {
     ['Clear floor', `The open bed reaches ${f0(G.clear.open.reach)} from the back wall, ${f0(G.clear.open.reach - P.D)} into the room.`],
     ['Skirting and floor', 'The bed-cabinet sides stand on the floor: notch them over any skirting at the back (the kit plan shows the same notch) and check the floor is flat across the bay.'],
     ['Services', 'The wiring stays in the services zones at each tower, behind removable panels: run it before the shelf goes on.'],
-    ['Edge banding', S ? `About ${S.bandM.toFixed(0)} m for the fronts and the visible carcass edges, if you band them.` : ''],
+    ['Edges', P.banding ? (S ? `About ${S.bandM.toFixed(0)} m of banding for the fronts and the visible carcass edges.` : '') : 'No banding: the birch plywood edges stay exposed on the fronts, the skins and the carcass, sanded to 240, the arrises eased, and finished with an extra coat.'],
   ].filter(e => e[1]);
   return { edits, open };
 }
@@ -2436,7 +2437,7 @@ function cutList(model) {
     const key = [p.mark, p.T, L, W].join('|');
     if (!rows.has(key)) rows.set(key, { mark: p.mark, name: p.cutName || baseName(p.name), T: p.T, L, W, qty: 0, grain: !!p.grain && P.grain, band: 0, kind: p.kind, grp: p.grp });
     const r = rows.get(key);
-    r.qty += 1; r.band += p.band || 0;
+    r.qty += 1; r.band += model.P.banding ? p.band || 0 : 0;
   }
   // keep marks unique per size: suffix .1 .2 when one mark has several sizes
   const list = [...rows.values()];
@@ -2948,7 +2949,7 @@ function assembly(model, sheets) {
   const doorHinges = parts.filter(p => p.hinges).reduce((a, p) => a + p.hinges.length, 0);
   const B7L = G.xB - T / 2, backH = G.zTop - G.zBm0 - 4;
   const usedSheets = (sheets || []).reduce((a, q) => a + (q.used || 0), 0);
-  const band = parts.filter(p => !p.hw).reduce((a, p) => a + (p.band || 0), 0) / 1000;
+  const band = P.banding ? parts.filter(p => !p.hw).reduce((a, p) => a + (p.band || 0), 0) / 1000 : 0;
   const isPlate = (p) => /arm and \d+ mm plate$/.test(p.name);
   const J = joinery(model);
   const addJ = (st, key) => { st.joinery = key; const c = J.count(key); for (const k of Object.keys(c)) add(st, k, c[k]); };
@@ -2957,8 +2958,9 @@ function assembly(model, sheets) {
     text: `Check the width, height and depth at three heights against the ${f0(P.W)} x ${f0(P.H)} x ${f0(P.D)} drawn. Find the studs on the back and side walls with a detector (usually ${STUDS} or 600 apart) and mark their centres, and any cables or pipes. Find the floor's high point: the plinths and bed-cabinet sides are levelled from it.` });
   st = step({ title: 'Cut the parts', h: Math.round((1 + 0.45 * usedSheets) * 2) / 2, parts: () => false,
     text: `${usedSheets} sheets from the cutting plans with a track saw: rip the long parts first and label each part with its mark as it comes off. The kick board and header are full-length rips, ${[G.kickC ? ['kick board', G.kickPl] : null, G.hasHeader ? ['header', G.headPl] : null].filter(Boolean).map(([n, pl]) => `the ${n} ${pl.split ? `two halves of ${f0(pl.L)}` : `one piece ${f0(pl.L)}`}`).join(', ')}; cut them before anything else from their sheet.${G.kickCb < G.kickC - 0.5 ? ` Bevel the kick board's top edge from ${f0(G.kickC)} at the face to ${f0(G.kickCb)} at the back, about ${f0(Math.atan2(G.kickC - G.kickCb, G.Tk) * 180 / Math.PI)} degrees: a track saw or table saw tilted, or plane down to a line.` : ''}` });
-  st = step({ title: 'Edge band, sand, pre-finish', h: Math.round((2 + band * 0.08) * 2) / 2, overnight: true, parts: () => false,
-    text: `${band.toFixed(0)} m of banding on the edges the cut list marks. Sand to 180 and put two coats on the insides of the towers, the drawer boxes and the backs of the fronts while they lie flat. Leave it overnight.` });
+  st = step({ title: P.banding ? 'Edge band, sand, pre-finish' : 'Sand and pre-finish', h: Math.round((2 + band * 0.08) * 2) / 2, overnight: true, parts: () => false,
+    text: P.banding ? `${band.toFixed(0)} m of banding on the edges the cut list marks. Sand to 180 and put two coats on the insides of the towers, the drawer boxes and the backs of the fronts while they lie flat. Leave it overnight.`
+      : `No banding: the birch edges stay exposed. Sand faces to 180 and the visible edges to 240, easing the arrises with a block, and give the edges an extra coat (end grain drinks finish). Two coats on the insides of the towers, the drawer boxes and the backs of the fronts while they lie flat. Leave it overnight.` });
   st = step({ title: 'Drill everything on the flat', h: 3, parts: () => false,
     text: `Runner holes on the tower sides (${holes.join(', ')} from the front edge, on the centre lines on sheet 6); hinge-plate holes 37 back and 32 apart at the hinge heights; ${G.thin.side ? 'the 12 mm doors take thin-front hinges: two 10 mm dowel holes 6 deep, 32 apart, per hinge, at the boss positions on sheet 6' : `35 x 13 cups ${G.hingeDoor.cup} in from the door edges`} and ${G.thin.top ? 'two 10 x 6 dowel holes per hinge in the flaps' : `${G.hingeFlap.cup} below the flaps' top edges`}; shelf-pin holes; the dowel holes with a jig and the screw clearance holes, from the set-out strips in the assembly details; the kit plates on the bed-cabinet sides from sheet 6${P.cableHoles && G.cables ? '; the 20 mm cable holes from the table on sheet 8, each one through all its parts while they are loose, with a backing board so the far face does not splinter' : ''}.` });
 

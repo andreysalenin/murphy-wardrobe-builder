@@ -514,6 +514,7 @@ table.clr tr.tight td.n, table.clr tr.clash td.n { font-weight: 600; color: var(
           <div class="field"><label for="kerf">Saw kerf</label><div class="num"><input id="kerf" type="number" min="0" max="8" step="0.1" inputmode="decimal"><span>mm</span></div></div>
           <div class="field"><div><label for="trim">Off each sheet edge</label><small>0.5 for a sanding pass on good factory edges; 5 to trim them straight.</small></div><div class="num"><input id="trim" type="number" min="0" max="30" step="0.5" inputmode="decimal"><span>mm</span></div></div>
           <label class="check"><input type="checkbox" id="grain"> <span>Keep the grain running up the visible parts</span></label>
+          <label class="check"><input type="checkbox" id="banding"> <span>Edge banding on the fronts and visible carcass edges (off: the birch edges stay exposed)</span></label>
         </div>
       </details>
       <div class="grp-body" style="padding-top:12px">
@@ -1607,6 +1608,7 @@ const DEFAULTS = {
   kerf: 3.2,
   trim: 0.5,            // off each sheet edge: the factory edges are good, a sanding pass at most
   grain: true,          // visible parts keep their grain along the sheet length
+  banding: false,       // edge banding on the fronts and visible carcass edges; off: the birch edges stay exposed
   sheets: [
     { T: 6, L: 2440, W: 1220, n: 5 },
     { T: 12, L: 2440, W: 1220, n: 3 },
@@ -1757,7 +1759,7 @@ function normParams(p) {
   if (!['right', 'left', 'none'].includes(P.winVent)) P.winVent = 'right'; num('winOpen', 0, 60);
   P.furniture = P.furniture !== false; num('deskLen', 800, 2400); num('deskGap', 0, 200); num('deskClear', 0, 100); opt('deskH', 500, 1400);
   if (!/^#[0-9a-fA-F]{6}$/.test(String(P.alexColor))) P.alexColor = DEFAULTS.alexColor;
-  P.topShelf = !!P.topShelf; P.headStore = P.headStore !== false; P.cableHoles = P.cableHoles !== false; P.supportOffset = !!P.supportOffset; P.faceReveal = !!P.faceReveal; P.packer = !!P.packer; P.ledge = !!P.ledge; P.grain = !!P.grain; P.headboard = !!P.headboard; P.edgeSteel = !!P.edgeSteel; P.lockTab = !!P.lockTab;
+  P.banding = !!P.banding; P.topShelf = !!P.topShelf; P.headStore = P.headStore !== false; P.cableHoles = P.cableHoles !== false; P.supportOffset = !!P.supportOffset; P.faceReveal = !!P.faceReveal; P.packer = !!P.packer; P.ledge = !!P.ledge; P.grain = !!P.grain; P.headboard = !!P.headboard; P.edgeSteel = !!P.edgeSteel; P.lockTab = !!P.lockTab;
   if (p && p.lockPins === false && !p.lockType) P.lockType = 'none';
   if (!['twin', 'pins', 'bolts', 'none'].includes(P.lockType)) P.lockType = 'twin';
   if (!['inside', 'front'].includes(P.headHinge)) P.headHinge = 'inside';
@@ -3802,7 +3804,7 @@ function reviewNotes(model, S) {
     ['Clear floor', `The open bed reaches ${f0(G.clear.open.reach)} from the back wall, ${f0(G.clear.open.reach - P.D)} into the room.`],
     ['Skirting and floor', 'The bed-cabinet sides stand on the floor: notch them over any skirting at the back (the kit plan shows the same notch) and check the floor is flat across the bay.'],
     ['Services', 'The wiring stays in the services zones at each tower, behind removable panels: run it before the shelf goes on.'],
-    ['Edge banding', S ? `About ${S.bandM.toFixed(0)} m for the fronts and the visible carcass edges, if you band them.` : ''],
+    ['Edges', P.banding ? (S ? `About ${S.bandM.toFixed(0)} m of banding for the fronts and the visible carcass edges.` : '') : 'No banding: the birch plywood edges stay exposed on the fronts, the skins and the carcass, sanded to 240, the arrises eased, and finished with an extra coat.'],
   ].filter(e => e[1]);
   return { edits, open };
 }
@@ -3847,7 +3849,7 @@ function cutList(model) {
     const key = [p.mark, p.T, L, W].join('|');
     if (!rows.has(key)) rows.set(key, { mark: p.mark, name: p.cutName || baseName(p.name), T: p.T, L, W, qty: 0, grain: !!p.grain && P.grain, band: 0, kind: p.kind, grp: p.grp });
     const r = rows.get(key);
-    r.qty += 1; r.band += p.band || 0;
+    r.qty += 1; r.band += model.P.banding ? p.band || 0 : 0;
   }
   // keep marks unique per size: suffix .1 .2 when one mark has several sizes
   const list = [...rows.values()];
@@ -4359,7 +4361,7 @@ function assembly(model, sheets) {
   const doorHinges = parts.filter(p => p.hinges).reduce((a, p) => a + p.hinges.length, 0);
   const B7L = G.xB - T / 2, backH = G.zTop - G.zBm0 - 4;
   const usedSheets = (sheets || []).reduce((a, q) => a + (q.used || 0), 0);
-  const band = parts.filter(p => !p.hw).reduce((a, p) => a + (p.band || 0), 0) / 1000;
+  const band = P.banding ? parts.filter(p => !p.hw).reduce((a, p) => a + (p.band || 0), 0) / 1000 : 0;
   const isPlate = (p) => /arm and \d+ mm plate$/.test(p.name);
   const J = joinery(model);
   const addJ = (st, key) => { st.joinery = key; const c = J.count(key); for (const k of Object.keys(c)) add(st, k, c[k]); };
@@ -4368,8 +4370,9 @@ function assembly(model, sheets) {
     text: `Check the width, height and depth at three heights against the ${f0(P.W)} x ${f0(P.H)} x ${f0(P.D)} drawn. Find the studs on the back and side walls with a detector (usually ${STUDS} or 600 apart) and mark their centres, and any cables or pipes. Find the floor's high point: the plinths and bed-cabinet sides are levelled from it.` });
   st = step({ title: 'Cut the parts', h: Math.round((1 + 0.45 * usedSheets) * 2) / 2, parts: () => false,
     text: `${usedSheets} sheets from the cutting plans with a track saw: rip the long parts first and label each part with its mark as it comes off. The kick board and header are full-length rips, ${[G.kickC ? ['kick board', G.kickPl] : null, G.hasHeader ? ['header', G.headPl] : null].filter(Boolean).map(([n, pl]) => `the ${n} ${pl.split ? `two halves of ${f0(pl.L)}` : `one piece ${f0(pl.L)}`}`).join(', ')}; cut them before anything else from their sheet.${G.kickCb < G.kickC - 0.5 ? ` Bevel the kick board's top edge from ${f0(G.kickC)} at the face to ${f0(G.kickCb)} at the back, about ${f0(Math.atan2(G.kickC - G.kickCb, G.Tk) * 180 / Math.PI)} degrees: a track saw or table saw tilted, or plane down to a line.` : ''}` });
-  st = step({ title: 'Edge band, sand, pre-finish', h: Math.round((2 + band * 0.08) * 2) / 2, overnight: true, parts: () => false,
-    text: `${band.toFixed(0)} m of banding on the edges the cut list marks. Sand to 180 and put two coats on the insides of the towers, the drawer boxes and the backs of the fronts while they lie flat. Leave it overnight.` });
+  st = step({ title: P.banding ? 'Edge band, sand, pre-finish' : 'Sand and pre-finish', h: Math.round((2 + band * 0.08) * 2) / 2, overnight: true, parts: () => false,
+    text: P.banding ? `${band.toFixed(0)} m of banding on the edges the cut list marks. Sand to 180 and put two coats on the insides of the towers, the drawer boxes and the backs of the fronts while they lie flat. Leave it overnight.`
+      : `No banding: the birch edges stay exposed. Sand faces to 180 and the visible edges to 240, easing the arrises with a block, and give the edges an extra coat (end grain drinks finish). Two coats on the insides of the towers, the drawer boxes and the backs of the fronts while they lie flat. Leave it overnight.` });
   st = step({ title: 'Drill everything on the flat', h: 3, parts: () => false,
     text: `Runner holes on the tower sides (${holes.join(', ')} from the front edge, on the centre lines on sheet 6); hinge-plate holes 37 back and 32 apart at the hinge heights; ${G.thin.side ? 'the 12 mm doors take thin-front hinges: two 10 mm dowel holes 6 deep, 32 apart, per hinge, at the boss positions on sheet 6' : `35 x 13 cups ${G.hingeDoor.cup} in from the door edges`} and ${G.thin.top ? 'two 10 x 6 dowel holes per hinge in the flaps' : `${G.hingeFlap.cup} below the flaps' top edges`}; shelf-pin holes; the dowel holes with a jig and the screw clearance holes, from the set-out strips in the assembly details; the kit plates on the bed-cabinet sides from sheet 6${P.cableHoles && G.cables ? '; the 20 mm cable holes from the table on sheet 8, each one through all its parts while they are loose, with a backing board so the far face does not splinter' : ''}.` });
 
@@ -6994,8 +6997,8 @@ function pageCutList(doc, M, S, info) {
   const { P } = M;
   const s = Sheet(doc, 8, info.total, 'CUT LIST', '-', info);
   s.heading(14, 280, 'CUT LIST', `lengths along the grain where it matters; kerf ${P.kerf}, ${P.trim} trimmed off each sheet edge`);
-  const rows = S.cut.map(r => [T_RGB[r.T] || GREY, r.mark, r.name, r.qty, r.T, f0(r.L), f0(r.W), r.grain ? 'yes' : '', r.band ? (r.band / 1000).toFixed(1) : '']);
-  const cols = [['', 6, 'center'], ['MARK', 13, 'left'], ['PART', 70, 'left'], ['QTY', 10, 'right'], ['T', 9, 'right'], ['LENGTH', 16, 'right'], ['WIDTH', 16, 'right'], ['GRAIN', 12, 'center'], ['BAND m', 14, 'right']];
+  const rows = S.cut.map(r => [T_RGB[r.T] || GREY, r.mark, r.name, r.qty, r.T, f0(r.L), f0(r.W), r.grain ? 'yes' : '', ...(P.banding ? [r.band ? (r.band / 1000).toFixed(1) : ''] : [])]);
+  const cols = [['', 6, 'center'], ['MARK', 13, 'left'], ['PART', P.banding ? 70 : 84, 'left'], ['QTY', 10, 'right'], ['T', 9, 'right'], ['LENGTH', 16, 'right'], ['WIDTH', 16, 'right'], ['GRAIN', 12, 'center'], ...(P.banding ? [['BAND m', 14, 'right']] : [])];
   const half = Math.ceil(rows.length / 2);
   const rh = Math.min(4.6, 230 / half);
   s.table(14, 270, cols, rows.slice(0, half), { rowH: rh, size: 5.8, hsize: 5.4, chipCol: 0, boldCol: 1 });
@@ -7006,7 +7009,7 @@ function pageCutList(doc, M, S, info) {
   s.heading(x2, y, 'SHEETS', 'parts nested by thickness onto the sheets you have');
   y = s.table(x2, y - 6, [['THICK', 14, 'right'], ['ON HAND', 18, 'right'], ['NEEDED', 16, 'right'], ['PARTS m²', 18, 'right'], ['USE', 14, 'right']],
     S.sheets.map(q => [q.T, q.have, isFinite(q.need) ? q.need : 'too big', (q.area / 1e6).toFixed(2), q.sheetArea ? Math.round(q.area / q.sheetArea * 100) + '%' : '-']), { rowH: 4.4, size: 5.8 });
-  s.text(x2, y - 5, `Edge banding about ${S.bandM.toFixed(0)} m. Plywood about ${S.massPly.toFixed(0)} kg.`, { size: 6 });
+  s.text(x2, y - 5, `${M.P.banding ? `Edge banding about ${S.bandM.toFixed(0)} m` : 'No edge banding: exposed birch edges'}. Plywood about ${S.massPly.toFixed(0)} kg.`, { size: 6 });
   const hx = 120;
   let hy = 270 - (half + 1) * rh - 10;
   s.heading(hx, hy, 'HARDWARE');
@@ -7230,7 +7233,7 @@ function pageFixings(doc, M, S, info) {
     'Pilots 2, 2.5 and 3; clearance 3.5, 4.5 and 6.5; 5 for shelf pins and handle bolts; 6 through the drawer box fronts; 10 for the push latches; HSS bits for the steel flat.',
     '8 brad-point with a depth stop and a dowel jig (every wooden joint is 8 mm dowels: no Domino or biscuit joiner); 35 Forstner for the hinge cups, 13 deep, on a stand or hinge jig; a countersink; a 32 mm shelf-pin jig.',
     'Driver bits: T15 for every 3.5 mm Torx screw, T20 for every 4.0 mm one, T40 for the stainless bugle batten screws; fresh bits, as stainless heads are softer. Buy all of them in stainless so the heads match where they show.',
-    'Track saw, drill-driver, four 600 and two 1200 clamps, a 1200 level or a laser, a stud finder, an edge-banding iron and trimmer.',
+    `Track saw, drill-driver, four 600 and two 1200 clamps, a 1200 level or a laser, a stud finder${M.P.banding ? ', an edge-banding iron and trimmer' : ', a sanding block for the exposed edges'}.`,
   ], wN, { size: 5.8 });
   const mx = nx + wN + 10;
   s.heading(mx, ny, 'GLUE');
@@ -7260,7 +7263,7 @@ function pageFixings(doc, M, S, info) {
   const cx = 262, cy = py;
   s.heading(cx, cy, 'CONSUMABLES', 'roughly, for this design');
   s.numbered(cx, cy - 9, [
-    `Edge banding: ${Math.ceil(S.bandM * 1.1)} m (the cut list's ${S.bandM.toFixed(0)} m and 10 %), 22 mm wide for 18 mm ply.`,
+    ...(M.P.banding ? [`Edge banding: ${Math.ceil(S.bandM * 1.1)} m (the cut list's ${S.bandM.toFixed(0)} m and 10 %), 22 mm wide for 18 mm ply.`] : []),
     `Finish: about ${area.toFixed(0)} square metres of faces; two coats of a water-based polyurethane at about 12 square metres a litre is ${Math.ceil(area * 2 / 12)} L.`,
     'PVA: 1 L. Construction adhesive: one tube. Epoxy or PU adhesive: a small pack, for the steel flat.',
     'Double-sided tape and 6 mm spacers for setting the fronts; 2 to 5 mm plastic packers for levelling and the side walls.',
@@ -8758,7 +8761,7 @@ const NUM_FIELDS = ['W', 'H', 'D', 'packFL', 'packFR', 'skinT', 'carpetT', 'carp
 const OPT_FIELDS = ['Wback', 'packBL', 'packBR', 'skinZ0', 'skinZ1', 'kickTower', 'roomH', 'deskH'];
 const COL_FIELDS = ['alexColor'];  // colours, #rrggbb  // blank: worked out from the others
 const SEL_FIELDS = ['kickCentre', 'doorHinge', 'lockType', 'headHinge', 'winWall', 'winVent', 'deskLen'];
-const CHK_FIELDS = ['topShelf', 'cableHoles', 'headStore', 'supportOffset', 'faceReveal', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain', 'wallStudFronts', 'kickBevel', 'carpetLift', 'corniceBack', 'corniceSides', 'corniceHeadIn', 'corniceHeadOut', 'furniture'];
+const CHK_FIELDS = ['topShelf', 'cableHoles', 'headStore', 'supportOffset', 'faceReveal', 'packer', 'ledge', 'headboard', 'edgeSteel', 'lockTab', 'grain', 'wallStudFronts', 'kickBevel', 'carpetLift', 'corniceBack', 'corniceSides', 'corniceHeadIn', 'corniceHeadOut', 'furniture', 'banding'];
 
 const readLS = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } };
 const writeLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage off: settings just aren't remembered */ } };
@@ -9065,7 +9068,7 @@ function renderSheets() {
   });
   $('sheets').innerHTML = html.join('');
   const totalUsed = S.sheets.reduce((a, s) => a + s.used, 0), totalHave = S.sheets.reduce((a, s) => a + s.have, 0);
-  $('cut-note').textContent = `${totalUsed} of ${totalHave} sheets, ${S.cut.reduce((a, r) => a + r.qty, 0)} pieces, ${S.bandM.toFixed(0)} m of edge banding`;
+  $('cut-note').textContent = `${totalUsed} of ${totalHave} sheets, ${S.cut.reduce((a, r) => a + r.qty, 0)} pieces, ${params.banding ? `${S.bandM.toFixed(0)} m of edge banding` : 'no edge banding'}`;
   $('cut-table').innerHTML = '<thead><tr><th>Mark</th><th>Part</th><th class="n">Qty</th><th class="n">Thick</th><th class="n">Length</th><th class="n">Width</th><th>Grain</th></tr></thead><tbody>' +
     S.cut.map(r => `<tr><td class="m"><span class="chip" style="background:var(--${TCLASS(r.T)})"></span>${esc(r.mark)}</td><td>${esc(r.name)}</td><td class="n">${r.qty}</td><td class="n">${r.T}</td><td class="n">${f0(r.L)}</td><td class="n">${f0(r.W)}</td><td>${r.grain ? 'along length' : ''}</td></tr>`).join('') + '</tbody>';
 }
@@ -9246,8 +9249,8 @@ async function downloadPdf() {
 }
 function csvText(sm) {
   const q = (s) => /[",\n]/.test(String(s)) ? `"${String(s).replace(/"/g, '""')}"` : String(s);
-  const rows = [['Mark', 'Part', 'Qty', 'Thickness mm', 'Length mm', 'Width mm', 'Grain along length', 'Edge band m']];
-  for (const r of sm.cut) rows.push([r.mark, r.name, r.qty, r.T, f0(r.L), f0(r.W), r.grain ? 'yes' : '', (r.band / 1000).toFixed(2)]);
+  const bd = !!params.banding, rows = [['Mark', 'Part', 'Qty', 'Thickness mm', 'Length mm', 'Width mm', 'Grain along length', ...(bd ? ['Edge band m'] : [])]];
+  for (const r of sm.cut) rows.push([r.mark, r.name, r.qty, r.T, f0(r.L), f0(r.W), r.grain ? 'yes' : '', ...(bd ? [(r.band / 1000).toFixed(2)] : [])]);
   rows.push([]);
   rows.push(['Sheet', 'Thickness mm', 'Size', 'Mark', 'Part', 'x mm', 'y mm', 'Length on sheet', 'Width on sheet', 'Turned']);
   for (const s of sm.sheets) s.bins.forEach((b, i) => { for (const it of b.items) rows.push([`${s.T}-${i + 1}`, s.T, `${b.L}x${b.W}`, it.mark, it.name, f0(it.x), f0(it.y), f0(it.w), f0(it.h), it.rot ? 'yes' : '']); });
